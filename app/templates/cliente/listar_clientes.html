@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Clientes - Geld's Finance{% endblock %}
+
+{% block header %}Lista de Clientes{% endblock %}
+
+{% block content %}
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Telefone</th>
+                <th>Banco</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cliente in clientes %}
+            <tr>
+
+                <td><a href="{{ url_for('cliente.area_cliente', cliente_id=cliente.id) }}"> {{ cliente.nome }} </a> </td>
+                <td>{{ cliente.email }}</td>
+                <td>{{ cliente.telefone }}</td>
+
+                <td>
+                    {% if cliente.banco.value == "NU" %}
+                        <img src="{{ url_for('static', filename='icons/nu.png') }}" class="sml-btn-icon">
+                    {% elif cliente.banco.value == "XP" %}
+                        <img src="{{ url_for('static', filename='icons/xp.png') }}" class="sml-btn-icon">
+                    {% elif cliente.banco.value == "BTG" %}
+                        <img src="{{ url_for('static', filename='icons/btg.png') }}" class="sml-btn-icon">
+                    {% else %}
+                        {{ cliente.banco.value }}
+                    {% endif %}
+                </td>
+
+                <td>
+                    
+                    <form action="{{ url_for('cliente.delete_client', cliente_id=cliente.id) }}" method="POST" class="inline">
+                        <button type="submit" onclick="return confirm('Tem certeza que deseja deletar este cliente?')" class="smlBtnDel">
+                            <img src="{{ url_for('static', filename='icons/trash.png') }}" class="sml-btn-icon">
+                        </button>
+                    </form>
+                    
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+<p></p>
+<button class="smlBtn" onclick="window.location.href=`{{ url_for('dashboard.cliente_dashboard') }}`">
+        <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+
+{% endblock %}

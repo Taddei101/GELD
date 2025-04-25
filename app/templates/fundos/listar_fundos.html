@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Fundos de Investimento - Geld's Finance{% endblock %}
+
+{% block header %}Fundos de Investimento{% endblock %}
+
+{% block content %}
+
+    <table class="table">
+        <thead>
+            <tr>
+                
+                <th>Nome do Fundo</th>
+                <th>Classe Anbima</th>
+                <th>CNPJ</th>
+                <th>Data de Atualização</th>
+                <th>Valor da Cota</th>
+                <th>Risco</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fundo in fundos %}
+            <tr>
+                
+                <td style="font-size: 13px;">{{ fundo.nome_fundo }}</td>
+                <td>{{ " ".join(fundo.classe_anbima.split()[:2]) }}</td>
+                <td>{{ fundo.cnpj if fundo.cnpj else 'N/A' }}</td>
+                <!-- <td>{{ "R$ %.2f"|format(fundo.mov_min) if fundo.mov_min else 'N/A' }}</td> -->
+                 <td>{{ fundo.data_atualizacao.strftime('%d/%m/%Y') }} </td>
+                <!-- <td>{{ fundo.permanencia_min|int if fundo.permanencia_min else 'N/A' }} meses</td> -->
+                <td>{{'R$ {:.2f}'.format(fundo.valor_cota).replace('.', ',') if fundo.valor_cota else 'N/A'}}</td>
+                <td>{{ fundo.risco.value if fundo.risco else 'N/A' }}</td>
+                <td>{{ fundo.status_fundo.value if fundo.status_fundo else 'N/A' }}</td>
+                
+                <td>
+                    <form action="{{ url_for('fundos.edit_fundo', fundo_id=fundo.id) }}" method="GET">
+                        <button class="smlBtn"><img src="{{ url_for('static', filename='icons/edit.png') }}" class="sml-btn-icon"></button>
+                        </form>
+                    <form action="{{ url_for('fundos.delete_fundo', fundo_id=fundo.id) }}" method="POST" class="inline">
+                        <button type="submit" onclick="return confirm('Tem certeza que deseja deletar este fundo?')" class="smlBtnDel">
+                        <img src="{{ url_for('static', filename='icons/trash.png') }}" class="sml-btn-icon"></button>
+                    </form>
+                </td>
+                
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    
+
+    <div class="inline-btn">
+        
+        <button class="smlBtn" onclick="window.location.href=`{{ url_for('dashboard.cliente_dashboard') }}`">
+            <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+
+        <form class="form-btn" action="{{ url_for('fundos.atualizar_cotas_fundos') }}" method="post">
+            <button title="Atualizar Valor da Cota" type="submit" class="smlBtn">
+            <img src="{{ url_for('static', filename='icons/atualizar.png') }}" class="sml-btn-icon"></button>
+        </form>
+        
+        <button title="Cadastrar Fundo Manualmente" class="smlBtn" onclick="window.location.href=`{{ url_for('fundos.add_fundo') }}`">
+            <img src="{{ url_for('static', filename='icons/add.png') }}" class="sml-btn-icon"></button>
+
+       
+        
+        
+
+
+
+    </div>
+
+
+
+
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Objetivo - Geld's Finance{% endblock %}
+
+{% block header %}Editar Objetivo{% endblock %}
+
+{% block content %}
+
+<div class="center">
+    <form method="POST" action="{{ url_for('objetivo.edit_objetivo', objetivo_id=objetivo.id) }}">
+        <div class="label">
+            <label for="nome_objetivo">Objetivo</label>
+            <input type="text" id="nome_objetivo" name="nome_objetivo" value="{{ objetivo.nome_objetivo }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="valor_final">Valor Final:</label>
+            <input type="number" step="0.01" id="valor_final" name="valor_final" value="{{ objetivo.valor_final }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="valor_inicial">Valor Inicial:</label>
+            <input type="number" step="0.01" id="valor_inicial" name="valor_inicial" value="{{ objetivo.valor_inicial }}" readonly>
+        </div>
+        
+        <div class="label">
+            <label for="valor_real">Valor Atual:</label>
+            <input type="number" step="0.01" id="valor_real" name="valor_real" value="{{ objetivo.valor_real }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="data_inicial">Data Inicial: </label>
+            <input type="date" id="data_inicial" name="data_inicial" value="{{ objetivo.data_inicial.strftime('%Y-%m-%d') }}" readonly>
+        </div>
+           
+        
+        <div class="label">
+            <label for="data_final">Data Final: </label>
+            <input type="date" id="data_final" name="data_final" value="{{ objetivo.data_final.strftime('%Y-%m-%d') }}" required>
+        </div>
+        
+        
+        <div class="label" style="margin-top: 20px;">
+            <label></label>
+            <div>
+                <button type="submit" class="smlBtn"><img src="{{ url_for('static', filename='icons/save.png') }}" class="sml-btn-icon"></button>
+                <button type="button" class="smlBtn" onclick="window.location.href=`{{ url_for('objetivo.listar_objetivos', cliente_id=cliente.id) }}`">
+                <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>    
+            </div>
+    </form>
+</div>
+
+
+
+{% endblock %}

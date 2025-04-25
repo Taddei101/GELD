@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Geld's Finance{% endblock %}
+
+{% block header %}{{cliente.nome}}{% endblock %}
+
+{% block content %}
+<div class="center">
+    <p></p>
+    <h3>Informações Pessoais</h3>
+    <table class="info-table" >
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Nome:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.nome }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Email:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.email }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Telefone:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.telefone }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Banco:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.banco.value }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>CPF:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.cpf }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Data de Nascimento:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.nascimento.strftime('%d/%m/%Y') }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>CEP:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.cep }}</td>
+        </tr>
+        {% if cliente.endereco %}
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Endereço:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.endereco }}</td>
+        </tr>
+        {% endif %}
+        {% if cliente.escolaridade %}
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Escolaridade:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.escolaridade }}</td>
+        </tr>
+        {% endif %}
+    </table>
+    
+    
+    <form action="{{ url_for('cliente.edit_client', cliente_id=cliente.id) }}" method="GET">
+    <button class="smlBtn"><img src="{{ url_for('static', filename='icons/edit.png') }}" class="sml-btn-icon"></button>
+    </form>
+
+    <div style="margin-top: 20px;">
+        <button class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.area_cliente',cliente_id=cliente.id) }}`"><img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+    </div>
+    
+    
+</div>
+  
+    
+
+{% endblock %}

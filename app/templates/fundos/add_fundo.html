@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block title %}Novo Fundo - Geld's Finance{% endblock %}
+
+{% block header %}Importar Fundo por CNPJ{% endblock %}
+
+{% block content %}
+
+
+
+<div class="center">
+    <form method="POST" action="{{ url_for('fundos.add_fundo_cnpj') }}" id="form-cnpj">
+        <div class="label">
+            <label for="cnpj_auto">CNPJ do Fundo:</label>
+            <input type="text" id="cnpj_auto" name="cnpj" required>
+        </div>
+        
+        <button type="submit" class="smlBtn" title="Buscar e importar fundo">
+            <img src="{{ url_for('static', filename='icons/lupa.png') }}" class="sml-btn-icon">
+        </button>
+        
+        <button type="button" class="smlBtn" onclick="window.location.href=`{{ url_for('fundos.listar_fundos') }}`" title="Voltar">
+            <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
+        </button>
+    </form>
+
+
+    
+    <form method="POST" action="{{ url_for('fundos.add_fundo') }}">
+        <div class="label">
+            <label for="nome_fundo">Nome da Aplicação</label>
+            <input type="text" id="nome_fundo" name="nome_fundo" required>
+        </div>
+
+        <div class="label">
+            <label for="cnpj">CNPJ:</label>
+            <input type="text" id="cnpj" name="cnpj" required>
+        </div class="label">
+
+        <div class="label">
+            <label for="classe_anbima">Classe Anbima:</label>
+            <input type="text" id="classe_anbima" name="classe_anbima" required>
+        </div class="label">
+
+        <button title="Cadastrar" class="smlBtn" type="submit"><img src="{{ url_for('static', filename='icons/add_cliente.png') }}" class="sml-btn-icon"></button>
+
+    </form>
+
+    <p></p>
+
+    
+        
+    <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.listar_clientes') }}`">
+        <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+</div>
+
+
+        
+    
+    
+
+{% endblock %}

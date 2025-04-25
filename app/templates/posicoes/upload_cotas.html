@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload de Posições BTG{% endblock %}
+{%block header%}Upload Portfólio: {{ cliente.nome }}{% endblock %}
+{% block content %}
+
+<div class="upload-container">
+    <h2>Upload de Posições BTG</h2>
+<div class="info-card">
+    <p> Essa função requer um arquivo exportado do banco BTG-Pactual:</p>
+    <p>Para isso, na pagina inicial, clique em documentos, extratos de investimentos consultar, extrato personalizado Solicitar.  </p>
+    <p>Lembre de que o tipo de documento deve ser detalhado, formato do documento Excel (.xlsx) no idioma portugues-BR.</p>
+<form action="{{ url_for('posicao.upload_cotas', cliente_id=cliente.id) }}" method="POST">
+    <p>O sistema irá:</p>
+    <ul>
+    <li>Abrir a aba "Fundos" do arquivo</li>
+    <li>Extrair os CNPJs, número de cotas e datas das posições</li>
+    <li>Verificar se os fundos estão cadastrados na base de dados</li>
+    <li>Cadastrar fundos novos automaticamente</li>
+    <li>Registrar as posições para o cliente</li>
+    </ul>
+</div>
+
+<button type="submit" class="bigBtn"><img src="{{ url_for('static', filename='icons/upload.png') }}" class="btn-icon"> Selecionar Arquivo </button>
+</form>
+<p></p>
+<button title="Voltar" class="smlBtn" onclick="window.location.href=`{{url_for('posicao.listar_posicao', cliente_id=cliente.id) }}`"><img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+
+</div>
+ 
+{% endblock %}

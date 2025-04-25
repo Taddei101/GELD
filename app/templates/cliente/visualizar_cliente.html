@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Profile - Geld's Finance{% endblock %}
+
+{% block header %}{{cliente.nome}}{% endblock %}
+
+{% block content %}
+<div class="center">
+    <p></p>
+    <h3>Informações Pessoais</h3>
+    <table class="info-table" >
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Nome:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.nome }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Email:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.email }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Telefone:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.telefone }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Banco:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.banco.value }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>CPF:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.cpf }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Data de Nascimento:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.nascimento.strftime('%d/%m/%Y') }}</td>
+        </tr>
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>CEP:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.cep }}</td>
+        </tr>
+        {% if cliente.endereco %}
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Endereço:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.endereco }}</td>
+        </tr>
+        {% endif %}
+        {% if cliente.escolaridade %}
+        <tr>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;"><strong>Escolaridade:</strong></td>
+            <td style="padding: 5px; border-bottom: 1px solid #eee;">{{ cliente.escolaridade }}</td>
+        </tr>
+        {% endif %}
+    </table>
+    <p></p>
+    <h3>Objetivos Financeiros</h3>
+    {% if objetivos %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Objetivo</th>
+                <th>Valor Inicial</th>
+                <th>Valor Atual</th>
+                <th>Valor Final</th>
+                <th>Data Inicial</th>
+                <th>Data Final</th>
+                <th>Período</th>
+                <th>Ações</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for objetivo in objetivos %}
+            <tr>
+                <td>{{ objetivo.nome_objetivo }}</td>
+                <td>R$ {{ "%.2f"|format(objetivo.valor_inicial) }}</td>
+                <td>R$ {{ "%.2f"|format(objetivo.valor_real) }}</td>
+                <td>R$ {{ "%.2f"|format(objetivo.valor_final) }}</td>
+                <td>{{ objetivo.data_inicial.strftime('%d/%m/%Y') }}</td>
+                <td>{{ objetivo.data_final.strftime('%d/%m/%Y') }}</td>
+                <td>{{ objetivo.duracao_meses}} meses</td>
+                <td>
+                    <form action="{{ url_for('objetivo.edit_objetivo', objetivo_id=objetivo.id) }}" method="GET">
+                        <button class="smlBtn">Editar</button>
+                    </form>
+                    <form action="{{ url_for('objetivo.delete_objetivo', objetivo_id=objetivo.id) }}" method="POST" class="inline">
+                        <button type="submit" 
+                                onclick="return confirm('Tem certeza que deseja deletar este objetivo?')"
+                                class="smlBtnDel">
+                            Deletar
+                        </button>
+                    </form>
+                </td>
+                <td>
+                    <div class="progress-bar-container">
+                      <div class="progress-bar-vertical">
+                        {% if objetivo.valor_final > 0 %}
+                          {% set percentage = ((objetivo.valor_real / objetivo.valor_final) * 100)|round(0)|int %}
+                          {% if percentage > 100 %}{% set percentage = 100 %}{% endif %}
+                                                   
+                          <div class="progress-fill" style="height: {{ percentage }}%"></div>
+                          <span class="percentage-text">{{ percentage }}%</span>
+                        {% else %}
+                          <div class="progress-fill" style="height: 0%"></div>
+                          <span class="percentage-text">0%</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Este cliente não possui objetivos financeiros cadastrados.</p>
+    {% endif %}
+    
+    <div style="margin-top: 20px;">
+        <a href="{{ url_for('cliente.listar_clientes') }}" class="smlBtn" style="display: inline-block; text-decoration: none; margin-right: 10px;">Voltar para Lista</a>
+        <a href="{{ url_for('objetivo.add_objetivo', cliente_id=cliente.id) }}" class="smlBtn" style="display: inline-block; text-decoration: none;">Adicionar Objetivo</a>
+    </div>
+
+    <h3>Transações Bancárias</h3>
+    {% if transacoes %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Fundo</th>
+                <th>Data da Movimentação</th>
+                <th>Data da Cotização</th>
+                <th>Data da Liquidação</th>
+                <th>Tipo de Operação</th>
+                <th>Quantidade de Cotas</th>
+                <th>Valor da Cota</th>
+                <th>Ações</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transacao in transacoes %}
+            <tr>
+                <td>{{ transacao.info_fundo.nome_fundo if transacao.info_fundo else 'N/A' }}</td>
+                <td>{{ transacao.data_mov.strftime('%d/%m/%Y') }}</td>
+                <td>{{ transacao.data_cotizacao.strftime('%d/%m/%Y') }}</td>
+                <td>{{ transacao.data_liquidacao.strftime('%d/%m/%Y') }}</td>
+                <td>{{ transacao.tipo_operacao.value }}</td>
+                <td>{{ "%.6f"|format(transacao.quantidade_cotas) }}</td>
+                <td>R$ {{ "%.2f"|format(transacao.valor_cota) }}</td>
+                <td>R$ {{ "%.2f"|format(transacao.quantidade_cotas * transacao.valor_cota) }}</td>
+                <td>
+                    <form action="{{ url_for('transacoes.edit_transacao', transacao_id=transacao.id) }}" method="GET">
+                        <button class="smlBtn">Editar</button>
+                    </form>
+                    <form action="{{ url_for('transacoes.delete_transacao', transacao_id=transacao.id) }}" method="POST" class="inline">
+                        <button type="submit" 
+                                onclick="return confirm('Tem certeza que deseja deletar esta transação?')"
+                                class="smlBtnDel">
+                            Deletar
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Este cliente não possui transações bancárias cadastradas.</p>
+    {% endif %}
+    <div style="margin-top: 20px;">
+        <a href="{{ url_for('transacoes.add_transacao', cliente_id=cliente.id) }}" class="smlBtn" style="display: inline-block; text-decoration: none;">Adicionar Transação</a>
+    </div>
+</div>
+  
+    
+
+{% endblock %}

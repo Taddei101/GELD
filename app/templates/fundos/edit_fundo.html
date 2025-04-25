@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Fundo - Geld's Finance{% endblock %}
+
+{% block header %}Editar Fundo{% endblock %}
+
+{% block content %}
+
+<div class="center">
+    <form method="POST" action="{{ url_for('fundos.edit_fundo', fundo_id=fundo.id) }}">
+        <div class="label">
+            <label for="nome_fundo">Nome do Fundo:</label>
+            <input type="text" id="nome_fundo" name="nome_fundo" value="{{ fundo.nome_fundo }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="cnpj">CNPJ:</label>
+            <input type="text"  id="cnpj" name="cnpj" value="{{ fundo.cnpj }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="classe_anbima">Classe Anbima:</label>
+            <input type="text"  id="classe_anbima" name="classe_anbima" value="{{ fundo.classe_anbima }}" >
+        </div>
+        
+        <div class="label">
+            <label for="mov_min">Movimentação Mínima:</label>
+            <input type="number"  id="mov_min" name="mov_min" value="{{ fundo.mov_min }}" >
+        </div>
+        
+        <div class="label">
+            <label for="permanencia_min">Permanência Mínima: </label>
+            <input type="number" id="permanencia_min" name="permanencia_min" value="{{ fundo.permanencia_min }}" >
+        </div>
+           
+        <div class="label">
+            <label for="valor_cota">Valor da Cota (R$):</label>
+            <input type="number" id="valor_cota" name="valor_cota" step="0.0000001" value="{{ fundo.valor_cota }}" required>
+        </div>
+
+        <div class="label">
+            <label for="risco">Risco:</label>
+            <select id="risco" name="risco" required>
+                <option value="baixo" {% if fundo.risco.value == 'baixo' %}selected{% endif %}>Baixo</option>
+                <option value="moderado" {% if fundo.risco.value == 'moderado' %}selected{% endif %}>Moderado</option>
+                <option value="alto" {% if fundo.risco.value == 'alto' %}selected{% endif %}>Alto</option>
+            </select>
+        </div>
+        
+        <div class="label">
+            <label for="status_fundo">Status:</label>
+            <select id="status_fundo" name="status_fundo" required>
+                <option value="ativo" {% if fundo.status_fundo.value == 'ativo' %}selected{% endif %}>Ativo</option>
+                <option value="encerrado" {% if fundo.status_fundo.value == 'encerrado' %}selected{% endif %}>Encerrado</option>
+            </select>
+        </div>
+        <div class="label">
+            <label for="data_atualizacao">Data de Atualização:</label>
+            <input type="date" id="data_atualizacao" name="data_atualizacao" value="{{ fundo.data_atualizacao.strftime('%Y-%m-%d') if fundo.data_atualizacao else '' }}" required>
+        </div>
+        <div class="label" style="margin-top: 20px;">
+            <label></label>
+            <div>
+                <button type="submit" class="smlBtn"><img src="{{ url_for('static', filename='icons/save.png') }}" class="sml-btn-icon"></button>
+                <button type="button" class="smlBtn" onclick="window.location.href=`{{ url_for('fundos.listar_fundos') }}`"><img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button> 
+            </div>
+    </form>
+</div>
+
+
+
+
+
+
+{% endblock %}

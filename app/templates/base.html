@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+    
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
+    <title>{% block title %}Geld's Finance Control{% endblock %}</title>
+</head>
+
+<body>
+    <header class="header">
+        <img class="logo" src="/static/geld.png" alt="image error">
+        <h1>{% block header %}{% endblock %}</h1>
+    </header>
+    
+        
+    <div class="sidebar">
+        
+        <a href="{{ url_for('dashboard.cliente_dashboard')}}"><button class="sideBtn">Home</button></a>
+
+        <a href="{{ url_for('cliente.listar_clientes') }}"><button class="sideBtn">Listar Clientes</button></a>
+
+        <a href="{{ url_for('fundos.listar_fundos') }}"><button class="sideBtn">Fundos de Investimento</button></a>
+
+        <a href="{{ url_for('cliente.register_client') }}"><button class="sideBtn">Cadastrar Cliente</button></a>
+
+        <a href="{{ url_for('auth.logout') }}"><button class="sideBtn">Logout</button></a>
+
+        <a href="https://taddei.pythonanywhere.com/" target="_blank" rel="noopener noreferrer" title="Ir para o website"><img class="geldswald" src="{{ url_for('static', filename='geldswald.png') }}" alt="Geldswald logo"></a> 
+    </div>
+
+    <div class="center">
+        <div class="flash-container">
+            {% block flash %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-message flash-{{ category }}">
+                            {% if category == 'error' or category == 'danger' %}
+                                <strong>Erro!</strong> 
+                            {% elif category == 'warning' %}
+                                <strong>Atenção!</strong> 
+                            {% elif category == 'success' %}
+                                <strong>Sucesso!</strong> 
+                            {% endif %}
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            {% endblock %}
+        </div>
+        {% block content %}{% endblock %}
+    </div>
+
+<script>
+    // Ocultar mensagens flash após 5 segundos
+    setTimeout(function() {
+        const flashMessages = document.querySelectorAll('.flash-message');
+        flashMessages.forEach(msg => {
+        msg.style.opacity = '0';
+        setTimeout(() => msg.style.display = 'none', 500);
+    });
+}, 5000);
+    </script>
+</body>
+</html>

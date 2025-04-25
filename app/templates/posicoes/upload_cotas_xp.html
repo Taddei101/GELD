@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Upload de Posições XP - Geld's Finance{% endblock %}
+
+{% block header %}Upload XP - {{cliente.nome}}{% endblock %}
+
+{% block content %}
+<div class="upload-container">
+    <h3>Upload de Posições XP</h3>
+    
+    <div class="info-card">
+        <p>Selecione o arquivo Excel da XP para importar suas posições em fundos de investimento.</p>
+        <p>O sistema irá:</p>
+        <ul>
+            <li>Processar a aba "Sua carteira" do arquivo XP</li>
+            <li>Identificar automaticamente os fundos de investimento</li>
+            <li>Verificar se os fundos já existem no sistema</li>
+            <li>Cadastrar novos fundos conforme necessário</li>
+            <li>Registrar as posições para o cliente</li>
+        </ul>
+        <p><strong>Nota:</strong> Como o arquivo da XP não contém CNPJs, o sistema tentará fazer correspondência com fundos existentes pelo nome.</p>
+    </div>
+    
+
+
+    <form action="{{ url_for('posicao.upload_xp', cliente_id=cliente.id) }}" method="POST">
+        <button type="submit" class="bigBtn"><img src="{{ url_for('static', filename='icons/upload.png') }}" class="btn-icon"> Selecionar Arquivo XP</button>    
+            
+    </form>
+
+<button title="Voltar" class="smlBtn" onclick="window.location.href=`{{url_for('posicao.listar_posicao', cliente_id=cliente.id) }}`"><img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+
+            
+            
+        
+    
+</div>
+
+
+{% endblock %}

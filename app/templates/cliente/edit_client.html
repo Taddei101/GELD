@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Cliente - Geld's Finance{% endblock %}
+
+{% block header %}Editar Cliente{% endblock %}
+
+{% block content %}
+<div class="center">
+    <form method="POST" action="{{ url_for('cliente.edit_client', cliente_id=cliente.id) }}">
+        <div class="label">
+            <label for="nome">Nome</label>
+            <input type="text" id="nome" name="nome" value="{{ cliente.nome }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="nascimento">Data de Nascimento</label>
+            <input type="date" id="nascimento" name="nascimento" value="{{ cliente.nascimento.strftime('%Y-%m-%d') }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="cpf">CPF</label>
+            <input type="text" id="cpf" name="cpf" value="{{ cliente.cpf }}" disabled>
+        </div>
+        
+        <div class="label">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" value="{{ cliente.email }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="telefone">Telefone</label>
+            <input type="text" id="telefone" name="telefone" value="{{ cliente.telefone }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="banco">Banco</label>
+            <select id="banco" name="banco" required>
+                <option value="BTG" {% if cliente.banco.value == 'BTG' %}selected{% endif %}>BTG</option>
+                <option value="XP" {% if cliente.banco.value == 'XP' %}selected{% endif %}>XP</option>
+                <option value="NU" {% if cliente.banco.value == 'NU' %}selected{% endif %}>NU</option>
+            </select>
+        </div>
+        
+        <div class="label">
+            <label for="cep">CEP</label>
+            <input type="text" id="cep" name="cep" value="{{ cliente.cep }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="endereco">Endereço</label>
+            <input type="text" id="endereco" name="endereco" value="{{ cliente.endereco or '' }}">
+        </div>
+        
+        <div class="label">
+            <label for="escolaridade">Escolaridade</label>
+            <input type="text" id="escolaridade" name="escolaridade" value="{{ cliente.escolaridade or '' }}">
+        </div>
+        
+        <div class="label">
+            <label for="status">Status</label>
+            <select id="status" name="status" required>
+                <option value="ativo" {% if cliente.status.value == 'ativo' %}selected{% endif %}>Ativo</option>
+                <option value="inativo" {% if cliente.status.value == 'inativo' %}selected{% endif %}>Inativo</option>
+                
+            </select>
+        </div>
+
+
+        <div class="label" style="margin-top: 20px;">
+            <label></label>
+            <div>
+                <button type="submit" class="smlBtn"><img src="{{ url_for('static', filename='icons/save.png') }}" class="sml-btn-icon"></button>
+
+                <a href="{{ url_for('cliente.info_cliente',cliente_id=cliente.id) }}" ><button class="smlBtn"><img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button></a>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

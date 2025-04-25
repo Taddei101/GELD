@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Novo Cliente - Geld's Finance{% endblock %}
+
+{% block header %}Novo Cliente{% endblock %}
+
+{% block content %}
+
+    <div class="center">
+        <form method="POST" action="{{ url_for('cliente.register_client') }}">
+            <div class="label">
+                <label for="nome">Nome Completo:</label>
+                <input type="text" id="nome" name="nome" required>
+            </div>
+
+            <div class="label">
+                <label for="nascimento">Data de Nascimento:</label>
+                <input type="date" id="nascimento" name="nascimento" required>
+            </div class="label">
+
+            <div class="label">
+                <label for="cpf">CPF:</label>
+                <input type="text" id="cpf" name="cpf" required maxlength="11">
+            </div>
+
+            <div class="label">
+                <label for="email">E-mail:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="label">
+                <label for="telefone">Telefone:</label>
+                <input type="text" id="telefone" name="telefone" required>
+            </div>
+
+            <div class="label">
+                <label for="banco">Banco:</label>
+                <select id="banco" name="banco" required>
+                    <option value="">Select a bank...</option>
+                    <option value="BTG">BTG</option>
+                    <option value="XP">XP</option>
+                    <option value="NU">NU</option>
+                </select>
+            </div>
+
+            <div class="label">
+                <label for="cep">CEP:</label>
+                <input type="text" id="cep" name="cep" required>
+            </div>
+
+            <div class="label">
+                <label for="endereco">Endereço:</label>
+                <input type="text" id="endereco" name="endereco">
+            </div>
+
+            <div class="label">
+                <label for="escolaridade">Escolaridade:</label>
+                <input type="text" id="escolaridade" name="escolaridade">
+            </div>
+
+            
+            <button title="Cadastrar" class="smlBtn" type="submit"><img src="{{ url_for('static', filename='icons/add_cliente.png') }}" class="sml-btn-icon"></button>
+            
+            <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.listar_clientes') }}`">
+                <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+            
+            
+        </form>
+        
+    </div>
+{% endblock %}

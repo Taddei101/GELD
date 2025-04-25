@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="{{ url_for('static', filename='styles.css') }}" rel="stylesheet">
+    <title>Login</title>
+</head>
+<body>
+    <header class="header">
+        <img class="logo" src="/static/geld.png" alt="image error">
+        <h1>Geld's Finance Control App</h1>
+        
+    </header>
+    <div class="center">
+    
+
+    <form method="POST" action="/login">
+        <div class="login">
+            <label  for="username">Username:</label>
+            <input  type="text" id="username" name="username" required>
+        </div>
+        <div class="login">
+            <label  for="password">Password:</label>
+            <input  type="password" id="password" name="password" required>
+        </div>
+        <button type="submit">Login</button>
+    </form>
+    <nav class="sidebar">
+       <a href="https://taddei.pythonanywhere.com/" target="_blank" rel="noopener noreferrer" title="Ir para o website"><img class="geldswald" src="{{ url_for('static', filename='geldswald.png') }}" alt="Geldswald logo"></a> 
+
+    </nav>
+</div>
+

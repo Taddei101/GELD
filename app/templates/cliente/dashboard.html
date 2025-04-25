@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Geld's Finance{% endblock %}
+{% block header %}Geld Finance Control App{% endblock %}
+{% block content %}
+
+
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Clientes Ativos <img class="label-icon" src="{{ url_for('static', filename='icons/people.png') }}" ></th>
+                <th>Clientes Inativos <img class="label-icon" src="{{ url_for('static', filename='icons/skull.png') }}" ></th>
+                <th>Capital Administrado <img class="label-icon" src="{{ url_for('static', filename='icons/moneybag.png') }}" ></th>
+                <th>Fundos em Subscrição <img class="label-icon" src="{{ url_for('static', filename='icons/bank.png') }}" ></th>
+            </tr>
+        </thead>
+
+        <tr>
+            <td>{{ num_clientes }}</td>
+            <td>{{clientes_inativos}}</td>
+            <td>R$ {{'{:,.2f}'.format(capital_administrado).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+            <td>{{num_fundos}}</td>
+        </tr>
+    </table>
+
+<p></p>    
+
+    <table class="table">
+        <thead>
+        <tr>
+            <th>IPCA em 12 meses</th>
+            <th>IPCA mensal (calculado)</th>
+            <th>IPCA do mês</th>
+            <th>Data de Atualização</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+<tr>
+    <td>{{ '{:,.2f}'.format(ipca).replace(',', ' ').replace('.', ',').replace(' ', '.') if ipca else 'N/A' }}%</td>
+    <td>{{ '{:,.2f}'.format(ipca_mes).replace(',', ' ').replace('.', ',').replace(' ', '.') if ipca_mes else 'N/A' }}%</td>
+    <td>{{ '{:,.2f}'.format(ipca_mes_anterior).replace(',', ' ').replace('.', ',').replace(' ', '.') if ipca_mes_anterior else 'N/A' }}%</td>
+    <td>{% if data_atualizacao %}{{ data_atualizacao }}{% else %}Nunca atualizado{% endif %}</td>
+    <td><form action="{{ url_for('dashboard.atualizar_indicadores') }}" method="POST">
+        <button type="submit" class="smlBtn" title="Atualizar Indicadores">
+            <img src="{{ url_for('static', filename='icons/refresh.png') }}" class="sml-btn-icon">
+            
+        </button>
+    </form></td>
+</tr>
+    </tbody>
+    </table>
+
+
+    
+
+{% endblock %}

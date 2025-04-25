@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Objetivos Financeiros - Geld's Finance{% endblock %}
+
+{% block header %}Objetivos de {{cliente.nome}} {% endblock %}
+
+{% block content %}
+<div class="center">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Objetivo</th>
+                <th>Data Inicial</th>
+                <th>Data Final</th>
+                <th>Período Restante</th>
+                <th>Valor Desejado</th>
+                <th>Valor Desejado Corrigido</th>
+                <th>Valor Alvo Presente</th>
+                <th>Valor Atual</th>
+                {% if mostrar_calculo is defined and mostrar_calculo %}
+                <th>Aporte Mensal</th>
+                {% endif %}
+                <th><img src="{{ url_for('static', filename='icons/cog.png') }}" class="img"></th>
+                <th><img src="{{ url_for('static', filename='icons/trophy.png') }}" class="img"></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for objetivo in objetivos %}
+            <tr>
+                <td>{{ objetivo.nome_objetivo }}</td>
+                <td>{{ objetivo.data_inicial.strftime('%d/%m/%Y')  }}</td>
+                <td>{{ objetivo.data_final.strftime('%d/%m/%Y') }}</td>
+                <td>{{ objetivo.duracao_meses}} meses</td>
+                <td>R$ {{ '{:,.2f}'.format(objetivo.valor_final).replace(',', ' ').replace('.', ',').replace(' ', '.') }} </td>
+                <td>R$ {{ '{:,.2f}'.format(objetivo.valor_final|float * ((1+ipca_mes/100)**((objetivo.data_final.year - objetivo.data_inicial.year) * 12 + (objetivo.data_final.month - objetivo.data_inicial.month)))).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                <td>R$ </td>
+                <td>R$ {{ '{:,.2f}'.format(objetivo.valor_real).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                
+                {% if mostrar_calculo is defined and mostrar_calculo %}
+                <td>
+                    {% for aporte in calculo_aportes.aportes_por_objetivo %}
+                        {% if aporte.objetivo_id == objetivo.id %}
+                            R$ {{ '{:,.2f}'.format(aporte.aporte_mensal).replace(',', ' ').replace('.', ',').replace(' ', '.') }}
+                        {% endif %}
+                    {% endfor %}
+                </td>
+                {% endif %}
+
+                <td>
+                    <form action="{{ url_for('objetivo.edit_objetivo', objetivo_id=objetivo.id) }}" method="GET">
+                        <button class="smlBtn"><img src="{{ url_for('static', filename='icons/edit.png') }}" class="sml-btn-icon"></button>
+                    </form>
+                
+                    <form action="{{ url_for('objetivo.delete_objetivo', objetivo_id=objetivo.id) }}" method="POST" class="inline">
+                        <button type="submit" onclick="return confirm('Tem certeza que deseja deletar este objetivo?')" class="smlBtnDel">
+                        <img src="{{ url_for('static', filename='icons/trash.png') }}" class="sml-btn-icon"></button>
+                    </form>
+                </td>
+
+                <td>
+                    <div class="progress-bar-container">
+                      <div class="progress-bar-vertical">
+                        {% if objetivo.valor_final > 0 %}
+                          {% set percentage = ((objetivo.valor_real|float / (objetivo.valor_final|float * ((1+ipca_mes/100)**((objetivo.data_final.year - objetivo.data_inicial.year) * 12 + (objetivo.data_final.month - objetivo.data_inicial.month))))) * 100)|round(0)|int %}
+                          {% if percentage > 100 %}{% set percentage = 100 %}{% endif %}
+                                                   
+                          <div class="progress-fill" style="height: {{ percentage }}%"></div>
+                          <span class="percentage-text">{{ percentage }}%</span>
+                        {% else %}
+                          <div class="progress-fill" style="height: 0%"></div>
+                          <span class="percentage-text">0%</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+            
+            {% if mostrar_calculo is defined and mostrar_calculo %}
+            <tr class="total-row" style="font-weight: bold; background-color: #f0f0f0;">
+                <td colspan="7" style="text-align: right;">Aporte Mensal Calculado:</td>
+                <td>R$ {{ '{:,.2f}'.format(calculo_aportes.aporte_total_mensal).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                <td colspan="2"></td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <p></p>
+    <div class="class_func">
+        {% if mostrar_calculo is defined and mostrar_calculo %}
+        
+        <p><small>Taxa IPCA + 3,5% ao ano</small></p>
+        {% else %}
+        <a href="{{ url_for('objetivo.listar_objetivos', cliente_id=cliente.id, calcular='true') }}" class="bigBtn">
+            Calcular Aporte<img src="{{ url_for('static', filename='icons/calculadora.png') }}" class="btn-icon">
+        </a>
+        {% endif %}
+    </div>
+    <p></p>
+
+    <div style="margin-top: 20px;">
+        <button title="Adicionar" class="smlBtn" onclick="window.location.href='{{ url_for('objetivo.add_objetivo', cliente_id=cliente.id) }}'">
+            <img src="{{ url_for('static', filename='icons/add.png') }}" class="sml-btn-icon">
+        </button>
+
+        <button title="Voltar" class="smlBtn" onclick="window.location.href='{{ url_for('cliente.area_cliente', cliente_id=cliente.id) }}'">
+            <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
+        </button>
+    </div> 
+</div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Posição Financeira - Geld's Finance{% endblock %}
+
+{% block header %} Posição - {{cliente.nome}}{% endblock %}
+
+{% block content %}
+
+<!-- Basicamente a Tabela de Posição da Base de Dados -->
+<h3>Portfólio de Fundos </h3>
+<table class="table">
+<thead>
+    <tr>
+        <th>Fundo</th>
+        <th>Classe Anbima</th>
+        <th>Risco</th> 
+        <th>Cotas</th>
+        <th>Valor da cota</th>
+        <th>Saldo Bruto</th>
+        <th></th>
+    </tr>
+</thead>
+
+<tbody>
+    {% if posicoes %}
+        {% for posicao in posicoes %}
+        <tr>
+            <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:3]) }}</td>
+            <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:2]) }}</td>
+            <td>{{ posicao.info_fundo.risco.value }}</td>
+            <td>{{'{:,.2f}'.format(posicao.cotas).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+            <td>R$ {{ '{:,.2f}'.format(posicao.info_fundo.valor_cota).replace('.', ',') }}</td>
+            <td>R$ {{ '{:,.2f}'.format(posicao.cotas * posicao.info_fundo.valor_cota).replace(',', ' ').replace('.', ',').replace(' ', '.')  }}</td>
+            <td>
+                <form action="{{ url_for('posicao.delete_posicao', posicao_id=posicao.id) }}" method="POST" class="inline">
+                    <button type="submit" onclick="return confirm('Tem certeza que deseja deletar esta posição?')" class="smlBtnDel">
+                        <img src="{{ url_for('static', filename='icons/trash.png') }}" class="sml-btn-icon">
+                    </button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    {% else %}
+        <tr>
+            <td colspan="6">Nenhuma posição em fundos cadastrada</td>
+        </tr>
+    {% endif %}
+    <th>TOTAL</th>
+    <th colspan="4"></th>
+    <th>R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</th>
+    <td></td>
+</tbody>
+</table>
+<p></p>
+<div class="inline-btn">
+
+    <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{url_for('cliente.area_cliente',cliente_id=cliente.id) }}`">
+        <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+
+    <button title="Adicionar Posição" class="smlBtn" onclick="window.location.href=`{{ url_for('posicao.add_posicao', cliente_id=cliente.id) }}` ">
+        <img src="{{ url_for('static', filename='icons/add.png') }}" class="sml-btn-icon">
+    </button>
+
+</div>
+
+<div class="inline-btn">
+    
+    <button title="upload_btg" class="bigBtn" onclick="window.location.href=`{{ url_for('posicao.upload_cotas', cliente_id=cliente.id) }}` ">
+    <img src="{{ url_for('static', filename='icons/btg.png') }}" class="btn-icon"> Upload Portfólio BTG
+    </button>
+
+    <button title="upload_xp" class="bigBtn" onclick="window.location.href=`{{ url_for('posicao.upload_xp', cliente_id=cliente.id) }}` ">
+    <img src="{{ url_for('static', filename='icons/xp.png') }}" class="btn-icon"> Upload Portfólio XP
+    </button>
+    
+    <button title="balancear aporte" class="bigBtn"onclick="window.location.href=`{{ url_for('balancos.balance_objetivos',cliente_id=cliente.id) }}`"><img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte</button>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+{% endblock %}

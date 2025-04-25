@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Posição - Geld's Finance{% endblock %}
+
+{% block header %}Adicionar Cotas em Fundo para {{ cliente.nome }}{% endblock %}
+
+{% block content %}
+<div class="center">
+    <form method="POST" action="{{ url_for('posicao.add_posicao', cliente_id=cliente.id) }}">
+        <div class="label">
+            <label for="fundo_id">Fundo de Investimento:</label>
+            <select id="fundo_id" name="fundo_id" required>
+                <option value="">Selecione o fundo...</option>
+                {% for fundo in fundos %}
+                <option value="{{ fundo.id }}">{{ fundo.nome_fundo }} ({{ fundo.risco.value }})</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="label">
+            <label for="quantidade_cotas">Quantidade de Cotas:</label>
+            <input type="number" id="quantidade_cotas" name="quantidade_cotas" step="0.00000001" required>
+        </div>
+        
+        <div style="margin-top: 20px;">
+            <button type="submit" class="smlBtn" title="Salvar">
+                <img src="{{ url_for('static', filename='icons/save.png') }}" class="sml-btn-icon">
+            </button>
+
+            <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{url_for('posicao.listar_posicao', cliente_id=cliente.id) }}`">
+                <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

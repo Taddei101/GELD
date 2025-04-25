@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+
+{% block title %}Balanceamento de Objetivos{% endblock %}
+{% block header %}Balanceamento para {{cliente.nome}} {% endblock %}
+{% block content %}
+
+<div class="container">
+    
+    
+    {% if not resultado_balanceamento %}
+
+    <!-- Formulário para informar o valor do aporte -->
+    <form method="post" action="{{ url_for('balancos.balance_objetivos', cliente_id=cliente.id) }}">
+        <div class="label">
+            <label for="aporte">Valor do Aporte:</label>
+            <input type="number" step="0.01" min="0" name="aporte" id="aporte" class="form-control" required>
+        </div>
+        <p></p>
+        <button type="submit" class="bigBtn"><img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Calcular Balanceamento</button>
+    </form>
+    
+    <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{url_for('posicao.listar_posicao', cliente_id=cliente.id) }}`"><img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+
+    {% else %}
+    <!-- Exibição dos resultados do balanceamento -->
+    <div class="row mb-3">
+        <div class="col">
+            <p><strong>Valor do Aporte:</strong> R$ {{ '{:,.2f}'.format(aporte).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</p>
+        </div>
+        <div class="col text-right">
+
+            <button title="balance" class="bigBtn" onclick="window.location.href=`{{url_for('balancos.balance_objetivos', cliente_id=cliente.id) }}`"><img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Novo Calculo</button>
+
+            
+        </div>
+    </div>
+    
+    <h3>Resumo do Balanceamento</h3>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Objetivo</th>
+                <th>Duração (meses)</th>
+                <th>Prazo Referência</th>
+                <th>Quota Total</th>
+                <th>Risco Baixo</th>
+                <th>Risco Moderado</th>
+                <th>Risco Alto</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for objetivo in objetivos %}
+                {% set balanceamento = resultado_balanceamento[objetivo.id] %}
+                <tr>
+                    <td>{{ balanceamento.nome_objetivo }}</td>
+                    <td>{{ balanceamento.duracao_meses }}</td>
+                    <td>{{ balanceamento.prazo_referencia }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(balanceamento.quota_total).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                    <td>
+                        {{ '{:.1f}'.format(balanceamento.distribuicao.risco_baixo.percentagem) }}% 
+                        <br>
+                        <small>R$ {{ '{:,.2f}'.format(balanceamento.distribuicao.risco_baixo.valor).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</small>
+                    </td>
+                    <td>
+                        {{ '{:.1f}'.format(balanceamento.distribuicao.risco_moderado.percentagem) }}% 
+                        <br>
+                        <small>R$ {{ '{:,.2f}'.format(balanceamento.distribuicao.risco_moderado.valor).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</small>
+                    </td>
+                    <td>
+                        {{ '{:.1f}'.format(balanceamento.distribuicao.risco_alto.percentagem) }}% 
+                        <br>
+                        <small>R$ {{ '{:,.2f}'.format(balanceamento.distribuicao.risco_alto.valor).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</small>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <h3>Detalhamento por Risco</h3>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    Risco Baixo
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Objetivo</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for objetivo in objetivos %}
+                                {% set balanceamento = resultado_balanceamento[objetivo.id] %}
+                                <tr>
+                                    <td>{{ balanceamento.nome_objetivo }}</td>
+                                    <td>R$ {{ '{:,.2f}'.format(balanceamento.distribuicao.risco_baixo.valor).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                                </tr>
+                            {% endfor %}
+                            <tr class="font-weight-bold">
+                                <td>Total</td>
+                                <td>R$ {{ '{:,.2f}'.format(total_risco_baixo).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-warning">
+                    Risco Moderado
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Objetivo</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for objetivo in objetivos %}
+                                {% set balanceamento = resultado_balanceamento[objetivo.id] %}
+                                <tr>
+                                    <td>{{ balanceamento.nome_objetivo }}</td>
+                                    <td>R$ {{ '{:,.2f}'.format(balanceamento.distribuicao.risco_moderado.valor).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                                </tr>
+                            {% endfor %}
+                            <tr class="font-weight-bold">
+                                <td>Total</td>
+                                <td>R$ {{ '{:,.2f}'.format(total_risco_moderado).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-danger text-white">
+                    Risco Alto
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Objetivo</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for objetivo in objetivos %}
+                                {% set balanceamento = resultado_balanceamento[objetivo.id] %}
+                                <tr>
+                                    <td>{{ balanceamento.nome_objetivo }}</td>
+                                    <td>R$ {{ '{:,.2f}'.format(balanceamento.distribuicao.risco_alto.valor).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                                </tr>
+                            {% endfor %}
+                            <tr class="font-weight-bold">
+                                <td>Total</td>
+                                <td>R$ {{ '{:,.2f}'.format(total_risco_alto).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p></p>
+    <div class="mt-4">
+        
+        <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{url_for('cliente.area_cliente', cliente_id=cliente.id) }}`">
+            <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+       
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

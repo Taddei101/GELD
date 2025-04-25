@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Importar Fundos - Geld's Finance{% endblock %}
+
+{% block header %}Upload Fundos{% endblock %}
+
+{% block content %}
+
+<form action="http://127.0.0.1:5000/upload" method="post" enctype="multipart/form-data" class="upload-form">
+    <input type="file" name="file" class="file-input" required>
+    <button type="submit" class="upload-btn">UPLOAD</button>
+</form>
+
+
+
+<button class="smlBtn" onclick="window.location.href=`{{ url_for('fundos.listar_fundos') }}`">
+    <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+
+     
+{% endblock %}
