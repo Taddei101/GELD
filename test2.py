@@ -1,6 +1,4 @@
-
-
-
+#ROTAS fundos
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from functools import wraps
 from app.models.geld_models import create_session, InfoFundo, RiscoEnum, StatusFundoEnum
@@ -289,6 +287,224 @@ def add_fundo_cnpj():
         flash(f'Erro ao cadastrar fundo por CNPJ: {str(e)}', "error")
         print(f'Erro ao cadastrar fundo por CNPJ: {str(e)}')
         return redirect(url_for('fundos.add_fundo'))
+    finally:
+        if 'db' in locals() and db:
+            db.close()
+# ADICIONE ESTAS ROTAS AO SEU fundos_bp EXISTENTE
+
+# IMPORTAR FUNDO POR CNPJ USANDO ANBIMA
+@fundos_bp.route('/add_fundo_cnpj_anbima', methods=['POST'])
+@login_required
+def add_fundo_cnpj_anbima():
+    try:
+        db = create_session()
+        extract_service = ExtractServices(db)
+        global_service = GlobalServices(db)
+        
+        cnpj = request.form['cnpj']
+        print(f"CNPJ recebido para ANBIMA: {cnpj}")
+        
+        # Usar a mesma validação que você já tem
+        is_valid, cnpj_normalizado, mensagem = global_service.validar_cnpj(cnpj)
+        
+        if not is_valid:
+            flash(mensagem, "error")
+            return redirect(url_for('fundos.add_fundo'))
+            
+        cnpj_formatado = global_service.formatar_cnpj(cnpj_normalizado)
+        flash(f'Processando CNPJ na ANBIMA: {cnpj_formatado}', "info")
+        
+        # Verificar se já existe (mesmo código que você usa)
+        existing_funds = db.query(InfoFundo).all()
+        for fund in existing_funds:
+            fund_cnpj_norm = re.sub(r'\D', '', fund.cnpj)
+            if fund_cnpj_norm == cnpj_normalizado:
+                flash(f'O fundo com CNPJ {cnpj_formatado} já está cadastrado como "{fund.nome_fundo}"!', "warning")
+                return redirect(url_for('fundos.listar_fundos'))
+        
+        # USAR ANBIMA ao invés de CVM
+        info = extract_service.extracao_anbima_fundo_cnpj(cnpj_normalizado)
+        
+        if info is None:
+            flash(f'Não foi possível encontrar informações na ANBIMA para o CNPJ: {cnpj_formatado}', "error")
+            return redirect(url_for('fundos.add_fundo'))
+        
+        # Criar fundo com dados da ANBIMA (adapte os campos conforme a resposta da API)
+        novo_fundo = global_service.create_classe(
+            InfoFundo,
+            nome_fundo=info.get('nome_fundo', info.get('denominacao', 'Nome não informado')),
+            cnpj=cnpj_formatado,
+            classe_anbima=info.get('classe_anbima', info.get('classificacao', 'Não informado')),
+            mov_min=float(info.get('aplicacao_minima', 0)) if info.get('aplicacao_minima') else None,
+            permanencia_min=float(info.get('prazo_carencia', 0)) if info.get('prazo_carencia') else None,
+            risco=RiscoEnum.moderado,  # Default
+            status_fundo=StatusFundoEnum.ativo,
+            valor_cota=float(info.get('valor_cota', 0)) if info.get('valor_cota') else 0.0,
+            data_atualizacao=datetime.now()
+        )
+        
+        flash(f'Fundo {novo_fundo.nome_fundo} cadastrado com sucesso via ANBIMA!', "success")
+        return redirect(url_for('fundos.listar_fundos'))
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f'Erro ao cadastrar fundo via ANBIMA: {str(e)}', "error")
+        return redirect(url_for('fundos.add_fundo'))
+    finally:
+        if 'db' in locals() and db:
+            db.close()
+
+
+# ATUALIZAR COTAS USANDO ANBIMA (alternativa ao CVM)
+@fundos_bp.route('/atualizar_cotas_fundos_anbima', methods=['POST'])
+@login_required
+def atualizar_cotas_fundos_anbima():
+    try:
+        db = create_session()
+        extract_service = ExtractServices(db)
+        
+        # Buscar todos os CNPJs dos fundos cadastrados
+        fundos = db.query(InfoFundo).all()
+        cnpjs = [fundo.cnpj for fundo in fundos]
+        
+        # Usar o método batch da ANBIMA (similar ao que você fez com CVM)
+        info_anbima_batch = extract_service.extracao_anbima_fundos_batch(cnpjs)
+        
+        if not info_anbima_batch:
+            flash('Não foi possível obter dados da ANBIMA.')
+            return redirect(url_for('fundos.listar_fundos'))
+        
+        fundos_atualizados = 0
+        
+        for fundo in fundos:
+            if fundo.cnpj in info_anbima_batch:
+                info_anbima = info_anbima_batch[fundo.cnpj]
+                
+                # Atualizar valor da cota se disponível
+                if info_anbima.get('valor_cota'):
+                    fundo.valor_cota = float(info_anbima['valor_cota'])
+                    fundo.data_atualizacao = datetime.now()
+                    fundos_atualizados += 1
+        
+        if fundos_atualizados > 0:
+            db.commit()
+            flash(f'Cotas de {fundos_atualizados} fundos atualizadas via ANBIMA!')
+        else:
+            flash('Nenhum fundo foi atualizado via ANBIMA.')
+        
+        return redirect(url_for('fundos.listar_fundos'))
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f'Erro ao atualizar cotas via ANBIMA: {str(e)}')
+        return redirect(url_for('fundos.listar_fundos'))
+    finally:
+        if 'db' in locals() and db:
+            db.close()
+
+
+# BUSCAR ÍNDICES ANBIMA (similar ao seu BCB)
+@fundos_bp.route('/buscar_indices_anbima')
+@login_required
+def buscar_indices_anbima():
+    try:
+        db = create_session()
+        extract_service = ExtractServices(db)
+        
+        # Buscar índices dos últimos 30 dias (similar ao seu padrão BCB)
+        from datetime import datetime, timedelta
+        hoje = datetime.now()
+        data_fim = hoje.strftime('%Y-%m-%d')
+        data_inicio = (hoje - timedelta(days=30)).strftime('%Y-%m-%d')
+        
+        df_indices = extract_service.extracao_anbima_indices(data_inicio, data_fim)
+        
+        if not df_indices.empty:
+            flash(f'Índices ANBIMA obtidos: {len(df_indices)} registros', "success")
+            # Aqui você pode salvar os índices no banco ou exibir na tela
+            print(df_indices.head())  # Para debug
+        else:
+            flash('Nenhum índice foi obtido da ANBIMA', "warning")
+        
+        return redirect(url_for('fundos.listar_fundos'))
+        
+    except Exception as e:
+        flash(f'Erro ao buscar índices ANBIMA: {str(e)}', "error")
+        return redirect(url_for('fundos.listar_fundos'))
+    finally:
+        if 'db' in locals() and db:
+            db.close()
+
+
+# EXEMPLO DE USO COMBINADO (CVM + ANBIMA)
+@fundos_bp.route('/atualizar_fundos_hibrido', methods=['POST'])
+@login_required
+def atualizar_fundos_hibrido():
+    """
+    Usa CVM para cotas (mais confiável) e ANBIMA para dados complementares
+    """
+    try:
+        db = create_session()
+        extract_service = ExtractServices(db)
+        
+        # 1. Tentar CVM primeiro (seu método atual)
+        from datetime import datetime, timedelta
+        hoje = datetime.now()
+        ano = str(hoje.year)
+        mes = f"{hoje.month:02d}"
+        
+        df_cotas = extract_service.extracao_cvm(ano, mes)
+        if df_cotas.empty:
+            mes_anterior = hoje.replace(day=1) - timedelta(days=1)
+            ano = str(mes_anterior.year)
+            mes = f"{mes_anterior.month:02d}"
+            df_cotas = extract_service.extracao_cvm(ano, mes)
+        
+        # 2. Complementar com ANBIMA
+        fundos = db.query(InfoFundo).all()
+        cnpjs = [fundo.cnpj for fundo in fundos]
+        info_anbima_batch = extract_service.extracao_anbima_fundos_batch(cnpjs)
+        
+        fundos_atualizados = 0
+        
+        for fundo in fundos:
+            cnpj_normalizado = fundo.cnpj.replace('.', '').replace('/', '').replace('-', '')
+            atualizado = False
+            
+            # Priorizar CVM para cotas
+            if not df_cotas.empty:
+                df_fundo = df_cotas[df_cotas['CNPJ_FUNDO_CLASSE'].str.replace('.', '').str.replace('/', '').str.replace('-', '') == cnpj_normalizado]
+                if not df_fundo.empty:
+                    df_recente = df_fundo.sort_values('DT_COMPTC', ascending=False).iloc[0]
+                    fundo.valor_cota = df_recente['VL_QUOTA']
+                    atualizado = True
+            
+            # Usar ANBIMA como fallback ou para dados complementares
+            elif fundo.cnpj in info_anbima_batch:
+                info_anbima = info_anbima_batch[fundo.cnpj]
+                if info_anbima.get('valor_cota'):
+                    fundo.valor_cota = float(info_anbima['valor_cota'])
+                    atualizado = True
+            
+            if atualizado:
+                fundo.data_atualizacao = datetime.now()
+                fundos_atualizados += 1
+        
+        if fundos_atualizados > 0:
+            db.commit()
+            flash(f'Atualização híbrida concluída: {fundos_atualizados} fundos atualizados!', "success")
+        else:
+            flash('Nenhum fundo foi atualizado.', "warning")
+        
+        return redirect(url_for('fundos.listar_fundos'))
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f'Erro na atualização híbrida: {str(e)}', "error")
+        return redirect(url_for('fundos.listar_fundos'))
     finally:
         if 'db' in locals() and db:
             db.close()
