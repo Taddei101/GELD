@@ -423,68 +423,20 @@ def listar_posicao(cliente_id):
         global_services = GlobalServices(db)
         cliente = global_services.get_by_id(Cliente, cliente_id)
         posicoes = db.query(PosicaoFundo).filter(PosicaoFundo.cliente_id == cliente_id).all()
-        
-        # Cálculo do montante total (já existia) - CONVERTIDO PARA FLOAT
-        montante_cliente = float(db.query(
+        montante_cliente = db.query(
                 func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
             ).join(
                 InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
             ).filter(
                 PosicaoFundo.cliente_id == cliente_id
-            ).scalar() or 0.0)
-
-        # NOVOS CÁLCULOS POR RISCO - TODOS CONVERTIDOS PARA FLOAT
-        saldo_baixo = float(db.query(
-            func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-        ).join(
-            InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-        ).filter(
-            PosicaoFundo.cliente_id == cliente_id,
-            InfoFundo.risco == RiscoEnum.baixo
-        ).scalar() or 0.0)
-
-        saldo_moderado = float(db.query(
-            func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-        ).join(
-            InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-        ).filter(
-            PosicaoFundo.cliente_id == cliente_id,
-            InfoFundo.risco == RiscoEnum.moderado
-        ).scalar() or 0.0)
-
-        saldo_alto = float(db.query(
-            func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-        ).join(
-            InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-        ).filter(
-            PosicaoFundo.cliente_id == cliente_id,
-            InfoFundo.risco == RiscoEnum.alto
-        ).scalar() or 0.0)
-
-        saldo_fundo_di = float(db.query(
-            func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-        ).join(
-            InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-        ).filter(
-            PosicaoFundo.cliente_id == cliente_id,
-            InfoFundo.risco == RiscoEnum.fundo_DI  # Assumindo que você adicionou esse enum
-        ).scalar() or 0.0)
-
+            ).scalar() or 0.0
         print(f"DEBUG: Found {len(posicoes)} positions")
-        print(f"DEBUG: Saldos por risco - Baixo: {saldo_baixo}, Moderado: {saldo_moderado}, Alto: {saldo_alto}, Fundo DI: {saldo_fundo_di}")
 
         if not cliente:
             print('Cliente não encontrado.')
             return redirect(url_for('dashboard.cliente_dashboard'))
 
-        return render_template('posicoes/listar_posicao.html', 
-                             cliente=cliente, 
-                             montante_cliente=montante_cliente, 
-                             posicoes=posicoes,
-                             saldo_baixo=saldo_baixo,
-                             saldo_moderado=saldo_moderado,
-                             saldo_alto=saldo_alto,
-                             saldo_fundo_di=saldo_fundo_di)
+        return render_template('posicoes/listar_posicao.html', cliente=cliente, montante_cliente=montante_cliente, posicoes=posicoes)
 
     except Exception as e:
         print(f"ERROR in listar_posicao: {str(e)}")
@@ -492,9 +444,6 @@ def listar_posicao(cliente_id):
 
     finally:
         db.close()
-
-##########################
-##########################
 
 @posicao_bp.route('/posicao/<int:cliente_id>/add_posicao', methods=['GET', 'POST'])
 @login_required
@@ -551,64 +500,6 @@ def add_posicao(cliente_id):
             db.close()
 
         return redirect(url_for('posicao.add_posicao', cliente_id=cliente_id))
-
-@posicao_bp.route('/posicao/<int:posicao_id>/edit', methods=['GET', 'POST'])
-@login_required
-def edit_posicao(posicao_id):
-    if request.method == 'GET':
-        try:
-            db = create_session()
-            global_service = GlobalServices(db)
-            
-            # Buscar a posição
-            posicao = global_service.get_by_id(PosicaoFundo, posicao_id)
-            if not posicao:
-                flash('Posição não encontrada.')
-                return redirect(url_for('dashboard.cliente_dashboard'))
-            
-            # Descomente quando tiver o template
-            return render_template('posicoes/edit_posicao.html', posicao=posicao)
-            
-        except Exception as e:
-            flash(f'Erro ao buscar posição: {str(e)}')
-            return redirect(url_for('dashboard.cliente_dashboard'))
-        finally:
-            db.close()
-    
-    elif request.method == 'POST':
-        try:
-            db = create_session()
-            global_service = GlobalServices(db)
-            
-            # Buscar a posição
-            posicao = global_service.get_by_id(PosicaoFundo, posicao_id)
-            if not posicao:
-                flash('Posição não encontrada.')
-                return redirect(url_for('dashboard.cliente_dashboard'))
-            
-            cliente_id = posicao.cliente_id
-            
-            # Obter dados do formulário
-            cotas = float(request.form['quantidade_cotas'])
-            data_atualizacao = datetime.now()
-            
-            # Atualizar posição
-            posicao.cotas = cotas
-            posicao.data_atualizacao = data_atualizacao
-            db.commit()
-            
-            print(f'Posição atualizada com sucesso!')
-            flash("Posição atualizada com sucesso!", "success")
-            return redirect(url_for('posicao.listar_posicao', cliente_id=cliente_id))
-            
-        except ValueError as e:
-            flash(f'Erro de validação: {str(e)}')
-        except Exception as e:
-            flash(f'Erro ao atualizar posição: {str(e)}')
-        finally:
-            db.close()
-        
-        return redirect(url_for('posicao.edit_posicao', posicao_id=posicao_id))
 
 @posicao_bp.route('/posicao/<int:posicao_id>/delete', methods=['POST'])
 @login_required
