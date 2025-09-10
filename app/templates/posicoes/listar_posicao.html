@@ -37,7 +37,17 @@
                         <img src="{{ url_for('static', filename='icons/trash.png') }}" class="sml-btn-icon">
                     </button>
                 </form>
-            </td>
+                       
+            
+                <form action="{{ url_for('posicao.edit_posicao', posicao_id=posicao.id) }}" method="GET" class="inline">
+                    <button type="submit" class="smlBtnDel">
+                        <img src="{{ url_for('static', filename='icons/edit.png') }}" class="sml-btn-icon">
+                    </button>
+                </form>
+             </td>
+
+
+
         </tr>
         {% endfor %}
     {% else %}
@@ -68,10 +78,7 @@
     <button title="upload_btg" class="bigBtn" onclick="window.location.href=`{{ url_for('posicao.upload_cotas', cliente_id=cliente.id) }}` ">
     <img src="{{ url_for('static', filename='icons/btg.png') }}" class="btn-icon"> Upload Portfólio BTG
     </button>
-
-    <button title="upload_xp" class="bigBtn" onclick="window.location.href=`{{ url_for('posicao.upload_xp', cliente_id=cliente.id) }}` ">
-    <img src="{{ url_for('static', filename='icons/xp.png') }}" class="btn-icon"> Upload Portfólio XP
-    </button>
+    
     
     <button title="balancear aporte" class="bigBtn"onclick="window.location.href=`{{ url_for('balancos.balance_objetivos',cliente_id=cliente.id) }}`"><img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte</button>
 

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Posição - Geld's Finance{% endblock %}
+
+{% block header %}Editar Posição{% endblock %}
+
+{% block content %}
+
+<div class="center">
+    <form method="POST" action="{{ url_for('posicao.edit_posicao', posicao_id=posicao.id) }}">
+        <div class="label">
+            <label for="nome_fundo">Fundo</label>
+            <input type="text" id="nome_fundo" name="nome_fundo" value="{{ posicao.info_fundo.nome_fundo }}" readonly>
+        </div>
+        
+        <div class="label">
+            <label for="cnpj">CNPJ:</label>
+            <input type="text" id="cnpj" name="cnpj" value="{{ posicao.info_fundo.cnpj }}" readonly>
+        </div>
+        
+        <div class="label">
+            <label for="classe_anbima">Classe Anbima:</label>
+            <input type="text" id="classe_anbima" name="classe_anbima" value="{{ posicao.info_fundo.classe_anbima }}" readonly>
+        </div>
+        
+        <div class="label">
+            <label for="quantidade_cotas">Quantidade de Cotas:</label>
+            <input type="number" step="0.01" id="quantidade_cotas" name="quantidade_cotas" value="{{ posicao.cotas }}" required>
+        </div>
+        
+        <div class="label">
+            <label for="valor_cota">Valor da Cota:</label>
+            <input type="number" step="0.01" id="valor_cota" name="valor_cota" value="{{ posicao.info_fundo.valor_cota }}" readonly>
+        </div>
+        
+        <div class="label">
+            <label for="saldo_bruto">Saldo Bruto:</label>
+            <input type="text" id="saldo_bruto" name="saldo_bruto" value="R$ {{ '{:,.2f}'.format(posicao.cotas * posicao.info_fundo.valor_cota).replace(',', ' ').replace('.', ',').replace(' ', '.') }}" readonly>
+        </div>
+        
+        <div class="label">
+            <label for="data_atualizacao">Data de Atualização:</label>
+            <input type="date" id="data_atualizacao" name="data_atualizacao" value="{{ posicao.data_atualizacao.strftime('%Y-%m-%d') }}" readonly>
+        </div>
+        
+        <div class="label" style="margin-top: 20px;">
+            <label></label>
+            <div>
+                <button type="submit" class="smlBtn"><img src="{{ url_for('static', filename='icons/save.png') }}" class="sml-btn-icon"></button>
+                <button type="button" class="smlBtn" onclick="window.location.href=`{{ url_for('posicao.listar_posicao', cliente_id=posicao.cliente_id) }}`">
+                <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>    
+            </div>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
