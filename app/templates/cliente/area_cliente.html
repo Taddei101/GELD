@@ -7,14 +7,12 @@
 {% block content %}
 <div class="client_area">
     <table class="table">
-        
         <tr>
             <th>Montante sob Gestão</th>
             <th>Objetivos</th>
             <th>Fundos em subscrição</th>
-            
         </tr>
-    </th>
+    </tbody>
     <tbody>
         <tr>
             <td>R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
@@ -24,9 +22,55 @@
     </tbody>
     </table>
 </div>
-<p></p>
-<div class="client_area">
 
+<p></p>
+
+<!-- NOVA SEÇÃO: Resumo por Classe de Risco -->
+{% if has_positions %}
+<div class="client_area">
+    <h3>Resumo por Classe de Risco</h3>
+    <table class="table">
+    <thead>
+        <tr>
+            <th>Classe de Risco</th>
+            <th>Saldo</th>
+            <th>% do Portfolio</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>Fundo DI</td>
+            <td>R$ {{ '{:,.2f}'.format(saldo_fundo_di).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+            <td>{{ '{:.1f}%'.format((saldo_fundo_di / montante_cliente * 100) if montante_cliente > 0 else 0).replace('.', ',') }}</td>
+        </tr>
+        <tr>
+            <td>Baixo Risco</td>
+            <td>R$ {{ '{:,.2f}'.format(saldo_baixo).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+            <td>{{ '{:.1f}%'.format((saldo_baixo / montante_cliente * 100) if montante_cliente > 0 else 0).replace('.', ',') }}</td>
+        </tr>
+        <tr>
+            <td>Moderado Risco</td>
+            <td>R$ {{ '{:,.2f}'.format(saldo_moderado).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+            <td>{{ '{:.1f}%'.format((saldo_moderado / montante_cliente * 100) if montante_cliente > 0 else 0).replace('.', ',') }}</td>
+        </tr>
+        <tr>
+            <td>Alto Risco</td>
+            <td>R$ {{ '{:,.2f}'.format(saldo_alto).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+            <td>{{ '{:.1f}%'.format((saldo_alto / montante_cliente * 100) if montante_cliente > 0 else 0).replace('.', ',') }}</td>
+        </tr>
+        <tr class="total-row" style="font-weight: bold; border-top: 2px solid #333;">
+            <td>TOTAL GERAL</td>
+            <td>R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+            <td>100,0%</td>
+        </tr>
+    </tbody>
+    </table>
+</div>
+
+<p></p>
+{% endif %}
+
+<div class="client_area">
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('cliente.info_cliente',cliente_id=cliente.id) }}`">
     <img src="{{ url_for('static', filename='icons/profile.png') }}" class="btn-icon">Informações Pessoais</button>
     
@@ -36,16 +80,11 @@
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('posicao.listar_posicao',cliente_id=cliente.id) }}`">
     <img src="{{ url_for('static', filename='icons/posicao.png') }}" class="btn-icon">Posição Financeira</button>
 
-
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('distribuicao.distribuicao_capital', cliente_id=cliente.id) }}`">
         <img src="{{ url_for('static', filename='icons/scale.png') }}" class="btn-icon">Distribuição de Capital</button>
-    
-    
-    </a>
 </div>
 
-
-    <p></p>
+<p></p>
 <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.listar_clientes') }}`">
     <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
     

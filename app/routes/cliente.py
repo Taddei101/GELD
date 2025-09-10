@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from app.services.global_services import GlobalServices,login_required
-from app.models.geld_models import create_session, BancoEnum, Cliente, StatusEnum, PosicaoFundo, InfoFundo, Objetivo
+from app.models.geld_models import create_session,RiscoEnum, BancoEnum, Cliente, StatusEnum, PosicaoFundo, InfoFundo, Objetivo
 from datetime import datetime
 from functools import wraps
 from sqlalchemy import func
@@ -173,20 +173,69 @@ def area_cliente(cliente_id):
         n_objetivos = db.query(func.count(Objetivo.id).filter(Objetivo.cliente_id==cliente_id)).scalar() or 0
         n_fundos = db.query(func.count(PosicaoFundo.id).filter(PosicaoFundo.cliente_id==cliente_id)).scalar() or 0
 
+        # NOVOS CÁLCULOS POR RISCO
+        saldo_baixo = 0.0
+        saldo_moderado = 0.0
+        saldo_alto = 0.0
+        saldo_fundo_di = 0.0
+
         if has_positions:
-            
-            montante_cliente = db.query(
+            # Montante total
+            montante_cliente = float(db.query(
                 func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
             ).join(
                 InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
             ).filter(
                 PosicaoFundo.cliente_id == cliente_id
-            ).scalar() or 0.0
+            ).scalar() or 0.0)
+
+            # Saldos por risco
+            saldo_baixo = float(db.query(
+                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
+            ).join(
+                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
+            ).filter(
+                PosicaoFundo.cliente_id == cliente_id,
+                InfoFundo.risco == RiscoEnum.baixo
+            ).scalar() or 0.0)
+
+            saldo_moderado = float(db.query(
+                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
+            ).join(
+                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
+            ).filter(
+                PosicaoFundo.cliente_id == cliente_id,
+                InfoFundo.risco == RiscoEnum.moderado
+            ).scalar() or 0.0)
+
+            saldo_alto = float(db.query(
+                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
+            ).join(
+                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
+            ).filter(
+                PosicaoFundo.cliente_id == cliente_id,
+                InfoFundo.risco == RiscoEnum.alto
+            ).scalar() or 0.0)
+
+            saldo_fundo_di = float(db.query(
+                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
+            ).join(
+                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
+            ).filter(
+                PosicaoFundo.cliente_id == cliente_id,
+                InfoFundo.risco == RiscoEnum.fundo_DI
+            ).scalar() or 0.0)
         
         return render_template('cliente/area_cliente.html', 
                               cliente=cliente, 
                               montante_cliente=montante_cliente,
-                              has_positions=has_positions,n_objetivos=n_objetivos, n_fundos=n_fundos)
+                              has_positions=has_positions,
+                              n_objetivos=n_objetivos, 
+                              n_fundos=n_fundos,
+                              saldo_baixo=saldo_baixo,
+                              saldo_moderado=saldo_moderado,
+                              saldo_alto=saldo_alto,
+                              saldo_fundo_di=saldo_fundo_di)
 
     except Exception as e:
         print(f'Erro ao acessar área do cliente: {str(e)}', "error")
