@@ -44,17 +44,17 @@ class Balance:
             
             # Tabela de distribuição de risco baseada no prazo em meses
             tabela_riscos = [
-                {"prazo": 12, "risco_baixo": 0.850, "risco_moderado": 0.135, "risco_alto": 0.015, "risco_di":0.00},
-                {"prazo": 24, "risco_baixo": 0.785, "risco_moderado": 0.178, "risco_alto": 0.037, "risco_di":0.00},
-                {"prazo": 36, "risco_baixo": 0.720, "risco_moderado": 0.213, "risco_alto": 0.067, "risco_di":0.00},
-                {"prazo": 48, "risco_baixo": 0.655, "risco_moderado": 0.238, "risco_alto": 0.107, "risco_di":0.00},
-                {"prazo": 60, "risco_baixo": 0.590, "risco_moderado": 0.254, "risco_alto": 0.156, "risco_di":0.00},
-                {"prazo": 72, "risco_baixo": 0.525, "risco_moderado": 0.261, "risco_alto": 0.214, "risco_di":0.00},
-                {"prazo": 84, "risco_baixo": 0.460, "risco_moderado": 0.259, "risco_alto": 0.281, "risco_di":0.00},
-                {"prazo": 96, "risco_baixo": 0.395, "risco_moderado": 0.248, "risco_alto": 0.357, "risco_di":0.00},
-                {"prazo": 108, "risco_baixo": 0.330, "risco_moderado": 0.228, "risco_alto": 0.442, "risco_di":0.00},
-                {"prazo": 120, "risco_baixo": 0.265, "risco_moderado": 0.198, "risco_alto": 0.537, "risco_di":0.00},
-                {"prazo": 132, "risco_baixo": 0.200, "risco_moderado": 0.160, "risco_alto": 0.640, "risco_di":0.00}
+                {"prazo": 12, "risco_baixo": 0.0, "risco_moderado": 0.135, "risco_alto": 0.015, "risco_di":1},
+                {"prazo": 24, "risco_baixo": 0.635, "risco_moderado": 0.178, "risco_alto": 0.037, "risco_di":0.15},
+                {"prazo": 36, "risco_baixo": 0.670, "risco_moderado": 0.213, "risco_alto": 0.067, "risco_di":0.05},
+                {"prazo": 48, "risco_baixo": 0.605, "risco_moderado": 0.238, "risco_alto": 0.107, "risco_di":0.05},
+                {"prazo": 60, "risco_baixo": 0.540, "risco_moderado": 0.254, "risco_alto": 0.156, "risco_di":0.05},
+                {"prazo": 72, "risco_baixo": 0.475, "risco_moderado": 0.261, "risco_alto": 0.214, "risco_di":0.05},
+                {"prazo": 84, "risco_baixo": 0.410, "risco_moderado": 0.259, "risco_alto": 0.281, "risco_di":0.05},
+                {"prazo": 96, "risco_baixo": 0.345, "risco_moderado": 0.248, "risco_alto": 0.357, "risco_di":0.05},
+                {"prazo": 108, "risco_baixo": 0.280, "risco_moderado": 0.228, "risco_alto": 0.442, "risco_di":0.05},
+                {"prazo": 120, "risco_baixo": 0.215, "risco_moderado": 0.198, "risco_alto": 0.537, "risco_di":0.05},
+                {"prazo": 132, "risco_baixo": 0.150, "risco_moderado": 0.160, "risco_alto": 0.640, "risco_di":0.05}
             ]
             
             # Encontrar a regra correspondente ao prazo do objetivo
