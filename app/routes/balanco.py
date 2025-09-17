@@ -53,6 +53,7 @@ def balance_objetivos(cliente_id):
                 total_risco_baixo = 0
                 total_risco_moderado = 0
                 total_risco_alto = 0
+                total_risco_di = 0
 
                 for objetivo_id, quota in quotas.items():
                     # Encontrar o objeto objetivo correspondente ao ID
@@ -66,6 +67,7 @@ def balance_objetivos(cliente_id):
                     total_risco_baixo += balanceamento['distribuicao']['risco_baixo']['valor']
                     total_risco_moderado += balanceamento['distribuicao']['risco_moderado']['valor']
                     total_risco_alto += balanceamento['distribuicao']['risco_alto']['valor']
+                    total_risco_di += balanceamento['distribuicao']['risco_di']['valor']
 
                 # PASSA O RESULTADO PRO TEMPLATE
                 return render_template('balanco/balance_objetivos.html', 
@@ -74,7 +76,8 @@ def balance_objetivos(cliente_id):
                       resultado_balanceamento=resultado_balanceamento,
                       total_risco_baixo=total_risco_baixo,
                       total_risco_moderado=total_risco_moderado,
-                      total_risco_alto=total_risco_alto,
+                      total_risco_alto=total_risco_alto, 
+                      total_risco_di=total_risco_di,
                       aporte=aporte)
                 
             except ValueError:

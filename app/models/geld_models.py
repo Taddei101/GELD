@@ -25,7 +25,7 @@ class RiscoEnum(enum.Enum):
     alto = 'alto'
     moderado = 'moderado'
     baixo = 'baixo'
-    fundo_DI='fundo DI'
+    fundo_DI='fundo_DI'
 
 class StatusFundoEnum(enum.Enum):
     ativo = 'ativo'

@@ -39,6 +39,7 @@
             <th>Risco Baixo</th>
             <th>Risco Moderado</th>
             <th>Risco Alto</th>
+            <th>Fundo DI</th>
         </tr>
     </thead>
     <tbody>
@@ -70,6 +71,16 @@
                         <div class="progress-fill" style="height: {{ resultado.total_por_risco.alto / resultado.sumario.total_disponivel * 100 }}%;">
                         </div>
                         <span class="percentage-text">{{ '{:.1f}'.format(resultado.total_por_risco.alto / resultado.sumario.total_disponivel * 100) }}%</span>
+                    </div>
+                </div>
+            </td>
+            <td>
+                R$ {{ format_valor(resultado.total_por_risco.fundo_DI) }}
+                <div class="progress-bar-container">
+                    <div class="progress-bar-vertical">
+                        <div class="progress-fill" style="height: {{ resultado.total_por_risco.fundo_DI / resultado.sumario.total_disponivel * 100 }}%;">
+                        </div>
+                        <span class="percentage-text">{{ '{:.1f}'.format(resultado.total_por_risco.fundo_DI / resultado.sumario.total_disponivel * 100) }}%</span>
                     </div>
                 </div>
             </td>
@@ -119,13 +130,13 @@
                     <!-- Determinando o perfil ideal baseado no prazo do objetivo -->
                     {% set prazo = objetivo.prazo_meses %}
                     {% if prazo <= 12 %}
-                        {% set perfil_ideal = {'baixo': 80, 'moderado': 15, 'alto': 5} %}
+                        {% set perfil_ideal = {'baixo': 80, 'moderado': 15, 'alto': 5, 'fundo_DI': 0} %}
                     {% elif prazo <= 36 %}
-                        {% set perfil_ideal = {'baixo': 50, 'moderado': 35, 'alto': 15} %}
+                        {% set perfil_ideal = {'baixo': 50, 'moderado': 35, 'alto': 15, 'fundo_DI': 0} %}
                     {% elif prazo <= 60 %}
-                        {% set perfil_ideal = {'baixo': 30, 'moderado': 40, 'alto': 30} %}
+                        {% set perfil_ideal = {'baixo': 30, 'moderado': 40, 'alto': 30, 'fundo_DI': 0} %}
                     {% else %}
-                        {% set perfil_ideal = {'baixo': 15, 'moderado': 35, 'alto': 50} %}
+                        {% set perfil_ideal = {'baixo': 15, 'moderado': 35, 'alto': 50, 'fundo_DI': 0} %}
                     {% endif %}
                     
                     <!-- Calculando os percentuais reais de cada risco (se houver alocação total) -->
@@ -133,10 +144,12 @@
                         {% set pct_baixo = objetivo.alocacao_por_risco.baixo / objetivo.alocacao_total * 100 %}
                         {% set pct_moderado = objetivo.alocacao_por_risco.moderado / objetivo.alocacao_total * 100 %}
                         {% set pct_alto = objetivo.alocacao_por_risco.alto / objetivo.alocacao_total * 100 %}
+                        {% set pct_fundo_DI = objetivo.alocacao_por_risco.fundo_DI / objetivo.alocacao_total * 100 %}
                     {% else %}
                         {% set pct_baixo = 0 %}
                         {% set pct_moderado = 0 %}
                         {% set pct_alto = 0 %}
+                        {% set pct_fundo_DI = 0 %}
                     {% endif %}
                     
                     <table class="info-table" style="width: 100%;">
@@ -145,24 +158,28 @@
                             <th>Risco Baixo</th>
                             <th>Risco Moderado</th>
                             <th>Risco Alto</th>
+                            <th>Fundo DI</th>
                         </tr>
                         <tr>
                             <th>Valor</th>
                             <td>R$ {{ format_valor(objetivo.alocacao_por_risco.baixo) }}</td>
                             <td>R$ {{ format_valor(objetivo.alocacao_por_risco.moderado) }}</td>
                             <td>R$ {{ format_valor(objetivo.alocacao_por_risco.alto) }}</td>
+                            <td>R$ {{ format_valor(objetivo.alocacao_por_risco.fundo_DI) }}</td>
                         </tr>
                         <tr>
                             <th>Distribuição Real</th>
                             <td>{{ format_percentual(pct_baixo) }}</td>
                             <td>{{ format_percentual(pct_moderado) }}</td>
                             <td>{{ format_percentual(pct_alto) }}</td>
+                            <td>{{ format_percentual(pct_fundo_DI) }}</td>
                         </tr>
                         <tr>
                             <th>Distribuição Ideal</th>
                             <td>{{ perfil_ideal.baixo }}%</td>
                             <td>{{ perfil_ideal.moderado }}%</td>
                             <td>{{ perfil_ideal.alto }}%</td>
+                            <td>{{ perfil_ideal.fundo_DI }}%</td>
                         </tr>
                         <tr>
                             <th>Diferença</th>
@@ -174,6 +191,9 @@
                             </td>
                             <td class="{{ 'text-success' if (pct_alto - perfil_ideal.alto)|abs < 5 else 'text-danger' }}">
                                 {% if pct_alto > perfil_ideal.alto %}+{% endif %}{{ format_percentual(pct_alto - perfil_ideal.alto) }}
+                            </td>
+                            <td class="{{ 'text-success' if (pct_fundo_DI - perfil_ideal.fundo_DI)|abs < 5 else 'text-danger' }}">
+                                {% if pct_fundo_DI > perfil_ideal.fundo_DI %}+{% endif %}{{ format_percentual(pct_fundo_DI - perfil_ideal.fundo_DI) }}
                             </td>
                         </tr>
                     </table>

@@ -47,7 +47,9 @@ class DistribuicaoCapitalService:
             investimentos_por_risco = {
                 RiscoEnum.baixo: [],
                 RiscoEnum.moderado: [],
-                RiscoEnum.alto: []
+                RiscoEnum.alto: [],
+                RiscoEnum.fundo_DI: []
+
             }
             
             # Processar cada posição
@@ -68,7 +70,9 @@ class DistribuicaoCapitalService:
             total_por_risco = {
                 RiscoEnum.baixo: sum(inv["valor"] for inv in investimentos_por_risco[RiscoEnum.baixo]),
                 RiscoEnum.moderado: sum(inv["valor"] for inv in investimentos_por_risco[RiscoEnum.moderado]),
-                RiscoEnum.alto: sum(inv["valor"] for inv in investimentos_por_risco[RiscoEnum.alto])
+                RiscoEnum.alto: sum(inv["valor"] for inv in investimentos_por_risco[RiscoEnum.alto]),
+                RiscoEnum.fundo_DI: sum(inv["valor"] for inv in investimentos_por_risco[RiscoEnum.fundo_DI])
+
             }
             
             # 6. Preparar resultado
@@ -82,9 +86,10 @@ class DistribuicaoCapitalService:
                     "percentual_alocado": 0.0
                 },
                 "total_por_risco": {
-                    "baixo": total_por_risco[RiscoEnum.baixo],
-                    "moderado": total_por_risco[RiscoEnum.moderado],
-                    "alto": total_por_risco[RiscoEnum.alto]
+                    RiscoEnum.baixo.value: total_por_risco[RiscoEnum.baixo],
+                    RiscoEnum.moderado.value: total_por_risco[RiscoEnum.moderado], 
+                    RiscoEnum.alto.value: total_por_risco[RiscoEnum.alto],
+                    RiscoEnum.fundo_DI.value: total_por_risco[RiscoEnum.fundo_DI]
                 }
             }
             
@@ -111,9 +116,10 @@ class DistribuicaoCapitalService:
                     "percentual_atingido": 0.0,
                     "alocacao_por_investimento": [],
                     "alocacao_por_risco": {
-                        "baixo": 0.0,
-                        "moderado": 0.0,
-                        "alto": 0.0
+                        RiscoEnum.baixo.value: 0.0,
+                        RiscoEnum.moderado.value: 0.0, 
+                        RiscoEnum.alto.value: 0.0,
+                        RiscoEnum.fundo_DI.value: 0.0
                     }
                 }
                 
@@ -180,16 +186,16 @@ class DistribuicaoCapitalService:
         """
         if prazo_meses <= 12:
             # Curto prazo
-            return {RiscoEnum.baixo: 0.80, RiscoEnum.moderado: 0.15, RiscoEnum.alto: 0.05}
+            return {RiscoEnum.baixo: 0.80, RiscoEnum.moderado: 0.15, RiscoEnum.alto: 0.05,RiscoEnum.fundo_DI: 0.0}
         elif prazo_meses <= 36:
             # Médio prazo
-            return {RiscoEnum.baixo: 0.50, RiscoEnum.moderado: 0.35, RiscoEnum.alto: 0.15}
+            return {RiscoEnum.baixo: 0.50, RiscoEnum.moderado: 0.35, RiscoEnum.alto: 0.15,RiscoEnum.fundo_DI: 0.0}
         elif prazo_meses <= 60:
             # Médio-longo prazo  
-            return {RiscoEnum.baixo: 0.30, RiscoEnum.moderado: 0.40, RiscoEnum.alto: 0.30}
+            return {RiscoEnum.baixo: 0.30, RiscoEnum.moderado: 0.40, RiscoEnum.alto: 0.30,RiscoEnum.fundo_DI: 0.0}
         else:
             # Longo prazo
-            return {RiscoEnum.baixo: 0.15, RiscoEnum.moderado: 0.35, RiscoEnum.alto: 0.50}
+            return {RiscoEnum.baixo: 0.15, RiscoEnum.moderado: 0.35, RiscoEnum.alto: 0.50,RiscoEnum.fundo_DI: 0.0}
     
     def _calcular_alocacao_ideal(self, valor_alvo, perfil_risco):
         """

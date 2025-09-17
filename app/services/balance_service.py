@@ -7,7 +7,7 @@ class Balance:
         self.db = db
 
     def balancear_aporte(self, aporte: float, objetivos: List) -> Dict:
-        
+        """REGRA DE BALANCEAMENTO DE DO APORTE ENTRE OS OBJETIVOS. ATUALMENTE DIVIDE IGUALMENTE"""
         try:
             num_objetivos = len(objetivos)
             if num_objetivos == 0:
@@ -44,17 +44,17 @@ class Balance:
             
             # Tabela de distribuição de risco baseada no prazo em meses
             tabela_riscos = [
-                {"prazo": 12, "risco_baixo": 0.850, "risco_moderado": 0.135, "risco_alto": 0.015},
-                {"prazo": 24, "risco_baixo": 0.785, "risco_moderado": 0.178, "risco_alto": 0.037},
-                {"prazo": 36, "risco_baixo": 0.720, "risco_moderado": 0.213, "risco_alto": 0.067},
-                {"prazo": 48, "risco_baixo": 0.655, "risco_moderado": 0.238, "risco_alto": 0.107},
-                {"prazo": 60, "risco_baixo": 0.590, "risco_moderado": 0.254, "risco_alto": 0.156},
-                {"prazo": 72, "risco_baixo": 0.525, "risco_moderado": 0.261, "risco_alto": 0.214},
-                {"prazo": 84, "risco_baixo": 0.460, "risco_moderado": 0.259, "risco_alto": 0.281},
-                {"prazo": 96, "risco_baixo": 0.395, "risco_moderado": 0.248, "risco_alto": 0.357},
-                {"prazo": 108, "risco_baixo": 0.330, "risco_moderado": 0.228, "risco_alto": 0.442},
-                {"prazo": 120, "risco_baixo": 0.265, "risco_moderado": 0.198, "risco_alto": 0.537},
-                {"prazo": 132, "risco_baixo": 0.200, "risco_moderado": 0.160, "risco_alto": 0.640}
+                {"prazo": 12, "risco_baixo": 0.850, "risco_moderado": 0.135, "risco_alto": 0.015, "risco_di":0.00},
+                {"prazo": 24, "risco_baixo": 0.785, "risco_moderado": 0.178, "risco_alto": 0.037, "risco_di":0.00},
+                {"prazo": 36, "risco_baixo": 0.720, "risco_moderado": 0.213, "risco_alto": 0.067, "risco_di":0.00},
+                {"prazo": 48, "risco_baixo": 0.655, "risco_moderado": 0.238, "risco_alto": 0.107, "risco_di":0.00},
+                {"prazo": 60, "risco_baixo": 0.590, "risco_moderado": 0.254, "risco_alto": 0.156, "risco_di":0.00},
+                {"prazo": 72, "risco_baixo": 0.525, "risco_moderado": 0.261, "risco_alto": 0.214, "risco_di":0.00},
+                {"prazo": 84, "risco_baixo": 0.460, "risco_moderado": 0.259, "risco_alto": 0.281, "risco_di":0.00},
+                {"prazo": 96, "risco_baixo": 0.395, "risco_moderado": 0.248, "risco_alto": 0.357, "risco_di":0.00},
+                {"prazo": 108, "risco_baixo": 0.330, "risco_moderado": 0.228, "risco_alto": 0.442, "risco_di":0.00},
+                {"prazo": 120, "risco_baixo": 0.265, "risco_moderado": 0.198, "risco_alto": 0.537, "risco_di":0.00},
+                {"prazo": 132, "risco_baixo": 0.200, "risco_moderado": 0.160, "risco_alto": 0.640, "risco_di":0.00}
             ]
             
             # Encontrar a regra correspondente ao prazo do objetivo
@@ -86,7 +86,8 @@ class Balance:
             percentagens = {
                 "risco_baixo": regra_aplicavel["risco_baixo"],
                 "risco_moderado": regra_aplicavel["risco_moderado"],
-                "risco_alto": regra_aplicavel["risco_alto"]
+                "risco_alto": regra_aplicavel["risco_alto"],
+                "risco_di": regra_aplicavel["risco_di"]
             }
             
             # Adicionar informação da regra aplicada ao resultado
@@ -111,6 +112,10 @@ class Balance:
                     "risco_alto": {
                         "percentagem": percentagens["risco_alto"] * 100,
                         "valor": quota * percentagens["risco_alto"]
+                    },
+                    "risco_di":{
+                        "percentagem": percentagens["risco_di"] * 100,
+                        "valor": quota * percentagens["risco_di"]
                     }
                 }
             }
@@ -123,7 +128,7 @@ class Balance:
             print(f"  Risco Baixo: {balanceamento['distribuicao']['risco_baixo']['percentagem']}% = {balanceamento['distribuicao']['risco_baixo']['valor']}")
             print(f"  Risco Moderado: {balanceamento['distribuicao']['risco_moderado']['percentagem']}% = {balanceamento['distribuicao']['risco_moderado']['valor']}")
             print(f"  Risco Alto: {balanceamento['distribuicao']['risco_alto']['percentagem']}% = {balanceamento['distribuicao']['risco_alto']['valor']}")
-            
+            print(f"  Risco DI: {balanceamento['distribuicao']['risco_di']['percentagem']}% = {balanceamento['distribuicao']['risco_di']['valor']}")
             return balanceamento
             
         except Exception as e:

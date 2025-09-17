@@ -447,6 +447,38 @@ img {
     height: 100%;
   }
 
+/* Tool tips*/
+.tooltip {
+  position: relative;
+  cursor: help;
+}
+
+.tooltip::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: 0; 
+    left: 0; 
+    width: 100%; 
+    height: 100%; 
+    background-color: rgba(0, 0, 0, 0.9); 
+    color: white;
+    display: flex;
+    align-items: center; 
+    justify-content: center; 
+    font-size: 11px;
+    font-weight: normal;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+    z-index: 1000;
+    border-radius: 4px;
+}
+
+.tooltip:hover::after {
+  opacity: 1;
+}
+
 /* Flash messages */
 
 .flash-container {

@@ -14,9 +14,9 @@
                 <th>Data Final</th>
                 <th>Período Restante</th>
                 <th>Valor Desejado</th>
-                <th>Valor Desejado Corrigido</th>
-                <th>Valor Alvo Presente</th>
-                <th>Valor Atual</th>
+                <th class="tooltip" data-tooltip="Valor Desejado aplicado inflação no final do período">Valor Futuro</th>
+                <th class="tooltip" data-tooltip="Valor necessário atualmente para atingir o objetivo com IPCA+3,5%">Valor Presente</th>
+                <th>Montante</th>
                 {% if mostrar_calculo is defined and mostrar_calculo %}
                 <th>Aporte Mensal</th>
                 {% endif %}
@@ -33,7 +33,17 @@
                 <td>{{ objetivo.duracao_meses}} meses</td>
                 <td>R$ {{ '{:,.2f}'.format(objetivo.valor_final).replace(',', ' ').replace('.', ',').replace(' ', '.') }} </td>
                 <td>R$ {{ '{:,.2f}'.format(objetivo.valor_final|float * ((1+ipca_mes/100)**((objetivo.data_final.year - objetivo.data_inicial.year) * 12 + (objetivo.data_final.month - objetivo.data_inicial.month)))).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>R$ </td>
+                <td>
+                    {% set valor_futuro_corrigido = objetivo.valor_final|float * ((1+ipca_mes/100)**objetivo.duracao_meses) %}
+                    {% set taxa_anual_adicional = 3.5 %}
+                    {% set taxa_mensal = ipca_mes/100 + ((1 + taxa_anual_adicional/100) ** (1/12)) - 1 %}
+                    {% if taxa_mensal == 0 %}
+                        {% set valor_presente_necessario = valor_futuro_corrigido %}
+                    {% else %}
+                        {% set valor_presente_necessario = valor_futuro_corrigido / ((1 + taxa_mensal) ** objetivo.duracao_meses) %}
+                    {% endif %}
+                    R$ {{ '{:,.2f}'.format(valor_presente_necessario).replace(',', ' ').replace('.', ',').replace(' ', '.') }}
+                </td>
                 <td>R$ {{ '{:,.2f}'.format(objetivo.valor_real).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
                 
                 {% if mostrar_calculo is defined and mostrar_calculo %}

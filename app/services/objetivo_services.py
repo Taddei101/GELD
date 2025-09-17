@@ -32,12 +32,13 @@ class ObjetivoServices:
             # Valor futuro (valor objetivo corrigido pela inflação)
             valor_corrigido = float(objetivo.valor_final) * ((1 + ipca_mensal) ** n)
             FV = valor_corrigido
-                        
+            
+            # Calcular PMT (aporte mensal necessário)
             if i == 0:  # Caso especial para taxa zero
                 PMT = (FV - PV) / n
             else:
-                fator_futuro = (1 + i) ** n
-                PMT = (FV - PV * fator_futuro) * i / (fator_futuro - 1)
+                fator = (1 + i) ** n
+                PMT = (FV - PV * fator) * i / (fator - 1)
             
             # Se PMT for negativo, significa que o valor atual já atinge ou supera o objetivo
             if PMT < 0:
