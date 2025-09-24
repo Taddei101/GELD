@@ -125,35 +125,59 @@ class ExtractServices:
             return None
 
 
-    #INFO FUNDOS DE UMA LISTA de CNPJs
-    def extracao_cvm_info_batch(self, cnpjs):
-                
-        url = "https://dados.cvm.gov.br/dados/FI/DOC/EXTRATO/DADOS/extrato_fi.csv"
-                
-        flash(f"Baixando CSV da CVM para {len(cnpjs)} CNPJs...","info")
+   #INFO FUNDOS DE UMA LISTA de CNPJs
+def extracao_cvm_info_batch(self, cnpjs):
+            
+    url = "https://dados.cvm.gov.br/dados/FI/DOC/EXTRATO/DADOS/extrato_fi.csv"
+            
+    flash(f"Baixando CSV da CVM para {len(cnpjs)} CNPJs...","info")
+    
+    try:
         df = pd.read_csv(url, sep=';', encoding='latin1', dtype=str)
+        
+        # ADICIONANDO DEBUG
+        print(f"[DEBUG] Total de registros no CSV: {len(df)}")
+        print(f"[DEBUG] Colunas disponíveis: {df.columns.tolist()}")
+        print(f"[DEBUG] Primeiros 3 CNPJs do arquivo: {df['CNPJ_FUNDO_CLASSE'].head(3).tolist()}")
         
         # Normalizar os CNPJs (remover pontuação) para facilitar a correspondência
         df['CNPJ_NORMALIZADO'] = df['CNPJ_FUNDO_CLASSE'].str.replace('.', '').str.replace('/', '').str.replace('-', '')
-                
+        
         normalized_cnpjs = [cnpj.replace('.', '').replace('/', '').replace('-', '') for cnpj in cnpjs]
+        
+        print(f"[DEBUG] CNPJs procurados: {cnpjs}")
+        print(f"[DEBUG] CNPJs normalizados: {normalized_cnpjs}")
         
         # Criar dicionário para armazenar os resultados
         result_dict = {}
         
-        # Filtrar o DataFrame apenas uma vez para todos os CNPJs
-        filtered_df = df[df['CNPJ_NORMALIZADO'].isin(normalized_cnpjs)]
-        
-        # Processar os resultados filtrados
-        for cnpj_norm in normalized_cnpjs:
+        # DEBUG: Verificar cada CNPJ individualmente
+        for i, cnpj_original in enumerate(cnpjs):
+            cnpj_norm = normalized_cnpjs[i]
+            print(f"\n[DEBUG] Procurando: {cnpj_original} -> normalizado: {cnpj_norm}")
             
-            fund_data = filtered_df[filtered_df['CNPJ_NORMALIZADO'] == cnpj_norm]
+            # Busca exata
+            matches = df[df['CNPJ_NORMALIZADO'] == cnpj_norm]
+            print(f"[DEBUG] Matches encontrados: {len(matches)}")
             
-            if not fund_data.empty:
-                
-                fund_data = fund_data.sort_values(by='DT_COMPTC', ascending=False).iloc[0]
-                original_cnpj = cnpjs[normalized_cnpjs.index(cnpj_norm)]
-                result_dict[original_cnpj] = fund_data
+            if len(matches) > 0:
+                print(f"[DEBUG] ENCONTRADO: {matches['DENOM_SOCIAL'].iloc[0]}")
+                # Adicionar ao resultado
+                fund_data = matches.sort_values(by='DT_COMPTC', ascending=False).iloc[0]
+                result_dict[cnpj_original] = fund_data
+            else:
+                # Busca similar para debug
+                similar = df[df['CNPJ_NORMALIZADO'].str.contains(cnpj_norm[:8], na=False)]
+                print(f"[DEBUG] CNPJs similares (primeiros 8 dígitos): {len(similar)}")
+                if len(similar) > 0:
+                    print(f"[DEBUG] Exemplos similares:")
+                    for idx, row in similar.head(3).iterrows():
+                        print(f"  - {row['CNPJ_FUNDO_CLASSE']} | {row['DENOM_SOCIAL']}")
         
+        print(f"\n[DEBUG] Total de fundos encontrados: {len(result_dict)}")
         return result_dict
-    
+        
+    except Exception as e:
+        print(f"[DEBUG] Erro na requisição: {type(e).__name__}: {e}")
+        flash(f"Erro ao baixar dados da CVM: {e}", "error")
+        return {}

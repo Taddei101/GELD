@@ -10,6 +10,7 @@
         <thead>
             <tr>
                 <th>Objetivo</th>
+                <th>Tipo</th>
                 <th>Data Inicial</th>
                 <th>Data Final</th>
                 <th>Período Restante</th>
@@ -28,6 +29,9 @@
             {% for objetivo in objetivos %}
             <tr>
                 <td>{{ objetivo.nome_objetivo }}</td>
+                <td><span class="badge-tipo-objetivo {{ 'badge-previdencia' if objetivo.tipo_objetivo.value == 'previdencia' else 'badge-geral' }}">
+                 {{ objetivo.tipo_objetivo.value.title() }}</span>
+                </td>
                 <td>{{ objetivo.data_inicial.strftime('%d/%m/%Y')  }}</td>
                 <td>{{ objetivo.data_final.strftime('%d/%m/%Y') }}</td>
                 <td>{{ objetivo.duracao_meses}} meses</td>

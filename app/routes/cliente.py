@@ -177,7 +177,7 @@ def area_cliente(cliente_id):
         saldo_baixo = 0.0
         saldo_moderado = 0.0
         saldo_alto = 0.0
-        saldo_fundo_di = 0.0
+        
 
         if has_positions:
             # Montante total
@@ -217,14 +217,7 @@ def area_cliente(cliente_id):
                 InfoFundo.risco == RiscoEnum.alto
             ).scalar() or 0.0)
 
-            saldo_fundo_di = float(db.query(
-                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-            ).join(
-                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-            ).filter(
-                PosicaoFundo.cliente_id == cliente_id,
-                InfoFundo.risco == RiscoEnum.fundo_DI
-            ).scalar() or 0.0)
+            
         
         return render_template('cliente/area_cliente.html', 
                               cliente=cliente, 
@@ -234,8 +227,7 @@ def area_cliente(cliente_id):
                               n_fundos=n_fundos,
                               saldo_baixo=saldo_baixo,
                               saldo_moderado=saldo_moderado,
-                              saldo_alto=saldo_alto,
-                              saldo_fundo_di=saldo_fundo_di)
+                              saldo_alto=saldo_alto)
 
     except Exception as e:
         print(f'Erro ao acessar área do cliente: {str(e)}', "error")

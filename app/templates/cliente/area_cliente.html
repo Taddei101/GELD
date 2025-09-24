@@ -38,11 +38,7 @@
         </tr>
     </thead>
     <tbody>
-        <tr>
-            <td>Fundo DI</td>
-            <td>R$ {{ '{:,.2f}'.format(saldo_fundo_di).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-            <td>{{ '{:.1f}%'.format((saldo_fundo_di / montante_cliente * 100) if montante_cliente > 0 else 0).replace('.', ',') }}</td>
-        </tr>
+        
         <tr>
             <td>Baixo Risco</td>
             <td>R$ {{ '{:,.2f}'.format(saldo_baixo).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>

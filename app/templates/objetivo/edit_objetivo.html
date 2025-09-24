@@ -12,6 +12,14 @@
             <label for="nome_objetivo">Objetivo</label>
             <input type="text" id="nome_objetivo" name="nome_objetivo" value="{{ objetivo.nome_objetivo }}" required>
         </div>
+
+        <div class="label">
+            <label for="tipo_objetivo">Tipo de Objetivo:</label>
+            <select id="tipo_objetivo" name="tipo_objetivo" required>
+                <option value="geral" {% if objetivo.tipo_objetivo.value == 'geral' %}selected{% endif %}>Geral</option>
+                <option value="previdencia" {% if objetivo.tipo_objetivo.value == 'previdencia' %}selected{% endif %}>Previdência</option>
+            </select>
+        </div>
         
         <div class="label">
             <label for="valor_final">Valor Final:</label>

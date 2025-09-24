@@ -18,28 +18,28 @@
 </thead>
 <tbody>
     <tr>
-        <td>Fundo DI</td>
-        <td>R$ {{ '{:,.2f}'.format(saldo_fundo_di).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-        <td>{{ '{:.1f}%'.format((saldo_fundo_di / montante_cliente * 100) if montante_cliente > 0 else 0).replace('.', ',') }}</td>
+        <td>Fundos DI (Baixo Risco)</td>
+        <td>R$ {{ '{:,.2f}'.format(saldo_fundo_di if saldo_fundo_di is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+        <td>{{ '{:.1f}%'.format((saldo_fundo_di / montante_cliente * 100) if montante_cliente > 0 and saldo_fundo_di is defined else 0).replace('.', ',') }}</td>
     </tr>
     <tr>
-        <td>Baixo Risco</td>
-        <td>R$ {{ '{:,.2f}'.format(saldo_baixo).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-        <td>{{ '{:.1f}%'.format((saldo_baixo / montante_cliente * 100) if montante_cliente > 0 else 0).replace('.', ',') }}</td>
+        <td>Renda Fixa (Baixo Risco)</td>
+        <td>R$ {{ '{:,.2f}'.format(saldo_baixo if saldo_baixo is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+        <td>{{ '{:.1f}%'.format((saldo_baixo / montante_cliente * 100) if montante_cliente > 0 and saldo_baixo is defined else 0).replace('.', ',') }}</td>
     </tr>
     <tr>
         <td>Moderado Risco</td>
-        <td>R$ {{ '{:,.2f}'.format(saldo_moderado).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-        <td>{{ '{:.1f}%'.format((saldo_moderado / montante_cliente * 100) if montante_cliente > 0 else 0).replace('.', ',') }}</td>
+        <td>R$ {{ '{:,.2f}'.format(saldo_moderado if saldo_moderado is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+        <td>{{ '{:.1f}%'.format((saldo_moderado / montante_cliente * 100) if montante_cliente > 0 and saldo_moderado is defined else 0).replace('.', ',') }}</td>
     </tr>
     <tr>
         <td>Alto Risco</td>
-        <td>R$ {{ '{:,.2f}'.format(saldo_alto).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-        <td>{{ '{:.1f}%'.format((saldo_alto / montante_cliente * 100) if montante_cliente > 0 else 0).replace('.', ',') }}</td>
+        <td>R$ {{ '{:,.2f}'.format(saldo_alto if saldo_alto is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+        <td>{{ '{:.1f}%'.format((saldo_alto / montante_cliente * 100) if montante_cliente > 0 and saldo_alto is defined else 0).replace('.', ',') }}</td>
     </tr>
     <tr class="total-row" style="font-weight: bold; border-top: 2px solid #333;">
         <td>TOTAL GERAL</td>
-        <td>R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+        <td>R$ {{ '{:,.2f}'.format(montante_cliente if montante_cliente is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
         <td>100,0%</td>
     </tr>
 </tbody>
@@ -47,8 +47,8 @@
 
 <p></p>
 
-<!-- Tabela de Portfólio de Fundos (modificada para mostrar apenas 3 primeiros) -->
-<h3>Portfólio de Fundos</h3>
+<!-- Tabela de Portfolio de Fundos (modificada para mostrar apenas 3 primeiros) -->
+<h3>Portfolio de Fundos</h3>
 <table class="table">
 <thead>
     <tr>
@@ -68,8 +68,18 @@
         {% for posicao in posicoes[:3] %}
         <tr>
             <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:3]) }}</td>
-            <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:2]) }}</td>
-            <td>{{ posicao.info_fundo.risco.value }}</td>
+            <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:2]) if posicao.info_fundo.classe_anbima else '' }}</td>
+            <td>
+                {% if posicao.info_fundo.risco.value == 'baixo' %}
+                    {% if posicao.info_fundo.subtipo_risco and posicao.info_fundo.subtipo_risco.value == 'di' %}
+                        Baixo (DI)
+                    {% else %}
+                        Baixo (RFx)
+                    {% endif %}
+                {% else %}
+                    {{ posicao.info_fundo.risco.value.title() }}
+                {% endif %}
+            </td>
             <td>{{'{:,.2f}'.format(posicao.cotas).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
             <td>R$ {{ '{:,.2f}'.format(posicao.info_fundo.valor_cota).replace('.', ',') }}</td>
             <td>R$ {{ '{:,.2f}'.format(posicao.cotas * posicao.info_fundo.valor_cota).replace(',', ' ').replace('.', ',').replace(' ', '.')  }}</td>
@@ -94,8 +104,18 @@
             {% for posicao in posicoes[3:] %}
             <tr class="extra-funds" style="display: none;">
                 <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:3]) }}</td>
-                <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:2]) }}</td>
-                <td>{{ posicao.info_fundo.risco.value }}</td>
+                <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:2]) if posicao.info_fundo.classe_anbima else '' }}</td>
+                <td>
+                    {% if posicao.info_fundo.risco.value == 'baixo' %}
+                        {% if posicao.info_fundo.subtipo_risco and posicao.info_fundo.subtipo_risco.value == 'di' %}
+                            Baixo (DI)
+                        {% else %}
+                            Baixo (RFx)
+                        {% endif %}
+                    {% else %}
+                        {{ posicao.info_fundo.risco.value.title() }}
+                    {% endif %}
+                </td>
                 <td>{{'{:,.2f}'.format(posicao.cotas).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
                 <td>R$ {{ '{:,.2f}'.format(posicao.info_fundo.valor_cota).replace('.', ',') }}</td>
                 <td>R$ {{ '{:,.2f}'.format(posicao.cotas * posicao.info_fundo.valor_cota).replace(',', ' ').replace('.', ',').replace(' ', '.')  }}</td>
@@ -123,7 +143,7 @@
     
     <th>TOTAL</th>
     <th colspan="4"></th>
-    <th>R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</th>
+    <th>R$ {{ '{:,.2f}'.format(montante_cliente if montante_cliente is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</th>
     <td>
         {% if posicoes|length > 3 %}
             <button onclick="toggleExtraFunds()" id="toggle-btn" class="smlBtn" title="Mostrar todos os fundos">
@@ -146,7 +166,7 @@
 
 <div class="inline-btn">
     <button title="upload_btg" class="bigBtn" onclick="window.location.href=`{{ url_for('posicao.upload_cotas', cliente_id=cliente.id) }}` ">
-    <img src="{{ url_for('static', filename='icons/btg.png') }}" class="btn-icon"> Upload Portfólio BTG
+    <img src="{{ url_for('static', filename='icons/btg.png') }}" class="btn-icon"> Upload Portfolio BTG
     </button>
     
     <button title="balancear aporte" class="bigBtn"onclick="window.location.href=`{{ url_for('balancos.balance_objetivos',cliente_id=cliente.id) }}`"><img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte</button>

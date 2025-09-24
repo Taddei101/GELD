@@ -7,6 +7,7 @@ import pandas as pd
 import hashlib
 from app.services.extract_services import ExtractServices
 
+
 posicao_bp = Blueprint('posicao', __name__)
 
 # =============================================================================
@@ -26,20 +27,17 @@ def processar_arquivo_btg_completo(file_path, cliente_id, db, global_services):
     }
     
     try:
-        # 1. PROCESSAR ABA FUNDOS (lógica atual)
-        print("[INFO] Processando aba Fundos...")
+        # 1. PROCESSAR ABA FUNDOS
         posicoes_fundos = _processar_aba_fundos(file_path, db, global_services)
         todas_posicoes.extend(posicoes_fundos)
         log_processamento['fundos'] = len(posicoes_fundos)
         
         # 2. PROCESSAR PREVIDÊNCIA INDIVIDUAL
-        print("[INFO] Processando aba Previdência Individual...")
         posicoes_prev_ind = _processar_aba_previdencia_individual(file_path)
         todas_posicoes.extend(posicoes_prev_ind)
         log_processamento['previdencia_individual'] = len(posicoes_prev_ind)
         
         # 3. PROCESSAR PREVIDÊNCIA EXTERNA  
-        print("[INFO] Processando aba Previdência Externa...")
         posicoes_prev_ext = _processar_aba_previdencia_externa(file_path)
         todas_posicoes.extend(posicoes_prev_ext)
         log_processamento['previdencia_externa'] = len(posicoes_prev_ext)
@@ -51,23 +49,24 @@ def processar_arquivo_btg_completo(file_path, cliente_id, db, global_services):
         if posicoes_removidas > 0:
             print(f"[INFO] {posicoes_removidas} posições duplicadas removidas")
         
-        print(f"[INFO] Total final: {len(posicoes_unicas)} posições únicas")
-        
         return posicoes_unicas, log_processamento
         
     except Exception as e:
         log_processamento['erros'].append(str(e))
         print(f"[ERRO] Erro no processamento completo: {str(e)}")
         return todas_posicoes, log_processamento
+    
+#################################
+#################################
 
 def _processar_aba_fundos(file_path, db, global_services):
-    """Extrai a lógica atual de processamento da aba Fundos"""
+    """Processa aba Fundos extraindo CNPJs e posições"""
     posicoes = []
     
     try:
         df = pd.read_excel(file_path, sheet_name="Fundos", header=None)
         
-        # 1. Mapear CNPJs (lógica atual)
+        # 1. Mapear CNPJs da seção "Detalhamento >"
         cnpjs_fundos = {}
         for i in range(len(df)):
             cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
@@ -81,12 +80,11 @@ def _processar_aba_fundos(file_path, db, global_services):
                     if is_valid:
                         cnpj_formatado = global_services.formatar_cnpj(cnpj_normalizado)
                         cnpjs_fundos[fund_name] = cnpj_formatado
-                        print(f"[INFO] CNPJ mapeado: {cnpj_formatado} para {fund_name}")
                 except Exception as e:
                     print(f"[AVISO] Erro ao mapear CNPJ na linha {i}: {str(e)}")
                     continue
         
-        # 2. Encontrar seção de posições
+        # 2. Localizar seção de posições
         posicao_portfolio_index = None
         for i in range(len(df)):
             cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
@@ -98,7 +96,7 @@ def _processar_aba_fundos(file_path, db, global_services):
             print("[AVISO] Seção 'Posição > Portfólio de fundos' não encontrada")
             return posicoes
             
-        # 3. Encontrar cabeçalho
+        # 3. Localizar cabeçalho com colunas
         header_row_index = None
         for i in range(posicao_portfolio_index, min(posicao_portfolio_index + 4, len(df))):
             row = df.iloc[i]
@@ -110,9 +108,9 @@ def _processar_aba_fundos(file_path, db, global_services):
             print("[AVISO] Cabeçalho não encontrado na aba Fundos")
             return posicoes
             
-        # 4. Identificar colunas
+        # 4. Identificar coluna de cotas
         cotas_column = None
-        date_column = 1  # Padrão
+        date_column = 1  # Coluna padrão para data
         
         for j in range(len(df.columns)):
             if (j < len(df.iloc[header_row_index]) and 
@@ -125,24 +123,32 @@ def _processar_aba_fundos(file_path, db, global_services):
             print("[AVISO] Coluna de cotas não encontrada na aba Fundos")
             return posicoes
             
-        # 5. Processar posições
+        # 5. Extrair posições dos fundos
         for i in range(header_row_index + 1, len(df)):
+            # Parar se chegou ao fim da seção
             if (pd.notna(df.iloc[i, 1]) and isinstance(df.iloc[i, 1], str) and 
                 ("Detalhamento" in df.iloc[i, 1] or "Rentabilidade" in df.iloc[i, 1])):
                 break
                 
+            # Processar linha de nome do fundo
             if (pd.notna(df.iloc[i, 1]) and isinstance(df.iloc[i, 1], str) and 
                 not df.iloc[i, 1].startswith("Total") and not df.iloc[i, 1].startswith("Data")):
                 
-                fund_name = str(df.iloc[i, 1]).replace("*", "").strip()
+                # Extrair nome limpo do fundo
+                fund_name_raw = str(df.iloc[i, 1]).replace("*", "").strip()
+                if " - Classe CNPJ:" in fund_name_raw:
+                    fund_name = fund_name_raw.split(" - Classe CNPJ:")[0].strip()
+                else:
+                    fund_name = fund_name_raw
                 
+                # Verificar se próxima linha tem dados de cotas
                 if (i + 1 < len(df) and pd.notna(df.iloc[i+1, cotas_column]) and 
                     isinstance(df.iloc[i+1, cotas_column], (int, float))):
                     
                     date_value = df.iloc[i+1, date_column] if date_column < len(df.columns) else datetime.now()
                     quotas = float(df.iloc[i+1, cotas_column])
                     
-                    # Encontrar CNPJ
+                    # Buscar CNPJ correspondente
                     cnpj = None
                     for key, value in cnpjs_fundos.items():
                         if fund_name.lower() == key.lower():
@@ -150,6 +156,7 @@ def _processar_aba_fundos(file_path, db, global_services):
                             break
                             
                     if cnpj:
+                        # Normalizar data
                         if not isinstance(date_value, datetime):
                             try:
                                 date_value = datetime.strptime(str(date_value), "%Y-%m-%d")
@@ -163,57 +170,51 @@ def _processar_aba_fundos(file_path, db, global_services):
                             "data": date_value,
                             "tipo": "fundo_normal"
                         })
-                        print(f"[INFO] Fundo encontrado: {fund_name}")
                         
     except Exception as e:
         print(f"[ERRO] Erro na aba Fundos: {str(e)}")
     
     return posicoes
 
+################################
+################################
 
 def _processar_aba_previdencia_individual(file_path):
-    """Processa aba Previdência Individual - BUSCA INTELIGENTE"""
+    """Processa aba Previdência Individual com busca inteligente por seções"""
     posicoes = []
     
     try:
         df = pd.read_excel(file_path, sheet_name="Previdência Individual", header=None)
-        print(f"[DEBUG] Previdência Individual - DataFrame shape: {df.shape}")
         
-        # 1. Buscar seção que contém "Posição >"
+        # 1. Localizar todas as seções que contêm "Posição >"
         secoes_posicao = []
         for i in range(len(df)):
             cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
             if isinstance(cell_value, str) and "Posição >" in cell_value:
                 secoes_posicao.append(i)
-                print(f"[DEBUG] Seção de posição encontrada na linha {i}: {cell_value}")
         
-        # 2. Para cada seção de posição, procurar dados
+        # 2. Processar cada seção de posição encontrada
         for inicio_secao in secoes_posicao:
-            print(f"[DEBUG] Processando seção que inicia na linha {inicio_secao}")
-            
-            # 3. Procurar linha com cabeçalho "Fundo"
+            # 3. Localizar cabeçalho "Fundo"
             linha_cabecalho = None
             for i in range(inicio_secao, min(inicio_secao + 5, len(df))):
                 cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
                 if isinstance(cell_value, str) and cell_value.strip().lower() == "fundo":
                     linha_cabecalho = i
-                    print(f"[DEBUG] Cabeçalho 'Fundo' encontrado na linha {i}")
                     break
             
             if linha_cabecalho is None:
-                print(f"[DEBUG] Cabeçalho 'Fundo' não encontrado para seção {inicio_secao}")
                 continue
             
-            # 4. Processar dados após o cabeçalho até encontrar "Total" ou "Rentabilidade"
+            # 4. Extrair dados da seção até encontrar delimitador
             linha_atual = linha_cabecalho + 1
             while linha_atual < len(df):
                 row = df.iloc[linha_atual]
                 
-                # Parar se encontrar delimitadores
+                # Parar se encontrar fim da seção
                 if (pd.notna(row.iloc[1]) and isinstance(row.iloc[1], str) and 
                     (row.iloc[1].strip().lower() in ["total", "rentabilidade"] or 
                      "rentabilidade" in row.iloc[1].lower())):
-                    print(f"[DEBUG] Fim da seção encontrado na linha {linha_atual}: {row.iloc[1]}")
                     break
                 
                 # Verificar se é linha de dados válida
@@ -222,14 +223,12 @@ def _processar_aba_previdencia_individual(file_path):
                     pd.notna(row.iloc[2]) and isinstance(row.iloc[2], str) and
                     pd.notna(row.iloc[4]) and isinstance(row.iloc[4], (int, float)) and
                     ("FOF" in str(row.iloc[1]).upper() or "FI" in str(row.iloc[1]).upper()) and
-                    len(str(row.iloc[1]).strip()) > 10):  # Nome deve ter tamanho razoável
+                    len(str(row.iloc[1]).strip()) > 10):
                     
                     nome_fundo = str(row.iloc[1]).strip()
                     cnpj_bruto = str(row.iloc[2]).strip()
                     data_ref = row.iloc[3] if pd.notna(row.iloc[3]) else datetime.now()
                     quantidade_cotas = float(row.iloc[4])
-                    
-                    print(f"[DEBUG] Candidato a fundo encontrado na linha {linha_atual}: {nome_fundo}")
                     
                     # Validar CNPJ
                     session_temp = create_session()
@@ -240,6 +239,7 @@ def _processar_aba_previdencia_individual(file_path):
                     if is_valid:
                         cnpj_formatado = global_service.formatar_cnpj(cnpj_normalizado)
                         
+                        # Normalizar data
                         if not isinstance(data_ref, datetime):
                             try:
                                 if isinstance(data_ref, str):
@@ -254,9 +254,6 @@ def _processar_aba_previdencia_individual(file_path):
                             "data": data_ref,
                             "tipo": "previdencia_individual"
                         })
-                        print(f"[INFO] Previdência Individual encontrada: {nome_fundo}")
-                    else:
-                        print(f"[DEBUG] CNPJ inválido para {nome_fundo}: {msg}")
                 
                 linha_atual += 1
                     
@@ -264,6 +261,9 @@ def _processar_aba_previdencia_individual(file_path):
         print(f"[ERRO] Erro na Previdência Individual: {str(e)}")
     
     return posicoes
+
+#################################################
+#################################################
 
 def _processar_aba_previdencia_externa(file_path):
     """Processa aba Previdência Externa - BUSCA INTELIGENTE"""
@@ -354,7 +354,8 @@ def _processar_aba_previdencia_externa(file_path):
     
     return posicoes
 
-
+##################################################
+#################################################
 
 def _gerar_cnpj_dummy(nome_fundo):
     """
@@ -461,17 +462,10 @@ def listar_posicao(cliente_id):
             InfoFundo.risco == RiscoEnum.alto
         ).scalar() or 0.0)
 
-        saldo_fundo_di = float(db.query(
-            func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-        ).join(
-            InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-        ).filter(
-            PosicaoFundo.cliente_id == cliente_id,
-            InfoFundo.risco == RiscoEnum.fundo_DI  # Assumindo que você adicionou esse enum
-        ).scalar() or 0.0)
+        
 
         print(f"DEBUG: Found {len(posicoes)} positions")
-        print(f"DEBUG: Saldos por risco - Baixo: {saldo_baixo}, Moderado: {saldo_moderado}, Alto: {saldo_alto}, Fundo DI: {saldo_fundo_di}")
+        print(f"DEBUG: Saldos por risco - Baixo: {saldo_baixo}, Moderado: {saldo_moderado}, Alto: {saldo_alto}")
 
         if not cliente:
             print('Cliente não encontrado.')
@@ -483,8 +477,7 @@ def listar_posicao(cliente_id):
                              posicoes=posicoes,
                              saldo_baixo=saldo_baixo,
                              saldo_moderado=saldo_moderado,
-                             saldo_alto=saldo_alto,
-                             saldo_fundo_di=saldo_fundo_di)
+                             saldo_alto=saldo_alto)
 
     except Exception as e:
         print(f"ERROR in listar_posicao: {str(e)}")
@@ -685,9 +678,9 @@ def upload_cotas(cliente_id):
                 return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
 
             # Verificar CNPJs existentes e cadastrar novos fundos
+            
             existing_funds = {f.cnpj.replace('.', '').replace('/', '').replace('-', ''): f.id
-                             for f in db.query(InfoFundo.id, InfoFundo.cnpj).all()}
-
+                 for f in db.query(InfoFundo).all()}
             new_cnpjs = []
             for pos in posicoes:
                 norm_cnpj = pos['cnpj'].replace('.', '').replace('/', '').replace('-', '')
@@ -708,7 +701,11 @@ def upload_cotas(cliente_id):
 
                 # Processar CNPJs reais via CVM
                 if cnpjs_reais:
-                    funds_info = extract_service.extracao_cvm_info_batch(cnpjs_reais)
+                    funds_info = {}
+                    for cnpj in cnpjs_reais:
+                        info = extract_service.extracao_cvm_info(cnpj)
+                        if info is not None:
+                            funds_info[cnpj] = info
                     
                     for cnpj, info in funds_info.items():
                         nome_fundo = info['DENOM_SOCIAL']

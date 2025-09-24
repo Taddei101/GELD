@@ -1,5 +1,5 @@
 from app.config import DATABASE_URL
-from sqlalchemy import Enum, Column, Integer, Numeric, String, ForeignKey, DateTime,Float, create_engine
+from sqlalchemy import Enum, Column, Integer, Numeric, String, ForeignKey, DateTime,Float, create_engine, Index
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 from datetime import datetime
 import enum
@@ -25,7 +25,14 @@ class RiscoEnum(enum.Enum):
     alto = 'alto'
     moderado = 'moderado'
     baixo = 'baixo'
-    fundo_DI='fundo_DI'
+
+class SubtipoRiscoEnum(enum.Enum):
+    rfx = 'rfx'
+    di = 'di'
+
+class TipoObjetivoEnum(enum.Enum):
+    geral = 'geral'
+    previdencia = 'previdencia'
 
 class StatusFundoEnum(enum.Enum):
     ativo = 'ativo'
@@ -61,11 +68,14 @@ class Objetivo(Base):
     id = Column(Integer, primary_key = True)
     cliente_id = Column(Integer, ForeignKey('clientes.id'), nullable = False)
     nome_objetivo = Column(String, nullable =False)
+    tipo_objetivo = Column(Enum(TipoObjetivoEnum), nullable=False, default=TipoObjetivoEnum.geral)
     valor_final = Column(Numeric(15,2), nullable = False)
     valor_real = Column(Numeric(15,2), nullable = False)
     valor_inicial = Column(Numeric(15,2), nullable = False)
     data_inicial = Column(DateTime, nullable = False)
     data_final = Column(DateTime, nullable = False)
+
+
     @property
     def duracao_meses(self):
         data_atual = datetime.now()
@@ -88,6 +98,9 @@ class InfoFundo(Base):
     mov_min = Column(Numeric(15,2))
     permanencia_min = Column(Numeric(15,2))
     risco = Column(Enum(RiscoEnum), nullable = False)
+    
+    subtipo_risco = Column(Enum(SubtipoRiscoEnum),nullable=True)
+    
     status_fundo = Column(Enum(StatusFundoEnum), nullable = False)
     valor_cota = Column(Numeric(15,6), nullable=False)
     data_atualizacao = Column(DateTime, nullable=True)
@@ -106,6 +119,7 @@ class PosicaoFundo(Base):
     info_fundo = relationship("InfoFundo", back_populates = "posicoes_fundo")
     cliente = relationship("Cliente", back_populates="posicoes_fundo")
 
+#Acho que isto nao esta sendo usado ainda
 class Transacao(Base):
     """num_operacao, data_mov, data_cotizacao,data_liquidacao,tipo_operacao,quantidade_cotas"""
     __tablename__ = 'transacoes'
@@ -128,6 +142,26 @@ class Transacao(Base):
     cliente = relationship("Cliente", back_populates="transacoes")
     info_fundo = relationship("InfoFundo")
 
+class MatrizRisco(Base):
+    __tablename__ = 'matriz_risco'
+    
+    id = Column(Integer, primary_key=True)
+    tipo_objetivo = Column(Enum(TipoObjetivoEnum), nullable=False)
+    duracao_meses = Column(Integer, nullable=False)
+        
+    perc_baixo = Column(Float, nullable=False)
+    perc_moderado = Column(Float, nullable=False) 
+    perc_alto = Column(Float, nullable=False)
+        
+    perc_di_dentro_baixo = Column(Float, nullable=False)
+    perc_rfx_dentro_baixo = Column(Float, nullable=False)
+        
+    __table_args__ = (
+        Index('ix_matriz_tipo_duracao', 'tipo_objetivo', 'duracao_meses', unique=True),
+    )
+
+
+
 class IndicadoresEconomicos(Base):
     __tablename__ = 'indicadores_economicos'
     
@@ -136,9 +170,74 @@ class IndicadoresEconomicos(Base):
     ipca_mes = Column(Float, default=0)
     data_atualizacao = Column(DateTime, default=datetime.now)
 
+
+def _popular_matriz_inicial():
+    """
+    Popula dados iniciais da matriz de risco - chamada automaticamente pelo init_db()
+    """
+    from app.models.matriz_data import MATRIZ_GERAL, MATRIZ_PREVIDENCIA, validar_todas_matrizes
+    
+    session = create_session()
+    try:
+        # Verificar se já tem dados
+        existe = session.query(MatrizRisco).first()
+        if existe:
+            print("ℹ️  Matriz de risco já populada")
+            return
+        
+        print("🔄 Populando matriz de risco inicial...")
+        
+        # Validar dados antes de inserir
+        if not validar_todas_matrizes():
+            raise Exception("Dados da matriz inválidos - verifique app/models/matriz_data.py")
+        
+        # Inserir dados GERAL
+        for duracao, baixo, moderado, alto, di, rfx in MATRIZ_GERAL:
+            matriz = MatrizRisco(
+                tipo_objetivo=TipoObjetivoEnum.geral,
+                duracao_meses=duracao,
+                perc_baixo=baixo,
+                perc_moderado=moderado,
+                perc_alto=alto,
+                perc_di_dentro_baixo=di,
+                perc_rfx_dentro_baixo=rfx
+            )
+            session.add(matriz)
+        
+        # Inserir dados PREVIDÊNCIA
+        for duracao, baixo, moderado, alto, di, rfx in MATRIZ_PREVIDENCIA:
+            matriz = MatrizRisco(
+                tipo_objetivo=TipoObjetivoEnum.previdencia,
+                duracao_meses=duracao,
+                perc_baixo=baixo,
+                perc_moderado=moderado,
+                perc_alto=alto,
+                perc_di_dentro_baixo=di,
+                perc_rfx_dentro_baixo=rfx
+            )
+            session.add(matriz)
+        
+        session.commit()
+        
+        # Contar registros inseridos
+        total_geral = session.query(MatrizRisco).filter(MatrizRisco.tipo_objetivo == TipoObjetivoEnum.geral).count()
+        total_prev = session.query(MatrizRisco).filter(MatrizRisco.tipo_objetivo == TipoObjetivoEnum.previdencia).count()
+        
+        print(f"✅ Matriz populada! Geral: {total_geral}, Previdência: {total_prev}")
+        
+    except Exception as e:
+        session.rollback()
+        print(f"❌ Erro ao popular matriz: {e}")
+        raise e
+    finally:
+        session.close()
+
 def init_db():
     engine = create_engine(DATABASE_URL)
     Base.metadata.create_all(engine)
+        
+    _popular_matriz_inicial()
+    
     return engine
   
 def create_session():
