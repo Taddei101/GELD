@@ -45,6 +45,7 @@ def add_objetivo(cliente_id):
             Objetivo,
             cliente_id=cliente_id,
             nome_objetivo=request.form['nome_objetivo'],
+            tipo_objetivo=request.form['tipo_objetivo'],
             valor_final=float(request.form['valor_final']),
             valor_real=float(request.form['valor_real']), 
             valor_inicial=float(request.form['valor_inicial']),
@@ -92,6 +93,7 @@ def edit_objetivo(objetivo_id):
             print("Recebida solicitação POST para editar objetivo.")
             dados_atualizados = {
                 'nome_objetivo': request.form['nome_objetivo'],
+                'tipo_objetivo': request.form['tipo_objetivo'],
                 'valor_final': float(request.form['valor_final']),
                 'valor_real': float(request.form['valor_real']),
                 'data_final': datetime.strptime(request.form['data_final'], '%Y-%m-%d')
