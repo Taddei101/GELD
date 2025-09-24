@@ -22,6 +22,7 @@ def cliente_dashboard():
     mes_anterior = None
     ipca_mes_anterior = None
     num_fundos = 0
+    capital_administrado = 0  
 
     try:
         num_clientes = db.query(func.count(Cliente.id)).filter(Cliente.status == StatusEnum.ativo).scalar() or 0
