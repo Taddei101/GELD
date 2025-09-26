@@ -32,7 +32,7 @@ def listar_fundos():
         if 'db' in locals() and db:
             db.close()
 
-#CADASTRAR FUNDO NA MÃO (está instanciado no momento pois não deverá existir.)
+#CADASTRAR FUNDO NA MÃO 
 @fundos_bp.route('/add_fundo', methods =['GET', 'POST'])
 @login_required
 def add_fundo():
@@ -308,6 +308,7 @@ def atualizar_cotas_fundos():
 @fundos_bp.route('/add_fundo_cnpj', methods=['POST'])
 @login_required
 def add_fundo_cnpj():
+    db = None
     try:
         db = create_session()
         extract_service = ExtractServices(db)
@@ -326,7 +327,7 @@ def add_fundo_cnpj():
             return redirect(url_for('fundos.add_fundo'))
 
         cnpj_formatado = global_service.formatar_cnpj(cnpj_normalizado)
-        flash(f'Processando CNPJ: {cnpj_formatado}', "info")
+        flash(f'🔍 Processando CNPJ: {cnpj_formatado}', "info")
         print(f'Processando CNPJ: {cnpj_formatado}')
 
         # Verificar se o fundo já existe no banco de dados
@@ -335,44 +336,61 @@ def add_fundo_cnpj():
             # Normaliza o CNPJ do fundo existente e compara com o normalizado do input
             fund_cnpj_norm = re.sub(r'\D', '', fund.cnpj)
             if fund_cnpj_norm == cnpj_normalizado:
-                flash(f'O fundo com CNPJ {cnpj_formatado} já está cadastrado como "{fund.nome_fundo}"!', "warning")
+                flash(f'⚠️ O fundo com CNPJ {cnpj_formatado} já está cadastrado como "{fund.nome_fundo}"!', "warning")
                 print(f'O fundo com CNPJ {cnpj_formatado} já está cadastrado como "{fund.nome_fundo}"!')
                 return redirect(url_for('fundos.listar_fundos'))
 
+        # NOVA LÓGICA: Busca inteligente com múltiplos meses
+        flash(f'🔄 Buscando informações na CVM (até 3 meses)...', "info")
+        
         try:
-            info = extract_service.extracao_cvm_info(cnpj_normalizado)
+            # Usar a nova função melhorada
+            info_fundo, mes_encontrado = extract_service.extracao_cvm_info(cnpj_normalizado, max_meses_anteriores=3)
 
-            if info is None or (isinstance(info, pd.DataFrame) and info.empty):
-                flash(f'Não foi possível encontrar informações para o CNPJ: {cnpj_formatado}', "error")
+            if info_fundo is None:
+                flash(f'❌ Não foi possível encontrar informações para o CNPJ: {cnpj_formatado} nos últimos 3 meses', "error")
                 print(f'Não foi possível encontrar informações para o CNPJ: {cnpj_formatado}')
                 return redirect(url_for('fundos.add_fundo'))
 
+            # Criar o fundo com as informações encontradas
             novo_fundo = global_service.create_classe(
                 InfoFundo,
-                nome_fundo=info['DENOM_SOCIAL'],
+                nome_fundo=info_fundo['DENOM_SOCIAL'],
                 cnpj=cnpj_formatado,  # Armazena formatado
-                classe_anbima=info['CLASSE_ANBIMA'],
-                mov_min=float(info['PR_CIA_MIN']) if info['PR_CIA_MIN'] and info['PR_CIA_MIN'] != 'None' else None,
+                classe_anbima=info_fundo['CLASSE_ANBIMA'],
+                mov_min=float(info_fundo['PR_CIA_MIN']) if info_fundo['PR_CIA_MIN'] and info_fundo['PR_CIA_MIN'] not in ['None', '', 'nan'] else None,
                 risco=RiscoEnum.moderado,  # Default value
                 status_fundo=StatusFundoEnum.ativo,
-                valor_cota=0.0,
+                valor_cota=0.0,  # Será atualizado depois
                 data_atualizacao=datetime.now()
             )
-            flash(f'Fundo {novo_fundo.nome_fundo} cadastrado com sucesso!', "success")
+
+            # Flash de sucesso com detalhes
+            if mes_encontrado == "atual":
+                flash(f'✅ Fundo "{novo_fundo.nome_fundo}" cadastrado com sucesso! (dados atuais)', "success")
+            else:
+                flash(f'✅ Fundo "{novo_fundo.nome_fundo}" cadastrado com sucesso! (dados de {mes_encontrado})', "success")
+            
             print(f'Fundo {novo_fundo.nome_fundo} cadastrado com sucesso!')
 
-        except (IndexError, KeyError):
-            flash('Não foi possível encontrar informações para o CNPJ informado.', "warning")
-            print('Não foi possível encontrar informações para o CNPJ informado.')
+        except (IndexError, KeyError) as e:
+            flash(f'❌ Erro ao processar dados do fundo: campos obrigatórios não encontrados', "error")
+            print(f'Erro ao processar dados do fundo: {str(e)}')
+        except ValueError as e:
+            flash(f'❌ Erro de validação nos dados do fundo: {str(e)}', "error")
+            print(f'Erro de validação: {str(e)}')
 
         return redirect(url_for('fundos.listar_fundos'))
 
     except Exception as e:
         import traceback
         traceback.print_exc()
-        flash(f'Erro ao cadastrar fundo por CNPJ: {str(e)}', "error")
+        flash(f'❌ Erro interno ao cadastrar fundo: {str(e)}', "error")
         print(f'Erro ao cadastrar fundo por CNPJ: {str(e)}')
         return redirect(url_for('fundos.add_fundo'))
     finally:
-        if 'db' in locals() and db:
-            db.close()
+        if db:
+            try:
+                db.close()
+            except:
+                pass
