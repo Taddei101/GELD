@@ -118,7 +118,7 @@ class GlobalServices:
         return f"{cnpj_normalizado[:2]}.{cnpj_normalizado[2:5]}.{cnpj_normalizado[5:8]}/{cnpj_normalizado[8:12]}-{cnpj_normalizado[12:]}"
 
 
-# Selecionar arquivo
+# # Selecionar arquivo
 
     def processar_upload_arquivo(self):
         """

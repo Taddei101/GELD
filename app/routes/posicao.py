@@ -1,422 +1,24 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
+from werkzeug.utils import secure_filename
 from app.services.global_services import login_required, GlobalServices
-from app.models.geld_models import create_session, Cliente, InfoFundo, PosicaoFundo, RiscoEnum, StatusFundoEnum
+from app.models.geld_models import create_session, Cliente, InfoFundo, PosicaoFundo, RiscoEnum
 from sqlalchemy import func
 from datetime import datetime
-import pandas as pd
-import hashlib
-from app.services.extract_services import ExtractServices
+import os
+import time
+import traceback
+from app.services.extract_btg_service import ExtractBTGService
+from app.services.fundo_registration_service import FundoRegistrationService
 
 
 posicao_bp = Blueprint('posicao', __name__)
 
-# =============================================================================
-# FUNÇÕES AUXILIARES PARA PROCESSAMENTO UNIFICADO BTG
-# =============================================================================
-
-def processar_arquivo_btg_completo(file_path, cliente_id, db, global_services):
-    """
-    Processa TODAS as abas relevantes do BTG em uma única operação
-    """
-    todas_posicoes = []
-    log_processamento = {
-        'fundos': 0,
-        'previdencia_individual': 0, 
-        'previdencia_externa': 0,
-        'erros': []
-    }
-    
-    try:
-        # 1. PROCESSAR ABA FUNDOS
-        posicoes_fundos = _processar_aba_fundos(file_path, db, global_services)
-        todas_posicoes.extend(posicoes_fundos)
-        log_processamento['fundos'] = len(posicoes_fundos)
-        
-        # 2. PROCESSAR PREVIDÊNCIA INDIVIDUAL
-        posicoes_prev_ind = _processar_aba_previdencia_individual(file_path)
-        todas_posicoes.extend(posicoes_prev_ind)
-        log_processamento['previdencia_individual'] = len(posicoes_prev_ind)
-        
-        # 3. PROCESSAR PREVIDÊNCIA EXTERNA  
-        posicoes_prev_ext = _processar_aba_previdencia_externa(file_path)
-        todas_posicoes.extend(posicoes_prev_ext)
-        log_processamento['previdencia_externa'] = len(posicoes_prev_ext)
-        
-        # 4. DEDUPLICAÇÃO POR CNPJ
-        posicoes_unicas = _deduplificar_posicoes(todas_posicoes)
-        posicoes_removidas = len(todas_posicoes) - len(posicoes_unicas)
-        
-        if posicoes_removidas > 0:
-            print(f"[INFO] {posicoes_removidas} posições duplicadas removidas")
-        
-        return posicoes_unicas, log_processamento
-        
-    except Exception as e:
-        log_processamento['erros'].append(str(e))
-        print(f"[ERRO] Erro no processamento completo: {str(e)}")
-        return todas_posicoes, log_processamento
-    
-#################################
-#################################
-
-def _processar_aba_fundos(file_path, db, global_services):
-    """Processa aba Fundos extraindo CNPJs e posições"""
-    posicoes = []
-    
-    try:
-        df = pd.read_excel(file_path, sheet_name="Fundos", header=None)
-        
-        # 1. Mapear CNPJs da seção "Detalhamento >"
-        cnpjs_fundos = {}
-        for i in range(len(df)):
-            cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
-            if isinstance(cell_value, str) and "Detalhamento >" in cell_value:
-                try:
-                    parts = cell_value.split(" - ")
-                    fund_name = parts[0].replace("Detalhamento > ", "").strip()
-                    cnpj_bruto = parts[1].strip()
-                    
-                    is_valid, cnpj_normalizado, _ = global_services.validar_cnpj(cnpj_bruto)
-                    if is_valid:
-                        cnpj_formatado = global_services.formatar_cnpj(cnpj_normalizado)
-                        cnpjs_fundos[fund_name] = cnpj_formatado
-                except Exception as e:
-                    print(f"[AVISO] Erro ao mapear CNPJ na linha {i}: {str(e)}")
-                    continue
-        
-        # 2. Localizar seção de posições
-        posicao_portfolio_index = None
-        for i in range(len(df)):
-            cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
-            if isinstance(cell_value, str) and "Posição > Portfólio de fundos" in cell_value:
-                posicao_portfolio_index = i
-                break
-                
-        if posicao_portfolio_index is None:
-            print("[AVISO] Seção 'Posição > Portfólio de fundos' não encontrada")
-            return posicoes
-            
-        # 3. Localizar cabeçalho com colunas
-        header_row_index = None
-        for i in range(posicao_portfolio_index, min(posicao_portfolio_index + 4, len(df))):
-            row = df.iloc[i]
-            if any(isinstance(cell, str) and "Quantidade de Cotas" in cell for cell in row):
-                header_row_index = i
-                break
-                
-        if header_row_index is None:
-            print("[AVISO] Cabeçalho não encontrado na aba Fundos")
-            return posicoes
-            
-        # 4. Identificar coluna de cotas
-        cotas_column = None
-        date_column = 1  # Coluna padrão para data
-        
-        for j in range(len(df.columns)):
-            if (j < len(df.iloc[header_row_index]) and 
-                isinstance(df.iloc[header_row_index, j], str) and 
-                "Quantidade de Cotas" in df.iloc[header_row_index, j]):
-                cotas_column = j
-                break
-                
-        if cotas_column is None:
-            print("[AVISO] Coluna de cotas não encontrada na aba Fundos")
-            return posicoes
-            
-        # 5. Extrair posições dos fundos
-        for i in range(header_row_index + 1, len(df)):
-            # Parar se chegou ao fim da seção
-            if (pd.notna(df.iloc[i, 1]) and isinstance(df.iloc[i, 1], str) and 
-                ("Detalhamento" in df.iloc[i, 1] or "Rentabilidade" in df.iloc[i, 1])):
-                break
-                
-            # Processar linha de nome do fundo
-            if (pd.notna(df.iloc[i, 1]) and isinstance(df.iloc[i, 1], str) and 
-                not df.iloc[i, 1].startswith("Total") and not df.iloc[i, 1].startswith("Data")):
-                
-                # Extrair nome limpo do fundo
-                fund_name_raw = str(df.iloc[i, 1]).replace("*", "").strip()
-                if " - Classe CNPJ:" in fund_name_raw:
-                    fund_name = fund_name_raw.split(" - Classe CNPJ:")[0].strip()
-                else:
-                    fund_name = fund_name_raw
-                
-                # Verificar se próxima linha tem dados de cotas
-                if (i + 1 < len(df) and pd.notna(df.iloc[i+1, cotas_column]) and 
-                    isinstance(df.iloc[i+1, cotas_column], (int, float))):
-                    
-                    date_value = df.iloc[i+1, date_column] if date_column < len(df.columns) else datetime.now()
-                    quotas = float(df.iloc[i+1, cotas_column])
-                    
-                    # Buscar CNPJ correspondente
-                    cnpj = None
-                    for key, value in cnpjs_fundos.items():
-                        if fund_name.lower() == key.lower():
-                            cnpj = value
-                            break
-                            
-                    if cnpj:
-                        # Normalizar data
-                        if not isinstance(date_value, datetime):
-                            try:
-                                date_value = datetime.strptime(str(date_value), "%Y-%m-%d")
-                            except:
-                                date_value = datetime.now()
-                                
-                        posicoes.append({
-                            "nome_fundo": fund_name,
-                            "cnpj": cnpj,
-                            "num_cotas": quotas,
-                            "data": date_value,
-                            "tipo": "fundo_normal"
-                        })
-                        
-    except Exception as e:
-        print(f"[ERRO] Erro na aba Fundos: {str(e)}")
-    
-    return posicoes
-
-################################
-################################
-
-def _processar_aba_previdencia_individual(file_path):
-    """Processa aba Previdência Individual com busca inteligente por seções"""
-    posicoes = []
-    
-    try:
-        df = pd.read_excel(file_path, sheet_name="Previdência Individual", header=None)
-        
-        # 1. Localizar todas as seções que contêm "Posição >"
-        secoes_posicao = []
-        for i in range(len(df)):
-            cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
-            if isinstance(cell_value, str) and "Posição >" in cell_value:
-                secoes_posicao.append(i)
-        
-        # 2. Processar cada seção de posição encontrada
-        for inicio_secao in secoes_posicao:
-            # 3. Localizar cabeçalho "Fundo"
-            linha_cabecalho = None
-            for i in range(inicio_secao, min(inicio_secao + 5, len(df))):
-                cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
-                if isinstance(cell_value, str) and cell_value.strip().lower() == "fundo":
-                    linha_cabecalho = i
-                    break
-            
-            if linha_cabecalho is None:
-                continue
-            
-            # 4. Extrair dados da seção até encontrar delimitador
-            linha_atual = linha_cabecalho + 1
-            while linha_atual < len(df):
-                row = df.iloc[linha_atual]
-                
-                # Parar se encontrar fim da seção
-                if (pd.notna(row.iloc[1]) and isinstance(row.iloc[1], str) and 
-                    (row.iloc[1].strip().lower() in ["total", "rentabilidade"] or 
-                     "rentabilidade" in row.iloc[1].lower())):
-                    break
-                
-                # Verificar se é linha de dados válida
-                if (len(row) >= 7 and 
-                    pd.notna(row.iloc[1]) and isinstance(row.iloc[1], str) and
-                    pd.notna(row.iloc[2]) and isinstance(row.iloc[2], str) and
-                    pd.notna(row.iloc[4]) and isinstance(row.iloc[4], (int, float)) and
-                    ("FOF" in str(row.iloc[1]).upper() or "FI" in str(row.iloc[1]).upper()) and
-                    len(str(row.iloc[1]).strip()) > 10):
-                    
-                    nome_fundo = str(row.iloc[1]).strip()
-                    cnpj_bruto = str(row.iloc[2]).strip()
-                    data_ref = row.iloc[3] if pd.notna(row.iloc[3]) else datetime.now()
-                    quantidade_cotas = float(row.iloc[4])
-                    
-                    # Validar CNPJ
-                    session_temp = create_session()
-                    global_service = GlobalServices(session_temp)
-                    is_valid, cnpj_normalizado, msg = global_service.validar_cnpj(cnpj_bruto)
-                    session_temp.close()
-                    
-                    if is_valid:
-                        cnpj_formatado = global_service.formatar_cnpj(cnpj_normalizado)
-                        
-                        # Normalizar data
-                        if not isinstance(data_ref, datetime):
-                            try:
-                                if isinstance(data_ref, str):
-                                    data_ref = datetime.strptime(data_ref, "%Y-%m-%d")
-                            except:
-                                data_ref = datetime.now()
-                        
-                        posicoes.append({
-                            "nome_fundo": nome_fundo,
-                            "cnpj": cnpj_formatado,
-                            "num_cotas": quantidade_cotas,
-                            "data": data_ref,
-                            "tipo": "previdencia_individual"
-                        })
-                
-                linha_atual += 1
-                    
-    except Exception as e:
-        print(f"[ERRO] Erro na Previdência Individual: {str(e)}")
-    
-    return posicoes
-
-#################################################
-#################################################
-
-def _processar_aba_previdencia_externa(file_path):
-    """Processa aba Previdência Externa - BUSCA INTELIGENTE"""
-    posicoes = []
-    
-    try:
-        df = pd.read_excel(file_path, sheet_name="Previdência Externa", header=None)
-        print(f"[DEBUG] Previdência Externa - DataFrame shape: {df.shape}")
-        
-        # 1. Buscar seções que contêm "Posição >"
-        secoes_posicao = []
-        for i in range(len(df)):
-            cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
-            if isinstance(cell_value, str) and "Posição >" in cell_value:
-                secoes_posicao.append(i)
-                print(f"[DEBUG] Seção de posição encontrada na linha {i}: {cell_value}")
-        
-        # 2. Para cada seção de posição, procurar dados
-        for inicio_secao in secoes_posicao:
-            print(f"[DEBUG] Processando seção que inicia na linha {inicio_secao}")
-            
-            # 3. Procurar linha com cabeçalho "Fundo"
-            linha_cabecalho = None
-            for i in range(inicio_secao, min(inicio_secao + 5, len(df))):
-                cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
-                if isinstance(cell_value, str) and cell_value.strip().lower() == "fundo":
-                    linha_cabecalho = i
-                    print(f"[DEBUG] Cabeçalho 'Fundo' encontrado na linha {i}")
-                    break
-            
-            if linha_cabecalho is None:
-                print(f"[DEBUG] Cabeçalho 'Fundo' não encontrado para seção {inicio_secao}")
-                continue
-            
-            # 4. Processar dados após o cabeçalho até encontrar delimitador
-            linha_atual = linha_cabecalho + 1
-            while linha_atual < len(df):
-                row = df.iloc[linha_atual]
-                
-                # Parar se encontrar delimitadores
-                if (pd.notna(row.iloc[1]) and isinstance(row.iloc[1], str) and 
-                    (row.iloc[1].strip().lower() in ["rentabilidade"] or 
-                     "rentabilidade" in row.iloc[1].lower() or
-                     "plano >" in row.iloc[1].lower())):
-                    print(f"[DEBUG] Fim da seção encontrado na linha {linha_atual}: {row.iloc[1]}")
-                    break
-                
-                # Verificar se é linha de dados válida (estrutura diferente da individual)
-                if (len(row) >= 6 and 
-                    pd.notna(row.iloc[1]) and isinstance(row.iloc[1], str) and
-                    pd.notna(row.iloc[3]) and isinstance(row.iloc[3], (int, float)) and
-                    ("FOF" in str(row.iloc[1]).upper() or 
-                     "ICATU" in str(row.iloc[1]).upper() or 
-                     "SUPERPREVIDENCIA" in str(row.iloc[1]).upper() or
-                     "EMPIRICUS" in str(row.iloc[1]).upper()) and
-                    len(str(row.iloc[1]).strip()) > 15 and  # Nome deve ter tamanho razoável
-                    float(row.iloc[3]) > 100):  # Filtrar rentabilidades pequenas
-                    
-                    nome_fundo = str(row.iloc[1]).strip()
-                    data_ref = row.iloc[2] if pd.notna(row.iloc[2]) else datetime.now()
-                    quantidade_cotas = float(row.iloc[3])
-                    
-                    print(f"[DEBUG] Candidato a fundo encontrado na linha {linha_atual}: {nome_fundo}")
-                    
-                    # Gerar CNPJ dummy
-                    cnpj_dummy = _gerar_cnpj_dummy(nome_fundo)
-                    
-                    if not isinstance(data_ref, datetime):
-                        try:
-                            if isinstance(data_ref, str):
-                                data_ref = datetime.strptime(data_ref, "%Y-%m-%d")
-                        except:
-                            data_ref = datetime.now()
-                    
-                    posicoes.append({
-                        "nome_fundo": nome_fundo,
-                        "cnpj": cnpj_dummy,
-                        "num_cotas": quantidade_cotas,
-                        "data": data_ref,
-                        "tipo": "previdencia_externa"
-                    })
-                    print(f"[INFO] Previdência Externa encontrada: {nome_fundo}")
-                
-                linha_atual += 1
-                    
-    except Exception as e:
-        print(f"[ERRO] Erro na Previdência Externa: {str(e)}")
-    
-    return posicoes
-
-##################################################
-#################################################
-
-def _gerar_cnpj_dummy(nome_fundo):
-    """
-    Gera CNPJ dummy baseado no nome normalizado do fundo
-    Remove caracteres especiais para evitar duplicação
-    """
-    import hashlib
-    import re
-    
-    # 1. NORMALIZAR NOME DO FUNDO
-    nome_normalizado = nome_fundo.upper()
-    
-    # Remover caracteres especiais comuns
-    nome_normalizado = re.sub(r'[*\s\-_.]+', '', nome_normalizado)  
-    nome_normalizado = re.sub(r'[^A-Z0-9]', '', nome_normalizado)   # Só letras e números
-    
-    print(f"[DEBUG] Nome original: '{nome_fundo}' → Normalizado: '{nome_normalizado}'")
-    
-    # 2. GERAR HASH DO NOME NORMALIZADO
-    hash_object = hashlib.md5(nome_normalizado.encode())
-    hash_hex = hash_object.hexdigest()
-    
-    # Pegar primeiros 12 dígitos do hash e converter para números
-    numeros = ''.join([str(int(c, 16) % 10) for c in hash_hex[:12]])
-    
-    # 3. FORMATO: 99.XXX.XXX/0001-XX (99 = dummy, 0001 = filial padrão)
-    cnpj_dummy = f"99.{numeros[:3]}.{numeros[3:6]}/0001-{numeros[6:8]}"
-    
-    print(f"[DEBUG] CNPJ dummy gerado: {cnpj_dummy}")
-    return cnpj_dummy
-
-def _deduplificar_posicoes(posicoes):
-    """Remove posições duplicadas baseado em CNPJ"""
-    posicoes_unicas = {}
-    
-    for pos in posicoes:
-        cnpj_norm = pos['cnpj'].replace('.', '').replace('/', '').replace('-', '')
-        
-        # Se já existe, manter o mais completo (preferencialmente não-dummy)
-        if cnpj_norm in posicoes_unicas:
-            pos_existente = posicoes_unicas[cnpj_norm]
-            
-            # Priorizar: fundo_normal > previdencia_individual > previdencia_externa
-            prioridades = {'fundo_normal': 3, 'previdencia_individual': 2, 'previdencia_externa': 1}
-            
-            prioridade_atual = prioridades.get(pos.get('tipo', ''), 0)
-            prioridade_existente = prioridades.get(pos_existente.get('tipo', ''), 0)
-            
-            if prioridade_atual > prioridade_existente:
-                posicoes_unicas[cnpj_norm] = pos
-                print(f"[INFO] Substituindo posição duplicada: {pos['nome_fundo']}")
-        else:
-            posicoes_unicas[cnpj_norm] = pos
-    
-    return list(posicoes_unicas.values())
 
 # =============================================================================
-# ROTAS
+# ROTAS CRUD DE POSIÇÕES
 # =============================================================================
 
-@posicao_bp.route('/posicao/<int:cliente_id>/listar_posicao')
+@posicao_bp.route('/posicao/<int:cliente_id>/listar', methods=['GET'])
 @login_required
 def listar_posicao(cliente_id):
     try:
@@ -424,7 +26,7 @@ def listar_posicao(cliente_id):
         global_services = GlobalServices(db)
         cliente = global_services.get_by_id(Cliente, cliente_id)
         posicoes = db.query(PosicaoFundo).filter(PosicaoFundo.cliente_id == cliente_id).all()
-        
+
         # Cálculo do montante total (já existia) - CONVERTIDO PARA FLOAT
         montante_cliente = float(db.query(
                 func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
@@ -482,12 +84,9 @@ def listar_posicao(cliente_id):
     except Exception as e:
         print(f"ERROR in listar_posicao: {str(e)}")
         return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
-
     finally:
         db.close()
 
-##########################
-##########################
 
 @posicao_bp.route('/posicao/<int:cliente_id>/add_posicao', methods=['GET', 'POST'])
 @login_required
@@ -526,14 +125,13 @@ def add_posicao(cliente_id):
             # Criar nova posicao
             nova_posicao = global_service.create_classe(
                 PosicaoFundo,
-                cliente_id=cliente_id,
                 fundo_id=fundo_id,
+                cliente_id=cliente_id,
                 cotas=cotas,
                 data_atualizacao=data_atualizacao
             )
 
-            print(f'Posição cadastrada com sucesso!')
-            flash("Posição registrada com sucesso!", "success")
+            flash('Posição cadastrada com sucesso!')
             return redirect(url_for('posicao.listar_posicao', cliente_id=cliente_id))
 
         except ValueError as e:
@@ -545,6 +143,7 @@ def add_posicao(cliente_id):
 
         return redirect(url_for('posicao.add_posicao', cliente_id=cliente_id))
 
+
 @posicao_bp.route('/posicao/<int:posicao_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_posicao(posicao_id):
@@ -553,7 +152,6 @@ def edit_posicao(posicao_id):
             db = create_session()
             global_service = GlobalServices(db)
             
-            # Buscar a posição
             posicao = global_service.get_by_id(PosicaoFundo, posicao_id)
             if not posicao:
                 flash('Posição não encontrada.')
@@ -603,6 +201,7 @@ def edit_posicao(posicao_id):
         
         return redirect(url_for('posicao.edit_posicao', posicao_id=posicao_id))
 
+
 @posicao_bp.route('/posicao/<int:posicao_id>/delete', methods=['POST'])
 @login_required
 def delete_posicao(posicao_id):
@@ -632,6 +231,69 @@ def delete_posicao(posicao_id):
     finally:
         db.close()
 
+
+@posicao_bp.route('/posicao/<int:cliente_id>/delete_multiple', methods=['POST'])
+@login_required
+def delete_multiple_posicoes(cliente_id):
+    """
+    Deleta múltiplas posições de uma vez
+    Recebe lista de IDs via formulário
+    """
+    try:
+        db = create_session()
+        global_service = GlobalServices(db)
+        
+        # Obter lista de IDs das posições selecionadas
+        posicao_ids = request.form.getlist('posicao_ids')
+        
+        if not posicao_ids:
+            flash('Nenhuma posição foi selecionada.', 'warning')
+            return redirect(url_for('posicao.listar_posicao', cliente_id=cliente_id))
+        
+        # Converter para inteiros
+        posicao_ids = [int(pid) for pid in posicao_ids]
+        
+        # Deletar cada posição
+        deleted_count = 0
+        failed_count = 0
+        
+        for posicao_id in posicao_ids:
+            try:
+                # Verificar se a posição pertence ao cliente correto (segurança)
+                posicao = global_service.get_by_id(PosicaoFundo, posicao_id)
+                
+                if posicao and posicao.cliente_id == cliente_id:
+                    if global_service.delete(PosicaoFundo, posicao_id):
+                        deleted_count += 1
+                    else:
+                        failed_count += 1
+                else:
+                    failed_count += 1
+                    
+            except Exception as e:
+                print(f"[ERRO] Erro ao deletar posição {posicao_id}: {str(e)}")
+                failed_count += 1
+        
+        # Mensagem de feedback
+        if deleted_count > 0:
+            flash(f'{deleted_count} posição(ões) deletada(s) com sucesso!', 'success')
+        
+        if failed_count > 0:
+            flash(f'{failed_count} posição(ões) não puderam ser deletadas.', 'error')
+        
+        return redirect(url_for('posicao.listar_posicao', cliente_id=cliente_id))
+        
+    except Exception as e:
+        flash(f'Erro ao deletar posições: {str(e)}', 'error')
+        return redirect(url_for('posicao.listar_posicao', cliente_id=cliente_id))
+    finally:
+        db.close()
+
+
+# =============================================================================
+# ROTA DE UPLOAD E PROCESSAMENTO DE PLANILHAS
+# =============================================================================
+
 @posicao_bp.route('/posicao/<int:cliente_id>/upload_cotas', methods=['GET', 'POST'])
 @login_required
 def upload_cotas(cliente_id):
@@ -652,22 +314,61 @@ def upload_cotas(cliente_id):
             cliente = db.query(Cliente).filter_by(id=cliente_id).first()
             global_services = GlobalServices(db)
 
-            # Processar upload via formulário
-            sucesso, file_path, mensagem = global_services.processar_upload_arquivo()
+            # ===== PROCESSAR UPLOAD - INLINE =====
+            UPLOAD_FOLDER = 'uploads'
+            ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
+            MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
 
-            if not sucesso:
-                flash(mensagem, "error")
+            # Criar pasta de uploads se não existir
+            if not os.path.exists(UPLOAD_FOLDER):
+                os.makedirs(UPLOAD_FOLDER)
+
+            # Verificar se há arquivo
+            if 'arquivo' not in request.files:
+                flash("Nenhum arquivo foi selecionado", "error")
                 return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
 
-            # ===== PROCESSAMENTO UNIFICADO =====
+            file = request.files['arquivo']
+
+            if file.filename == '':
+                flash("Nenhum arquivo foi selecionado", "error")
+                return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
+
+            # Verificar extensão
+            if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS):
+                flash(f"Tipo de arquivo não permitido. Use: {', '.join(ALLOWED_EXTENSIONS)}", "error")
+                return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
+
+            # Verificar tamanho
+            file.seek(0, os.SEEK_END)
+            file_size = file.tell()
+            file.seek(0)
+
+            if file_size > MAX_FILE_SIZE:
+                flash(f"Arquivo muito grande. Máximo: {MAX_FILE_SIZE // (1024*1024)}MB", "error")
+                return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
+
+            # Salvar arquivo
+            filename = secure_filename(file.filename)
+            timestamp = str(int(time.time() * 1000))
+            filename = f"{timestamp}_{filename}"
+            file_path = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(file_path)
+
+            print(f"[INFO] Arquivo salvo: {file_path}")
+
+            # ===== PROCESSAMENTO BTG =====
             try:
                 print("[INFO] Iniciando processamento completo do arquivo BTG...")
-                posicoes, log = processar_arquivo_btg_completo(file_path, cliente_id, db, global_services)
+                btg_service = ExtractBTGService(db, global_services)
+                posicoes, log = btg_service.processar_arquivo_btg_completo(file_path, cliente_id)
                 
                 # Log detalhado
-                total = log['fundos'] + log['previdencia_individual'] + log['previdencia_externa']
-                flash(f"Processadas {total} posições: {log['fundos']} fundos, {log['previdencia_individual']} prev.individual, {log['previdencia_externa']} prev.externa", "info")
+                total = log['fundos'] + log['previdencia_individual'] + log['previdencia_externa'] + log['renda_fixa'] + log['renda_variavel']
+                flash(f"Processadas {total} posições: {log['fundos']} fundos, {log['previdencia_individual']} prev.ind, {log['previdencia_externa']} prev.ext, {log['renda_fixa']} RF, {log['renda_variavel']} RV", "info")
                 
+                banco_custodia = 'BTG'
+
             except Exception as e:
                 print(f"[ERRO] Erro no processamento: {str(e)}")
                 flash(f"Erro no processamento: {str(e)}", "error")
@@ -677,89 +378,23 @@ def upload_cotas(cliente_id):
                 flash("Nenhuma posição válida foi extraída do arquivo.")
                 return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
 
-            # Verificar CNPJs existentes e cadastrar novos fundos
+            # ===== CADASTRAR FUNDOS AUTOMATICAMENTE =====
+            print("[INFO] Cadastrando novos fundos automaticamente...")
+            registration_service = FundoRegistrationService(db)
+            existing_funds = registration_service.cadastrar_fundos_automaticamente(posicoes)
+
+            # ===== DELETAR POSIÇÕES ANTIGAS DO BANCO =====
+            print(f"[INFO] Deletando posições anteriores do {banco_custodia} para cliente {cliente_id}")
             
-            existing_funds = {f.cnpj.replace('.', '').replace('/', '').replace('-', ''): f.id
-                 for f in db.query(InfoFundo).all()}
-            new_cnpjs = []
-            for pos in posicoes:
-                norm_cnpj = pos['cnpj'].replace('.', '').replace('/', '').replace('-', '')
-                if norm_cnpj not in existing_funds:
-                    new_cnpjs.append(pos['cnpj'])
+            posicoes_deletadas = db.query(PosicaoFundo).filter(
+                PosicaoFundo.cliente_id == cliente_id,
+                PosicaoFundo.banco_custodia == banco_custodia
+            ).delete()
+            
+            db.commit()
+            print(f"[INFO] {posicoes_deletadas} posições antigas do {banco_custodia} deletadas")
 
-            new_cnpjs = list(set(new_cnpjs))
-            print(f"CNPJs novos a cadastrar: {len(new_cnpjs)}")
-
-            # Cadastrar novos fundos
-            if new_cnpjs:
-                extract_service = ExtractServices(db)
-                global_service = GlobalServices(db)
-
-                # Separar CNPJs reais dos dummies
-                cnpjs_reais = [cnpj for cnpj in new_cnpjs if not cnpj.startswith('99.')]
-                cnpjs_dummy = [cnpj for cnpj in new_cnpjs if cnpj.startswith('99.')]
-
-                # Processar CNPJs reais via CVM
-                if cnpjs_reais:
-                    funds_info = {}
-                    for cnpj in cnpjs_reais:
-                        info = extract_service.extracao_cvm_info(cnpj)
-                        if info is not None:
-                            funds_info[cnpj] = info
-                    
-                    for cnpj, info in funds_info.items():
-                        nome_fundo = info['DENOM_SOCIAL']
-                        novo_fundo = global_service.create_classe(
-                            InfoFundo,
-                            nome_fundo=nome_fundo,
-                            cnpj=cnpj,
-                            classe_anbima=info.get('CLASSE_ANBIMA', ''),
-                            mov_min=float(info['PR_CIA_MIN']) if info['PR_CIA_MIN'] != 'None' else None,
-                            risco=RiscoEnum.moderado,
-                            status_fundo=StatusFundoEnum.ativo,
-                            valor_cota=1.0,
-                            data_atualizacao=datetime.now()
-                        )
-                        norm_cnpj = cnpj.replace('.', '').replace('/', '').replace('-', '')
-                        existing_funds[norm_cnpj] = novo_fundo.id
-
-                    # CNPJs reais não encontrados na CVM
-                    missing_cnpjs = [cnpj for cnpj in cnpjs_reais if cnpj not in funds_info]
-                    for cnpj in missing_cnpjs:
-                        novo_fundo = global_service.create_classe(
-                            InfoFundo,
-                            nome_fundo=f"Fundo {cnpj}",
-                            cnpj=cnpj,
-                            classe_anbima="previdencia",
-                            mov_min=None,
-                            risco=RiscoEnum.baixo,
-                            status_fundo=StatusFundoEnum.ativo,
-                            valor_cota=1.0,
-                            data_atualizacao=datetime.now()
-                        )
-                        norm_cnpj = cnpj.replace('.', '').replace('/', '').replace('-', '')
-                        existing_funds[norm_cnpj] = novo_fundo.id
-
-                # Processar fundos de previdência (CNPJs dummy)
-                for pos in posicoes:
-                    if 'tipo' in pos and 'previdencia' in pos['tipo']:
-                        norm_cnpj = pos['cnpj'].replace('.', '').replace('/', '').replace('-', '')
-                        if norm_cnpj not in existing_funds:
-                            novo_fundo = global_service.create_classe(
-                                InfoFundo,
-                                nome_fundo=pos['nome_fundo'],
-                                cnpj=pos['cnpj'],
-                                classe_anbima="previdencia",
-                                mov_min=None,
-                                risco=RiscoEnum.baixo,
-                                status_fundo=StatusFundoEnum.ativo,
-                                valor_cota=1.0,
-                                data_atualizacao=datetime.now()
-                            )
-                            existing_funds[norm_cnpj] = novo_fundo.id
-                            print(f"[INFO] Fundo de previdência cadastrado: {pos['nome_fundo']}")
-
-            # Registrar posições no banco
+            # ===== REGISTRAR POSIÇÕES NO BANCO =====
             registros_salvos = 0
             registros_atualizados = 0
             registros_falhas = 0
@@ -780,6 +415,7 @@ def upload_cotas(cliente_id):
                         if existing_position:
                             existing_position.cotas = pos['num_cotas']
                             existing_position.data_atualizacao = pos['data']
+                            existing_position.banco_custodia = banco_custodia
                             session.commit()
                             registros_atualizados += 1
                         else:
@@ -789,7 +425,8 @@ def upload_cotas(cliente_id):
                                 fundo_id=fundo_id,
                                 cliente_id=cliente_id,
                                 cotas=pos['num_cotas'],
-                                data_atualizacao=pos['data']
+                                data_atualizacao=pos['data'],
+                                banco_custodia=banco_custodia
                             )
                             registros_salvos += 1
                     else:
@@ -804,7 +441,6 @@ def upload_cotas(cliente_id):
 
             # Remover arquivo após processamento
             try:
-                import os
                 os.remove(file_path)
             except:
                 pass
@@ -821,7 +457,6 @@ def upload_cotas(cliente_id):
             return redirect(url_for('posicao.listar_posicao', cliente_id=cliente_id))
 
         except Exception as e:
-            import traceback
             traceback.print_exc()
             print(f"[ERRO GERAL] Erro ao processar arquivo: {str(e)}")
             flash(f"Erro ao processar arquivo: {str(e)}")

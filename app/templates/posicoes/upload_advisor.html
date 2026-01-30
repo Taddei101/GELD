@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% block title %}Upload de Posições Advisor{% endblock %}
+{% block header %}Upload Portfólio: {{ cliente.nome }}{% endblock %}
+{% block content %}
+<div class="upload-container">
+    <h2>Upload de Posições Advisor</h2>
+    
+    <!-- Exibir mensagens flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="info-card">
+        <p>Essa função requer um arquivo Excel exportado do sistema Advisor:</p>
+        <p>O arquivo deve conter a aba "Posição" com as seguintes colunas:</p>
+        <ul>
+            <li><strong>Classe</strong> - Classe ANBIMA do ativo</li>
+            <li><strong>Ativo</strong> - Nome do fundo/ativo</li>
+            <li><strong>Quantidade</strong> - Número de cotas</li>
+            <li><strong>Preço</strong> - Valor da cota</li>
+            <li><strong>Saldo Anterior</strong> - Saldo do período anterior</li>
+            <li><strong>Saldo Bruto</strong> - Saldo bruto atual</li>
+        </ul>
+        
+        <p>O sistema irá:</p>
+        <ul>
+            <li>Abrir a aba "Posição" do arquivo</li>
+            <li>Extrair os dados de cada ativo (nome, classe, quantidade, preços)</li>
+            <li>Cadastrar fundos novos automaticamente (sem CNPJ)</li>
+            <li>Determinar o nível de risco baseado na classe ANBIMA</li>
+            <li>Registrar as posições para o cliente com saldos anteriores</li>
+            <li>Substituir posições antigas do Advisor (mantém BTG/XP intactos)</li>
+        </ul>
+    </div>
+
+    <!-- FORMULÁRIO DE UPLOAD -->
+    <form action="{{ url_for('posicao_advisor.upload_advisor', cliente_id=cliente.id) }}" 
+          method="POST" 
+          enctype="multipart/form-data">
+        
+        <div class="form-group">
+            <label for="arquivo">Selecione o arquivo Excel (.xlsx):</label>
+            <input type="file" 
+                   id="arquivo" 
+                   name="arquivo" 
+                   accept=".xlsx,.xls" 
+                   required>
+            <small class="form-text text-muted">
+                Apenas arquivos Excel (.xlsx, .xls). Tamanho máximo: 16MB
+            </small>
+        </div>
+        
+        <button type="submit" class="bigBtn">
+            <img src="{{ url_for('static', filename='icons/upload.png') }}" class="btn-icon"> 
+            Processar Arquivo
+        </button>
+    </form>
+    
+    <p></p>
+    <button title="Voltar" 
+            class="smlBtn" 
+            onclick="window.location.href='{{ url_for('posicao.listar_posicao', cliente_id=cliente.id) }}'">
+        <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
+    </button>
+</div>
+
+<style>
+.form-group {
+    margin: 20px 0;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input[type="file"] {
+    width: 100%;
+    padding: 10px;
+    border: 2px dashed #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.form-group input[type="file"]:hover {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+}
+
+.form-text {
+    font-size: 0.9em;
+    color: #666;
+    margin-top: 5px;
+}
+
+.alert {
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+</style>
+{% endblock %}

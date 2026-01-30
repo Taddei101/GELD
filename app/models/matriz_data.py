@@ -4,35 +4,185 @@ Dados das matrizes de risco por tipo de objetivo e duração
 """
 
 MATRIZ_GERAL = [
-    # (duracao_meses, perc_baixo, perc_moderado, perc_alto, perc_di_dentro_baixo, perc_rfx_dentro_baixo)
-    (12, 85.0, 13.5, 1.5, 100.0, 0.0),
-    (24, 78.5, 17.85, 3.66, 15.0, 85.0),
-    (36, 72.0, 21.28, 6.72, 5.0, 95.0),
-    (48, 65.5, 23.81, 10.7, 5.0, 95.0),
-    (60, 59.0, 25.42, 15.58, 5.0, 95.0),
-    (72, 52.5, 26.13, 21.38, 5.0, 95.0),
-    (84, 46.0, 25.92, 28.08, 5.0, 95.0),
-    (96, 39.5, 24.81, 35.70, 5.0, 95.0),
-    (108, 33.0, 22.78, 44.22, 5.0, 95.0),
-    (120, 26.5, 19.85, 53.66, 5.0, 95.0),
-    (132, 20.0, 16.0, 64.0, 5.0, 95.0),
+    {
+        'duracao_meses': 12,
+        'perc_baixo': 85.0,
+        'perc_moderado': 13.5,
+        'perc_alto': 1.5,
+        'perc_di_dentro_baixo': 100.0,
+        'perc_rfx_dentro_baixo': 0.0
+    },
+    {
+        'duracao_meses': 24,
+        'perc_baixo': 78.5,
+        'perc_moderado': 17.85,
+        'perc_alto': 3.66,
+        'perc_di_dentro_baixo': 15.0,
+        'perc_rfx_dentro_baixo': 85.0
+    },
+    {
+        'duracao_meses': 36,
+        'perc_baixo': 72.0,
+        'perc_moderado': 21.28,
+        'perc_alto': 6.72,
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0
+    },
+    {
+        'duracao_meses': 48,
+        'perc_baixo': 65.5,
+        'perc_moderado': 23.81,
+        'perc_alto': 10.7,
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0
+    },
+    {
+        'duracao_meses': 60,
+        'perc_baixo': 59.0,
+        'perc_moderado': 25.42,
+        'perc_alto': 15.58,
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0
+    },
+    {
+        'duracao_meses': 72,
+        'perc_baixo': 52.5,
+        'perc_moderado': 26.13,
+        'perc_alto': 21.38,
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0
+    },
+    {
+        'duracao_meses': 84,
+        'perc_baixo': 46.0,
+        'perc_moderado': 25.92,
+        'perc_alto': 28.08,
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0
+    },
+    {
+        'duracao_meses': 96,
+        'perc_baixo': 39.5,
+        'perc_moderado': 24.81,
+        'perc_alto': 35.70,
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0
+    },
+    {
+        'duracao_meses': 108,
+        'perc_baixo': 33.0,
+        'perc_moderado': 22.78,
+        'perc_alto': 44.22,
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0
+    },
+    {
+        'duracao_meses': 120,
+        'perc_baixo': 26.5,
+        'perc_moderado': 19.85,
+        'perc_alto': 53.66,
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0
+    },
+    {
+        'duracao_meses': 132,
+        'perc_baixo': 20.0,
+        'perc_moderado': 16.0,
+        'perc_alto': 64.0,
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0
+    },
 ]
 
-# MATRIZ PREVIDÊNCIA 
 MATRIZ_PREVIDENCIA = [
-    # (duracao_meses, perc_baixo, perc_moderado, perc_alto, perc_di_dentro_baixo, perc_rfx_dentro_baixo)
-        
-    (12, 90.0, 8.5, 1.5, 100.0, 0.0),
-    (24, 85.0, 13.0, 2.0, 20.0, 80.0),
-    (36, 80.0, 16.0, 4.0, 10.0, 90.0),
-    (48, 75.0, 19.0, 6.0, 10.0, 90.0),
-    (60, 70.0, 22.0, 8.0, 10.0, 90.0),
-    (72, 65.0, 24.0, 11.0, 10.0, 90.0),
-    (84, 60.0, 25.0, 15.0, 10.0, 90.0),
-    (96, 55.0, 26.0, 19.0, 10.0, 90.0),
-    (108, 50.0, 26.0, 24.0, 10.0, 90.0),
-    (120, 45.0, 25.0, 30.0, 10.0, 90.0),
-    (132, 40.0, 24.0, 36.0, 10.0, 90.0),
+    {
+        'duracao_meses': 12,
+        'perc_baixo': 90.0,
+        'perc_moderado': 8.5,
+        'perc_alto': 1.5,
+        'perc_di_dentro_baixo': 100.0,
+        'perc_rfx_dentro_baixo': 0.0
+    },
+    {
+        'duracao_meses': 24,
+        'perc_baixo': 85.0,
+        'perc_moderado': 13.0,
+        'perc_alto': 2.0,
+        'perc_di_dentro_baixo': 20.0,
+        'perc_rfx_dentro_baixo': 80.0
+    },
+    {
+        'duracao_meses': 36,
+        'perc_baixo': 80.0,
+        'perc_moderado': 16.0,
+        'perc_alto': 4.0,
+        'perc_di_dentro_baixo': 10.0,
+        'perc_rfx_dentro_baixo': 90.0
+    },
+    {
+        'duracao_meses': 48,
+        'perc_baixo': 75.0,
+        'perc_moderado': 19.0,
+        'perc_alto': 6.0,
+        'perc_di_dentro_baixo': 10.0,
+        'perc_rfx_dentro_baixo': 90.0
+    },
+    {
+        'duracao_meses': 60,
+        'perc_baixo': 70.0,
+        'perc_moderado': 22.0,
+        'perc_alto': 8.0,
+        'perc_di_dentro_baixo': 10.0,
+        'perc_rfx_dentro_baixo': 90.0
+    },
+    {
+        'duracao_meses': 72,
+        'perc_baixo': 65.0,
+        'perc_moderado': 24.0,
+        'perc_alto': 11.0,
+        'perc_di_dentro_baixo': 10.0,
+        'perc_rfx_dentro_baixo': 90.0
+    },
+    {
+        'duracao_meses': 84,
+        'perc_baixo': 60.0,
+        'perc_moderado': 25.0,
+        'perc_alto': 15.0,
+        'perc_di_dentro_baixo': 10.0,
+        'perc_rfx_dentro_baixo': 90.0
+    },
+    {
+        'duracao_meses': 96,
+        'perc_baixo': 55.0,
+        'perc_moderado': 26.0,
+        'perc_alto': 19.0,
+        'perc_di_dentro_baixo': 10.0,
+        'perc_rfx_dentro_baixo': 90.0
+    },
+    {
+        'duracao_meses': 108,
+        'perc_baixo': 50.0,
+        'perc_moderado': 26.0,
+        'perc_alto': 24.0,
+        'perc_di_dentro_baixo': 10.0,
+        'perc_rfx_dentro_baixo': 90.0
+    },
+    {
+        'duracao_meses': 120,
+        'perc_baixo': 45.0,
+        'perc_moderado': 25.0,
+        'perc_alto': 30.0,
+        'perc_di_dentro_baixo': 10.0,
+        'perc_rfx_dentro_baixo': 90.0
+    },
+    {
+        'duracao_meses': 132,
+        'perc_baixo': 40.0,
+        'perc_moderado': 24.0,
+        'perc_alto': 36.0,
+        'perc_di_dentro_baixo': 10.0,
+        'perc_rfx_dentro_baixo': 90.0
+    },
 ]
 
 def validar_matriz(dados_matriz, nome_matriz):
@@ -42,7 +192,12 @@ def validar_matriz(dados_matriz, nome_matriz):
     erros = []
     
     for linha in dados_matriz:
-        duracao, baixo, moderado, alto, di, rfx = linha
+        duracao = linha['duracao_meses']
+        baixo = linha['perc_baixo']
+        moderado = linha['perc_moderado']
+        alto = linha['perc_alto']
+        di = linha['perc_di_dentro_baixo']
+        rfx = linha['perc_rfx_dentro_baixo']
         
         # Validar se principais somam ~100%
         total_principal = baixo + moderado + alto

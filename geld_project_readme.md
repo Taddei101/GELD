@@ -266,4 +266,3 @@ init_db()  # Cria tabelas automaticamente
 5. **Route** renderiza template ou redirect
 6. **Finally** fecha sessão DB
 
-Este README serve como minha "memória" para retomar o contexto do projeto GELD em futuras sessões. O sistema está funcional mas há espaço para evoluções em robustez, segurança e funcionalidades avançadas.

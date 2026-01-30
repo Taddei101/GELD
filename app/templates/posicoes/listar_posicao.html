@@ -47,18 +47,39 @@
 
 <p></p>
 
-<!-- Tabela de Portfolio de Fundos (modificada para mostrar apenas 3 primeiros) -->
+<!-- Tabela de Portfolio de Fundos -->
 <h3>Portfolio de Fundos</h3>
+
+<!-- BOTÃO DELETAR SELECIONADAS -->
+{% if posicoes %}
+<div style="margin-bottom: 10px;">
+    <button onclick="deletarSelecionadas()" class="bigBtn" style="background-color: #d9534f;" title="Deletar posições selecionadas">
+        <img src="{{ url_for('static', filename='icons/trash.png') }}" class="btn-icon" style="filter: brightness(0) invert(1);"> Deletar Selecionadas
+    </button>
+    <span id="contador-selecionadas" style="margin-left: 10px; font-weight: bold;">0 selecionadas</span>
+</div>
+{% endif %}
+
 <table class="table">
 <thead>
     <tr>
+        <th>
+            {% if posicoes %}
+            <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" title="Selecionar todas">
+            {% endif %}
+        </th>
         <th>Fundo</th>
         <th>Classe Anbima</th>
         <th>Risco</th> 
+        <th>Fonte</th>
         <th>Cotas</th>
         <th>Valor da cota</th>
         <th>Saldo Bruto</th>
-        <th></th>
+        <th>{% if posicoes|length > 3 %}
+            <button onclick="toggleExtraFunds()" id="toggle-btn" class="smlBtn" title="Mostrar todos os fundos">
+                <img src="{{ url_for('static', filename='icons/expand.png') }}" class="sml-btn-icon" id="toggle-icon">
+            </button>
+        {% endif %}</th>
     </tr>
 </thead>
 
@@ -67,6 +88,9 @@
         <!-- Mostrar apenas os 3 primeiros fundos -->
         {% for posicao in posicoes[:3] %}
         <tr>
+            <td>
+                <input type="checkbox" class="posicao-checkbox" value="{{ posicao.id }}" onchange="updateCounter()">
+            </td>
             <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:3]) }}</td>
             <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:2]) if posicao.info_fundo.classe_anbima else '' }}</td>
             <td>
@@ -79,6 +103,15 @@
                 {% else %}
                     {{ posicao.info_fundo.risco.value.title() }}
                 {% endif %}
+            </td>
+            <td>{% if posicao.banco_custodia == "BTG" %}
+                <img src="{{ url_for('static', filename='icons/BTG.png') }}" class="sml-btn-icon">
+                {% elif posicao.banco_custodia== "ADVISOR" %}
+                <img src="{{ url_for('static', filename='icons/advisor.jpg') }}" class="sml-btn-icon">
+                {% else %}
+                <img src="{{ url_for('static', filename='icons/error.png') }}" class="sml-btn-icon">
+                {% endif %}
+
             </td>
             <td>{{'{:,.2f}'.format(posicao.cotas).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
             <td>R$ {{ '{:,.2f}'.format(posicao.info_fundo.valor_cota).replace('.', ',') }}</td>
@@ -103,6 +136,9 @@
         {% if posicoes|length > 3 %}
             {% for posicao in posicoes[3:] %}
             <tr class="extra-funds" style="display: none;">
+                <td>
+                    <input type="checkbox" class="posicao-checkbox" value="{{ posicao.id }}" onchange="updateCounter()">
+                </td>
                 <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:3]) }}</td>
                 <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:2]) if posicao.info_fundo.classe_anbima else '' }}</td>
                 <td>
@@ -116,6 +152,15 @@
                         {{ posicao.info_fundo.risco.value.title() }}
                     {% endif %}
                 </td>
+                <td>{% if posicao.banco_custodia == "BTG" %}
+                <img src="{{ url_for('static', filename='icons/BTG.png') }}" class="sml-btn-icon">
+                {% elif posicao.banco_custodia== "ADVISOR" %}
+                <img src="{{ url_for('static', filename='icons/advisor.jpg') }}" class="sml-btn-icon">
+                {% else %}
+                <img src="{{ url_for('static', filename='icons/error.png') }}" class="sml-btn-icon">
+                {% endif %}
+
+            </td>
                 <td>{{'{:,.2f}'.format(posicao.cotas).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
                 <td>R$ {{ '{:,.2f}'.format(posicao.info_fundo.valor_cota).replace('.', ',') }}</td>
                 <td>R$ {{ '{:,.2f}'.format(posicao.cotas * posicao.info_fundo.valor_cota).replace(',', ' ').replace('.', ',').replace(' ', '.')  }}</td>
@@ -137,12 +182,13 @@
         {% endif %}
     {% else %}
         <tr>
-            <td colspan="7">Nenhuma posição em fundos cadastrada</td>
+            <td colspan="9">Nenhuma posição em fundos cadastrada</td>
         </tr>
     {% endif %}
     
+    <th></th>
     <th>TOTAL</th>
-    <th colspan="4"></th>
+    <th colspan="5"></th>
     <th>R$ {{ '{:,.2f}'.format(montante_cliente if montante_cliente is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</th>
     <td>
         {% if posicoes|length > 3 %}
@@ -168,24 +214,30 @@
     <button title="upload_btg" class="bigBtn" onclick="window.location.href=`{{ url_for('posicao.upload_cotas', cliente_id=cliente.id) }}` ">
     <img src="{{ url_for('static', filename='icons/btg.png') }}" class="btn-icon"> Upload Portfolio BTG
     </button>
+
+
+    <button title="upload_advisor" class="bigBtn" onclick="window.location.href=`{{ url_for('posicao_advisor.upload_advisor', cliente_id=cliente.id) }}` ">
+    <img src="{{ url_for('static', filename='icons/advisor.jpg') }}" class="btn-icon"> Upload Portfolio Advisor
+    </button>
     
-    <button title="balancear aporte" class="bigBtn"onclick="window.location.href=`{{ url_for('balancos.balance_objetivos',cliente_id=cliente.id) }}`"><img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte</button>
+    <button title="balancear aporte" class="bigBtn" onclick="window.location.href=`{{ url_for('objetivo.listar_objetivos', cliente_id=cliente.id) }}`">
+        <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte
+    </button>
 </div>
 
 <script>
+// Toggle expandir/recolher fundos extras
 function toggleExtraFunds() {
     const extraFunds = document.querySelectorAll('.extra-funds');
     const toggleBtn = document.getElementById('toggle-btn');
     const toggleIcon = document.getElementById('toggle-icon');
     
-    // Verificar se os fundos extras estão visíveis
     const isVisible = extraFunds[0].style.display !== 'none';
     
     extraFunds.forEach(row => {
         row.style.display = isVisible ? 'none' : '';
     });
     
-    // Atualizar botão e ícone
     if (isVisible) {
         toggleBtn.title = "Mostrar todos os fundos";
         toggleIcon.src = "{{ url_for('static', filename='icons/expand.png') }}";
@@ -193,6 +245,69 @@ function toggleExtraFunds() {
         toggleBtn.title = "Ocultar fundos extras";
         toggleIcon.src = "{{ url_for('static', filename='icons/collapse.png') }}";
     }
+}
+
+// Selecionar/Desselecionar todas as checkboxes
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.posicao-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    updateCounter();
+}
+
+// Atualizar contador de selecionadas
+function updateCounter() {
+    const checkboxes = document.querySelectorAll('.posicao-checkbox:checked');
+    const counter = document.getElementById('contador-selecionadas');
+    const count = checkboxes.length;
+    
+    counter.textContent = `${count} selecionada${count !== 1 ? 's' : ''}`;
+    
+    // Atualizar estado do "select-all"
+    const selectAll = document.getElementById('select-all');
+    const allCheckboxes = document.querySelectorAll('.posicao-checkbox');
+    
+    if (selectAll) {
+        selectAll.checked = count === allCheckboxes.length && count > 0;
+    }
+}
+
+// Deletar posições selecionadas
+function deletarSelecionadas() {
+    const checkboxes = document.querySelectorAll('.posicao-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        alert('Selecione pelo menos uma posição para deletar.');
+        return;
+    }
+    
+    const count = checkboxes.length;
+    const confirmMsg = `Tem certeza que deseja deletar ${count} posição${count !== 1 ? 'ões' : ''}?`;
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    // Coletar IDs das posições selecionadas
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    // Criar formulário dinamicamente para enviar via POST
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url_for('posicao.delete_multiple_posicoes', cliente_id=cliente.id) }}";
+    
+    // Adicionar IDs como campos hidden
+    ids.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'posicao_ids';
+        input.value = id;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
 }
 </script>
 

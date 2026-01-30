@@ -16,6 +16,7 @@ from app.routes.posicao import posicao_bp
 from app.routes.dashboard import dashboard_bp
 from app.routes.balanco import balanco_bp
 from app.routes.distribuicao import distribuicao_bp
+from app.routes.posicao_advisor import posicao_advisor_bp
 
 # Registrar blueprints
 app.register_blueprint(auth_bp)
@@ -26,6 +27,7 @@ app.register_blueprint(posicao_bp)
 app.register_blueprint(dashboard_bp)
 app.register_blueprint(balanco_bp)
 app.register_blueprint(distribuicao_bp)
+app.register_blueprint(posicao_advisor_bp)
 
 @app.route('/')
 def index():

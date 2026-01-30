@@ -4,7 +4,7 @@ from app.services.extract_services import ExtractServices
 from app.models.geld_models import create_session, Cliente, StatusEnum, IndicadoresEconomicos, Objetivo, PosicaoFundo, InfoFundo
 from sqlalchemy import func, extract
 from datetime import datetime, timedelta
-import pandas as pd
+
 
 
 dashboard_bp = Blueprint('dashboard', __name__)

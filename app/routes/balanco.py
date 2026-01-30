@@ -1,99 +1,67 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.services.global_services import GlobalServices, login_required
-from app.services.balance_service import Balance
 from app.models.geld_models import create_session, Cliente, Objetivo
+from app.services.balance_service import balance_objective
 
 balanco_bp = Blueprint('balancos', __name__)
 
-@balanco_bp.route('/balanco/<int:cliente_id>/balance_objetivos', methods=['GET', 'POST'])
+@balanco_bp.route('/objetivo/<int:objetivo_id>/balancear', methods=['GET', 'POST'])
 @login_required
-def balance_objetivos(cliente_id):
+def balancear_objetivo(objetivo_id):
+    """
+    Balanceia um aporte para um objetivo específico segundo a matriz de risco
+    """
     db = None
     try:
         db = create_session()
-        global_service = GlobalServices(db)
         
-        # PEGA O CLIENTE
-        cliente = global_service.get_by_id(Cliente, cliente_id)
+        # Buscar objetivo
+        objetivo = db.query(Objetivo).get(objetivo_id)
+        if not objetivo:
+            flash("Objetivo não encontrado", "error")
+            return redirect(url_for('dashboard.index'))
+        
+        # Buscar cliente para passar pro template
+        cliente = db.query(Cliente).get(objetivo.cliente_id)
         if not cliente:
-            flash(f"Cliente com ID {cliente_id} não encontrado")
-            return redirect(url_for('index'))
-                
-        # PEGA OS OBJETIVOS
-        objetivos = db.query(Objetivo).filter(Objetivo.cliente_id == cliente_id).all()
-        for obj in objetivos:
-            obj.valor_real = float(obj.valor_real)
-
-        if not objetivos:
-            flash("Este cliente não possui objetivos cadastrados")
-            return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
-
+            flash("Cliente não encontrado", "error")
+            return redirect(url_for('dashboard.index'))
+        
         if request.method == 'POST':
             try:
-                aporte = float(request.form['aporte'])
+                # Pegar valor do aporte
+                aporte = float(request.form.get('aporte', 0))
+                
                 if aporte <= 0:
-                    flash("O valor do aporte deve ser maior que zero")
-                    return render_template('balanco/balance_objetivos.html', 
-                                          cliente=cliente, 
-                                          objetivos=objetivos,
-                                          aporte=None)
-                                
-                balance_service = Balance(db)
+                    flash("O valor do aporte deve ser maior que zero", "warning")
+                    return render_template('balanco/balancear_objetivo.html',
+                                         objetivo=objetivo,
+                                         cliente=cliente,
+                                         resultado=None)
                 
-                # Agora passamos os objetivos já buscados em vez do cliente_id
-                quotas = balance_service.balancear_aporte(aporte, objetivos)
-                print(f"Quotas calculadas: {quotas}")
+                # Chamar a função de balanceamento
+                resultado = balance_objective(aporte, objetivo)
                 
-                if "error" in quotas:
-                    flash(quotas["error"])
-                    return redirect(url_for('balancos.balance_objetivos', cliente_id=cliente_id))
-                
-                # Balancear cada quota por tipo de risco
-                resultado_balanceamento = {}
-                total_risco_baixo = 0
-                total_risco_moderado = 0
-                total_risco_alto = 0
-                
-
-                for objetivo_id, quota in quotas.items():
-                    # Encontrar o objeto objetivo correspondente ao ID
-                    objetivo = next((obj for obj in objetivos if obj.id == objetivo_id), None)
-                    
-                    # Passar o objeto objetivo em vez do ID
-                    balanceamento = balance_service.balancear_quota(quota, objetivo)
-                    resultado_balanceamento[objetivo_id] = balanceamento
-    
-                    # Calcular totais
-                    total_risco_baixo += balanceamento['distribuicao']['risco_baixo']['valor']
-                    total_risco_moderado += balanceamento['distribuicao']['risco_moderado']['valor']
-                    total_risco_alto += balanceamento['distribuicao']['risco_alto']['valor']
-                    
-
-                # PASSA O RESULTADO PRO TEMPLATE
-                return render_template('balanco/balance_objetivos.html', 
-                      cliente=cliente, 
-                      objetivos=objetivos,
-                      resultado_balanceamento=resultado_balanceamento,
-                      total_risco_baixo=total_risco_baixo,
-                      total_risco_moderado=total_risco_moderado,
-                      total_risco_alto=total_risco_alto, 
-                      
-                      aporte=aporte)
+                # Renderizar com resultado
+                return render_template('balanco/balancear_objetivo.html',
+                                     objetivo=objetivo,
+                                     cliente=cliente,
+                                     resultado=resultado)
                 
             except ValueError:
-                flash('Valor de aporte inválido. Por favor, digite um número válido.')
+                flash("Valor de aporte inválido. Digite um número válido.", "error")
             except Exception as e:
-                flash(f'Erro ao calcular balanceamento: {str(e)}')
+                flash(f"Erro ao calcular balanceamento: {str(e)}", "error")
         
-        # MOSTRA O FORMULARIO CASO NAO TENHA METODO
-        return render_template('balanco/balance_objetivos.html', 
-                              cliente=cliente, 
-                              objetivos=objetivos,
-                              aporte=None)
+        # GET: Mostrar formulário
+        return render_template('balanco/balancear_objetivo.html',
+                             objetivo=objetivo,
+                             cliente=cliente,
+                             resultado=None)
         
     except Exception as e:
-        flash(f'Erro ao acessar balanceamento: {str(e)}')
-        return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
+        flash(f"Erro ao acessar balanceamento: {str(e)}", "error")
+        return redirect(url_for('dashboard.index'))
     finally:
         if db:
             db.close()

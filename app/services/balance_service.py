@@ -128,3 +128,81 @@ class Balance:
             
         except Exception as e:
             return {"error": f"Erro ao balancear quota para objetivo {objetivo.id if objetivo else 'desconhecido'}: {str(e)}"}
+        
+# ... todo o código da classe Balance permanece aqui ...
+
+# ===== NOVA FUNÇÃO PARA BALANCEAMENTO INDIVIDUAL =====
+
+def balance_objective(aporte, objetivo):
+    """
+    Distribui um aporte em reais segundo as matrizes de risco
+    
+    Args:
+        aporte: valor em reais a ser distribuído
+        objetivo: instância de Objetivo
+        
+    Returns:
+        dict com a distribuição do aporte
+    """
+    from app.models.geld_models import TipoObjetivoEnum
+    from app.models.matriz_data import MATRIZ_GERAL, MATRIZ_PREVIDENCIA
+    
+    periodo = objetivo.duracao_meses
+    
+    # Seleciona matriz baseada no tipo do objetivo
+    matriz = MATRIZ_PREVIDENCIA if objetivo.tipo_objetivo == TipoObjetivoEnum.previdencia else MATRIZ_GERAL
+    
+    # Encontra a linha adequada: primeira onde periodo <= duracao
+    distrib = matriz[-1]  # Default: última linha (maior duração)
+    
+    for linha in matriz:
+        if periodo <= linha['duracao_meses']:
+            distrib = linha
+            break
+    
+    # Acessa valores diretamente pelo nome da chave
+    perc_baixo = distrib['perc_baixo']
+    perc_moderado = distrib['perc_moderado']
+    perc_alto = distrib['perc_alto']
+    perc_di_baixo = distrib['perc_di_dentro_baixo']
+    perc_rfx_baixo = distrib['perc_rfx_dentro_baixo']
+    
+    # Calcula valores em reais
+    valor_baixo = aporte * (perc_baixo / 100)
+    valor_moderado = aporte * (perc_moderado / 100)
+    valor_alto = aporte * (perc_alto / 100)
+    
+    # Subdivide o valor de risco baixo
+    valor_di = valor_baixo * (perc_di_baixo / 100)
+    valor_rfx = valor_baixo * (perc_rfx_baixo / 100)
+    
+    return {
+        'total': aporte,
+        'periodo_meses': periodo,
+        'duracao_referencia': distrib['duracao_meses'],
+        'tipo_objetivo': objetivo.tipo_objetivo.value,
+        'risco': {
+            'baixo': {
+                'valor': round(valor_baixo, 2),
+                'percentual': round(perc_baixo, 2),
+                'subdivisao': {
+                    'di': {
+                        'valor': round(valor_di, 2),
+                        'percentual': round(perc_di_baixo, 2)
+                    },
+                    'rfx': {
+                        'valor': round(valor_rfx, 2),
+                        'percentual': round(perc_rfx_baixo, 2)
+                    }
+                }
+            },
+            'moderado': {
+                'valor': round(valor_moderado, 2),
+                'percentual': round(perc_moderado, 2)
+            },
+            'alto': {
+                'valor': round(valor_alto, 2),
+                'percentual': round(perc_alto, 2)
+            }
+        }
+    }

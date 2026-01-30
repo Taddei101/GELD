@@ -93,7 +93,7 @@ class InfoFundo(Base):
 
     id = Column(Integer, primary_key = True)
     nome_fundo = Column(String, nullable = False)
-    cnpj = Column(String, nullable = False)
+    cnpj = Column(String, nullable = True)
     classe_anbima = Column(String)
     mov_min = Column(Numeric(15,2))
     permanencia_min = Column(Numeric(15,2))
@@ -115,6 +115,9 @@ class PosicaoFundo(Base):
     fundo_id = Column(Integer,ForeignKey('info_fundos.id'),nullable=False)
     cotas = Column(Numeric(15,6), nullable = False)
     data_atualizacao = Column(DateTime, nullable=False)
+    banco_custodia = Column(String(50), nullable=True)
+    saldo_anterior = Column(Numeric(15,2), nullable=True)  
+    saldo_bruto = Column(Numeric(15,2), nullable=True)     
 
     info_fundo = relationship("InfoFundo", back_populates = "posicoes_fundo")
     cliente = relationship("Cliente", back_populates="posicoes_fundo")
@@ -185,35 +188,35 @@ def _popular_matriz_inicial():
             print("ℹ️  Matriz de risco já populada")
             return
         
-        print("🔄 Populando matriz de risco inicial...")
+        print("📄 Populando matriz de risco inicial...")
         
         # Validar dados antes de inserir
         if not validar_todas_matrizes():
             raise Exception("Dados da matriz inválidos - verifique app/models/matriz_data.py")
         
         # Inserir dados GERAL
-        for duracao, baixo, moderado, alto, di, rfx in MATRIZ_GERAL:
+        for linha in MATRIZ_GERAL:
             matriz = MatrizRisco(
                 tipo_objetivo=TipoObjetivoEnum.geral,
-                duracao_meses=duracao,
-                perc_baixo=baixo,
-                perc_moderado=moderado,
-                perc_alto=alto,
-                perc_di_dentro_baixo=di,
-                perc_rfx_dentro_baixo=rfx
+                duracao_meses=linha['duracao_meses'],
+                perc_baixo=linha['perc_baixo'],
+                perc_moderado=linha['perc_moderado'],
+                perc_alto=linha['perc_alto'],
+                perc_di_dentro_baixo=linha['perc_di_dentro_baixo'],
+                perc_rfx_dentro_baixo=linha['perc_rfx_dentro_baixo']
             )
             session.add(matriz)
         
         # Inserir dados PREVIDÊNCIA
-        for duracao, baixo, moderado, alto, di, rfx in MATRIZ_PREVIDENCIA:
+        for linha in MATRIZ_PREVIDENCIA:
             matriz = MatrizRisco(
                 tipo_objetivo=TipoObjetivoEnum.previdencia,
-                duracao_meses=duracao,
-                perc_baixo=baixo,
-                perc_moderado=moderado,
-                perc_alto=alto,
-                perc_di_dentro_baixo=di,
-                perc_rfx_dentro_baixo=rfx
+                duracao_meses=linha['duracao_meses'],
+                perc_baixo=linha['perc_baixo'],
+                perc_moderado=linha['perc_moderado'],
+                perc_alto=linha['perc_alto'],
+                perc_di_dentro_baixo=linha['perc_di_dentro_baixo'],
+                perc_rfx_dentro_baixo=linha['perc_rfx_dentro_baixo']
             )
             session.add(matriz)
         

@@ -134,7 +134,15 @@ class ExtractServices:
                     
                     print(f"[SUCCESS] Fundo encontrado no mês {mes_label}: {fundo_data['DENOM_SOCIAL']}")
                     
-                    return (fundo_data[['DENOM_SOCIAL','CLASSE_ANBIMA','PR_CIA_MIN', 'FUNDO_COTAS']], mes_label)
+                    
+                    dados_dict = {
+                        'DENOM_SOCIAL': fundo_data['DENOM_SOCIAL'],
+                        'CLASSE_ANBIMA': fundo_data['CLASSE_ANBIMA'],
+                        'PR_CIA_MIN': fundo_data['PR_CIA_MIN'],
+                        'FUNDO_COTAS': fundo_data.get('FUNDO_COTAS', 'N')
+                    }
+                    return dados_dict
+                    
                 else:
                     print(f"[INFO] Fundo não encontrado no mês {mes_label}")
                     
@@ -146,7 +154,7 @@ class ExtractServices:
                 continue
         
         print(f"[ERROR] Fundo CNPJ {cnpj} não encontrado em nenhum dos {max_meses_anteriores} meses tentados")
-        return (None, None)
+        return None
 
     #INFO FUNDOS DE UMA LISTA de CNPJs
     def extracao_cvm_info_batch(self, cnpjs):

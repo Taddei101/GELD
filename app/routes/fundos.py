@@ -5,7 +5,6 @@ from app.models.geld_models import create_session, InfoFundo, RiscoEnum, StatusF
 from app.services.global_services import GlobalServices, login_required
 from datetime import datetime
 from app.services.extract_services import ExtractServices
-import pandas as pd
 from datetime import datetime
 import re
 

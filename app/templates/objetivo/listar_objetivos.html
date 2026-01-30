@@ -21,6 +21,7 @@
                 {% if mostrar_calculo is defined and mostrar_calculo %}
                 <th>Aporte Mensal</th>
                 {% endif %}
+                <th><img src="{{ url_for('static', filename='icons/balance.png') }}" class="img"></th>
                 <th><img src="{{ url_for('static', filename='icons/cog.png') }}" class="img"></th>
                 <th><img src="{{ url_for('static', filename='icons/trophy.png') }}" class="img"></th>
             </tr>
@@ -59,6 +60,14 @@
                     {% endfor %}
                 </td>
                 {% endif %}
+
+                <td>
+                    <form action="{{ url_for('balancos.balancear_objetivo', objetivo_id=objetivo.id) }}" method="GET">
+                        <button class="smlBtn" title="Balancear Aporte">
+                            <img src="{{ url_for('static', filename='icons/balance.png') }}" class="sml-btn-icon">
+                        </button>
+                    </form>
+                </td>
 
                 <td>
                     <form action="{{ url_for('objetivo.edit_objetivo', objetivo_id=objetivo.id) }}" method="GET">
