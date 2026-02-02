@@ -216,6 +216,15 @@ def atualizar_cotas_fundos():
 
         # Para cada fundo, procurar nos dados disponíveis
         for fundo in fundos:
+            ####pula fundos sem CNPJ#####
+            if not fundo.cnpj or fundo.cnpj.strip() == '':
+                print(f"⚠️ {fundo.nome_fundo[:35]}: Sem CNPJ (pulado)")
+                fundos_detalhes.append({
+                    'nome': fundo.nome_fundo,
+                    'status': 'sem_cnpj',
+                    'mensagem': 'Sem CNPJ cadastrado'
+                })
+                continue
             cnpj_normalizado = fundo.cnpj.replace('.', '').replace('/', '').replace('-', '')
             fundo_encontrado = False
 
@@ -272,7 +281,8 @@ def atualizar_cotas_fundos():
             mensagem = f"Atualizados {fundos_atualizados} de {total_fundos} fundos:\\n"
 
             for detalhe in detalhes[:3]:  # Mostrar primeiros 3
-                mensagem += f"• {detalhe['nome'][:25]}: {detalhe['valor_antigo']:.3f} → {detalhe['valor_novo']:.3f}\\n"
+                if 'valor_novo' in detalhe:
+                    mensagem += f"• {detalhe['nome'][:25]}: {detalhe['valor_antigo']:.3f} → {detalhe['valor_novo']:.3f}\\n"
 
             if len(detalhes) > 3:
                 mensagem += f"... e mais {len(detalhes) - 3} fundos"

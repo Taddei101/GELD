@@ -3,7 +3,7 @@ import os
 # Para PythonAnywhere, usar caminho absoluto
 if os.environ.get('PYTHONANYWHERE_DOMAIN'):
     # Produção no PythonAnywhere
-    BASE_DIR = '/home/Geld/geld'
+    BASE_DIR = '/home/Geld/projeto'
     DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'geld_database.db')}"
 else:
     # Desenvolvimento local
