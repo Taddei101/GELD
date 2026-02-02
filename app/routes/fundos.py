@@ -164,105 +164,68 @@ def atualizar_cotas_fundos():
 
     def atualizar_fundos_inteligente(extract_service, max_meses=2):
         """
-        1. Pega TODOS os fundos cadastrados
-        2. Tenta mês atual primeiro
-        3. Para cada fundo não encontrado, busca em meses anteriores
+        Atualiza cotas dos fundos cadastrados usando dados da CVM
         """
-        from datetime import datetime, timedelta
-        import pandas as pd
-
-        hoje = datetime.now()
+        from datetime import datetime
+        
         fundos = db.query(InfoFundo).all()
-
         print(f"=== Atualizando {len(fundos)} fundos ===")
-
+        
         fundos_atualizados = 0
         fundos_detalhes = []
-
-        # Buscar dados dos últimos meses
-        dados_meses = {}
-
-        for meses_atras in range(0, max_meses):
-            if meses_atras == 0:
-                data_busca = hoje
-            else:
-                # Voltar meses
-                data_busca = hoje.replace(day=1) - timedelta(days=1)
-                for _ in range(meses_atras - 1):
-                    data_busca = data_busca.replace(day=1) - timedelta(days=1)
-
-            ano = str(data_busca.year)
-            mes = f"{data_busca.month:02d}"
-            chave_mes = f"{ano}-{mes}"
-
-            try:
-                print(f"Baixando dados de {mes}/{ano}...")
-                df_mes = extract_service.extracao_cvm(ano, mes)
-
-                if not df_mes.empty:
-                    dados_meses[chave_mes] = df_mes
-                    print(f"✅ {chave_mes}: {len(df_mes)} registros")
-                else:
-                    print(f"❌ {chave_mes}: Sem dados")
-
-            except Exception as e:
-                print(f"❌ {chave_mes}: Erro - {e}")
-
-        if not dados_meses:
-            print("❌ Nenhum dado encontrado em nenhum mês")
+        
+        # Baixar dados da CVM (1 chamada única)
+        df_cvm = extract_service.extracao_cvm()
+        
+        if df_cvm.empty:
+            print("❌ Não foi possível baixar dados da CVM")
             return 0, []
-
-        print(f"\\n=== Processando {len(fundos)} fundos ===")
-
-        # Para cada fundo, procurar nos dados disponíveis
+        
+        # Normalizar CNPJs no DataFrame uma única vez
+        df_cvm['CNPJ_NORM'] = df_cvm['CNPJ_FUNDO_CLASSE'].str.replace('.', '').str.replace('/', '').str.replace('-', '')
+        
+        print(f"\n=== Processando {len(fundos)} fundos ===")
+        
+        # Processar cada fundo
         for fundo in fundos:
-            ####pula fundos sem CNPJ#####
+            # Validação: pular fundos sem CNPJ
             if not fundo.cnpj or fundo.cnpj.strip() == '':
                 print(f"⚠️ {fundo.nome_fundo[:35]}: Sem CNPJ (pulado)")
                 fundos_detalhes.append({
                     'nome': fundo.nome_fundo,
-                    'status': 'sem_cnpj',
-                    'mensagem': 'Sem CNPJ cadastrado'
+                    'status': 'sem_cnpj'
                 })
                 continue
+            
+            # Normalizar CNPJ do fundo
             cnpj_normalizado = fundo.cnpj.replace('.', '').replace('/', '').replace('-', '')
-            fundo_encontrado = False
-
-            # Tentar nos dados, começando pelo mais recente
-            for chave_mes in sorted(dados_meses.keys(), reverse=True):
-                df_cotas = dados_meses[chave_mes]
-
-                # Buscar este fundo neste mês
-                df_fundo = df_cotas[
-                    df_cotas['CNPJ_FUNDO_CLASSE'].str.replace('.', '').str.replace('/', '').str.replace('-', '') == cnpj_normalizado
-                ]
-
-                if not df_fundo.empty:
-                    # Encontrou! Pegar valor mais recente
-                    df_recente = df_fundo.sort_values('DT_COMPTC', ascending=False).iloc[0]
-                    valor_novo = float(df_recente['VL_QUOTA'])
-                    valor_antigo = float(fundo.valor_cota) if fundo.valor_cota else 0
-
-                    print(f"✅ {fundo.nome_fundo[:35]}: {valor_antigo:.6f} -> {valor_novo:.6f} ({chave_mes})")
-
-                    # Atualizar
-                    fundo.valor_cota = valor_novo
-                    fundo.data_atualizacao = datetime.now()
-
-                    fundos_atualizados += 1
-                    fundos_detalhes.append({
-                        'nome': fundo.nome_fundo,
-                        'valor_antigo': valor_antigo,
-                        'valor_novo': valor_novo,
-                        'mes': chave_mes
-                    })
-
-                    fundo_encontrado = True
-                    break  # Encontrou, não precisa procurar em meses anteriores
-
-            if not fundo_encontrado:
-                print(f"❌ {fundo.nome_fundo[:35]}: Não encontrado em nenhum mês")
-
+            
+            # Buscar no DataFrame
+            df_fundo = df_cvm[df_cvm['CNPJ_NORM'] == cnpj_normalizado]
+            
+            if not df_fundo.empty:
+                # Pegar registro mais recente (por data)
+                df_recente = df_fundo.sort_values('DT_COMPTC', ascending=False).iloc[0]
+                
+                # Converter valor da cota (formato brasileiro: vírgula decimal)
+                valor_novo = float(df_recente['VL_QUOTA'])
+                valor_antigo = float(fundo.valor_cota) if fundo.valor_cota else 0
+                
+                print(f"✅ {fundo.nome_fundo[:35]}: {valor_antigo:.6f} -> {valor_novo:.6f}")
+                
+                # Atualizar no banco
+                fundo.valor_cota = valor_novo
+                fundo.data_atualizacao = datetime.now()
+                
+                fundos_atualizados += 1
+                fundos_detalhes.append({
+                    'nome': fundo.nome_fundo,
+                    'valor_antigo': valor_antigo,
+                    'valor_novo': valor_novo
+                })
+            else:
+                print(f"❌ {fundo.nome_fundo[:35]}: Não encontrado na CVM")
+        
         return fundos_atualizados, fundos_detalhes
 
     try:

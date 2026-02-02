@@ -33,45 +33,77 @@ class ExtractServices:
             return pd.DataFrame()
 
     #VALOR DA COTA  
-    def extracao_cvm(self, ano, mes):
-        """Extrai dados de fundos da CVM"""
-        url = f'https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_{ano}{mes}.zip'
+    def extracao_cvm(self):
+        """
+        Extrai dados de cotas da CVM
+        Tenta mês atual primeiro, se não disponível tenta mês anterior
         
-        # Cria pasta temporária se não existir
+        Returns:
+            DataFrame com colunas: CNPJ_FUNDO_CLASSE, VL_QUOTA, DT_COMPTC, DENOM_SOCIAL
+        """
+        from datetime import datetime, timedelta
+        import zipfile
+        
+        hoje = datetime.now()
+        
+        # Tentar mês atual primeiro
+        tentativas = [
+            (hoje.year, hoje.month, "atual"),
+            # Mês anterior
+            ((hoje.replace(day=1) - timedelta(days=1)).year, 
+            (hoje.replace(day=1) - timedelta(days=1)).month, 
+            "anterior")
+        ]
+        
         temp_dir = os.path.join(os.path.dirname(__file__), 'temp')
         os.makedirs(temp_dir, exist_ok=True)
         
-        zip_path = os.path.join(temp_dir, f"inf_diario_fi_{ano}{mes}.zip")
-        
-        try:
-            # Faz download do arquivo
-            response = requests.get(url, timeout=30)
+        for ano, mes, label in tentativas:
+            ano_str = str(ano)
+            mes_str = f"{mes:02d}"
             
-            if response.status_code != 200:
-                print(f"Erro ao baixar dados de FI da CVM. Status: {response.status_code}")
-                return pd.DataFrame()
-                
-            # Salva o arquivo zip
-            with open(zip_path, "wb") as arquivo_cvm:
-                arquivo_cvm.write(response.content)
+            url = f'https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/inf_diario_fi_{ano_str}{mes_str}.zip'
+            zip_path = os.path.join(temp_dir, f"inf_diario_fi_{ano_str}{mes_str}.zip")
             
-            # Extrai e lê o CSV
-            with zipfile.ZipFile(zip_path) as arquivo_zip:
-                df = pd.read_csv(arquivo_zip.open(arquivo_zip.namelist()[0]), sep=";", encoding='ISO-8859-1')
-                
-            return df
-            
-        except Exception as e:
-            print(f"Erro ao processar arquivo de FI: {str(e)}")
-            return pd.DataFrame()
-            
-        finally:
-            # Limpa o arquivo temporário
             try:
-                if os.path.exists(zip_path):
-                    os.remove(zip_path)
-            except:
-                pass
+                print(f"Baixando dados de {mes_str}/{ano_str} (mês {label})...")
+                
+                response = requests.get(url, timeout=30)
+                
+                if response.status_code == 404:
+                    print(f"❌ {mes_str}/{ano_str} não disponível")
+                    continue  # Tenta próximo mês
+                
+                if response.status_code != 200:
+                    print(f"Erro HTTP {response.status_code}")
+                    continue
+                
+                # Salvar ZIP
+                with open(zip_path, "wb") as arquivo_cvm:
+                    arquivo_cvm.write(response.content)
+                
+                # Extrair e ler CSV
+                with zipfile.ZipFile(zip_path) as arquivo_zip:
+                    df = pd.read_csv(arquivo_zip.open(arquivo_zip.namelist()[0]), sep=";", encoding='ISO-8859-1')
+                
+                print(f"✅ {len(df)} registros de {mes_str}/{ano_str}")
+                return df
+                
+            except Exception as e:
+                print(f"Erro ao processar {mes_str}/{ano_str}: {str(e)}")
+                continue
+                
+            finally:
+                # Limpar arquivo temporário
+                try:
+                    if os.path.exists(zip_path):
+                        os.remove(zip_path)
+                except:
+                    pass
+    
+        # Se chegou aqui, nenhum mês funcionou
+        print("❌ Não foi possível baixar dados da CVM")
+        return pd.DataFrame()
 
     # NOVA FUNÇÃO INFO DOS FUNDOS CVM - SUBSTITUIR A ANTIGA
     def extracao_cvm_info(self, cnpj, max_meses_anteriores=3):
