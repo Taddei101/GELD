@@ -40,11 +40,18 @@
 
         <div class="label">
             <label for="risco">Risco:</label>
-            <select id="risco" name="risco" required>
+            <select id="risco" name="risco" required onchange="toggleSubtipo()">
                 <option value="baixo" {% if fundo.risco.value == 'baixo' %}selected{% endif %}>Baixo</option>
                 <option value="moderado" {% if fundo.risco.value == 'moderado' %}selected{% endif %}>Moderado</option>
                 <option value="alto" {% if fundo.risco.value == 'alto' %}selected{% endif %}>Alto</option>
-                
+            </select>
+        </div>
+        
+        <div class="label" id="subtipo_container" style="display: {% if fundo.risco.value == 'baixo' %}block{% else %}none{% endif %};">
+            <label for="subtipo_risco">Subtipo:</label>
+            <select id="subtipo_risco" name="subtipo_risco">
+                <option value="di" {% if fundo.subtipo_risco and fundo.subtipo_risco.value == 'di' %}selected{% endif %}>DI</option>
+                <option value="rfx" {% if fundo.subtipo_risco and fundo.subtipo_risco.value == 'rfx' %}selected{% endif %}>RFx</option>
             </select>
         </div>
         
@@ -66,6 +73,25 @@
                 <button type="button" class="smlBtn" onclick="window.location.href=`{{ url_for('fundos.listar_fundos') }}`"><img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button> 
             </div>
     </form>
+    
+    <script>
+    function toggleSubtipo() {
+        const risco = document.getElementById('risco').value;
+        const subtipoContainer = document.getElementById('subtipo_container');
+        const subtipoSelect = document.getElementById('subtipo_risco');
+        
+        if (risco === 'baixo') {
+            subtipoContainer.style.display = 'block';
+            subtipoSelect.required = true;
+        } else {
+            subtipoContainer.style.display = 'none';
+            subtipoSelect.required = false;
+        }
+    }
+    
+    // Executar ao carregar
+    document.addEventListener('DOMContentLoaded', toggleSubtipo);
+    </script>
 </div>
 
 

@@ -6,32 +6,109 @@
 
 {% block content %}
 
-    <table class="table">
+<style>
+.filtro-dropdown {
+    display: block;
+    margin-top: 5px;
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    width: 100%;
+    max-width: 150px;
+}
+
+.filtro-dropdown:hover {
+    border-color: #999;
+}
+
+.filtro-dropdown:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+</style>
+
+
+{% if fundos %}
+<div style="margin-bottom: 10px;">
+    <button onclick="deletarSelecionados()" class="bigBtn" style="background-color: #d9534f;" title="Deletar fundos selecionados">
+        <img src="{{ url_for('static', filename='icons/trash.png') }}" class="btn-icon" style="filter: brightness(0) invert(1);"> Deletar Selecionados
+    </button>
+    <span id="contador-selecionados" style="margin-left: 10px; font-weight: bold;">0 selecionados</span>
+        
+</div>
+{% endif %}
+
+    <table class="table" id="tabela-fundos">
         <thead>
             <tr>
-                
+                <th>
+                    {% if fundos %}
+                    <input type="checkbox" id="select-all" onchange="toggleSelectAll(this)" title="Selecionar todos">
+                    {% endif %}
+                </th>
                 <th>Nome do Fundo</th>
-                <th>Classe Anbima</th>
+                <th>
+                    Classe Anbima
+                    <select id="filtro-classe" onchange="aplicarFiltros()" class="filtro-dropdown">
+                        <option value="">Todos</option>
+                    </select>
+                </th>
                 <th>CNPJ</th>
                 <th>Data de Atualização</th>
                 <th>Valor da Cota</th>
-                <th>Risco</th>
-                <th>Status</th>
-                <th></th>
+                <th>
+                    Risco
+                    <select id="filtro-risco" onchange="aplicarFiltros()" class="filtro-dropdown">
+                        <option value="">Todos</option>
+                        <option value="baixo-di">Baixo (DI)</option>
+                        <option value="baixo-rfx">Baixo (RFx)</option>
+                        <option value="moderado">Moderado</option>
+                        <option value="alto">Alto</option>
+                    </select>
+                </th>
+                <th>
+                    Status
+                    <select id="filtro-status" onchange="aplicarFiltros()" class="filtro-dropdown">
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativo</option>
+                        <option value="encerrado">Encerrado</option>
+                    </select>
+                </th>
+                <th><button onclick="limparFiltros()" class="smlBtn" style="margin-left: 20px;" title="Limpar todos os filtros">
+        <img src="{{ url_for('static', filename='icons/clean_filter.png') }}" class="sml-btn-icon"> 
+    </button></th>
             </tr>
         </thead>
         <tbody>
             {% for fundo in fundos %}
-            <tr>
+            <tr data-classe="{{ fundo.classe_anbima }}" 
+                data-risco="{% if fundo.risco.value == 'baixo' %}{% if fundo.subtipo_risco and fundo.subtipo_risco.value == 'di' %}baixo-di{% else %}baixo-rfx{% endif %}{% else %}{{ fundo.risco.value }}{% endif %}" 
+                data-status="{{ fundo.status_fundo.value if fundo.status_fundo else '' }}">
                 
+                <td>
+                    <input type="checkbox" class="fundo-checkbox" value="{{ fundo.id }}" onchange="updateCounter()">
+                </td>
                 <td style="font-size: 13px;">{{ fundo.nome_fundo }}</td>
-                <td>{{ " ".join(fundo.classe_anbima.split()[:2]) }}</td>
+                <td>{{ " ".join(fundo.classe_anbima.split()[:3]) }}</td>
                 <td>{{ fundo.cnpj if fundo.cnpj else 'N/A' }}</td>
                 
                  <td>{{ fundo.data_atualizacao.strftime('%d/%m/%Y') }} </td>
                 
                 <td>{{'R$ {:.2f}'.format(fundo.valor_cota).replace('.', ',') if fundo.valor_cota else 'N/A'}}</td>
-                <td>{{ fundo.risco.value if fundo.risco else 'N/A' }}</td>
+                <td>
+                    {% if fundo.risco.value == 'baixo' %}
+                        {% if fundo.subtipo_risco and fundo.subtipo_risco.value == 'di' %}
+                            Baixo (DI)
+                        {% else %}
+                            Baixo (RFx)
+                        {% endif %}
+                    {% else %}
+                        {{ fundo.risco.value.title() if fundo.risco else 'N/A' }}
+                    {% endif %}
+                </td>
                 <td>{{ fundo.status_fundo.value if fundo.status_fundo else 'N/A' }}</td>
                 
                 <td>
@@ -72,11 +149,143 @@
 
     </div>
 
+<script>
+// Selecionar/Desselecionar todas as checkboxes
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.fundo-checkbox');
+    checkboxes.forEach(cb => {
+        // Só marcar as checkboxes visíveis (que não foram filtradas)
+        const row = cb.closest('tr');
+        if (row.style.display !== 'none') {
+            cb.checked = checkbox.checked;
+        }
+    });
+    updateCounter();
+}
 
+// Atualizar contador de selecionados
+function updateCounter() {
+    const checkboxes = document.querySelectorAll('.fundo-checkbox:checked');
+    const counter = document.getElementById('contador-selecionados');
+    const count = checkboxes.length;
+    
+    counter.textContent = `${count} selecionado${count !== 1 ? 's' : ''}`;
+    
+    // Atualizar estado do "select-all"
+    const selectAll = document.getElementById('select-all');
+    const allCheckboxes = document.querySelectorAll('.fundo-checkbox');
+    const visibleCheckboxes = Array.from(allCheckboxes).filter(cb => cb.closest('tr').style.display !== 'none');
+    
+    if (selectAll && visibleCheckboxes.length > 0) {
+        const checkedVisible = visibleCheckboxes.filter(cb => cb.checked).length;
+        selectAll.checked = checkedVisible === visibleCheckboxes.length && checkedVisible > 0;
+    }
+}
+
+// Aplicar filtros na tabela
+function aplicarFiltros() {
+    const filtroClasse = document.getElementById('filtro-classe').value.toLowerCase();
+    const filtroRisco = document.getElementById('filtro-risco').value.toLowerCase();
+    const filtroStatus = document.getElementById('filtro-status').value.toLowerCase();
+    
+    const rows = document.querySelectorAll('#tabela-fundos tbody tr');
+    
+    rows.forEach(row => {
+        const classe = row.getAttribute('data-classe').toLowerCase();
+        const risco = row.getAttribute('data-risco').toLowerCase();
+        const status = row.getAttribute('data-status').toLowerCase();
+        
+        const matchClasse = !filtroClasse || classe.includes(filtroClasse);
+        const matchRisco = !filtroRisco || risco === filtroRisco;
+        const matchStatus = !filtroStatus || status === filtroStatus;
+        
+        if (matchClasse && matchRisco && matchStatus) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+            // Desmarcar checkbox de linhas ocultas
+            const checkbox = row.querySelector('.fundo-checkbox');
+            if (checkbox) checkbox.checked = false;
+        }
+    });
+    
+    updateCounter();
+}
+
+// Limpar todos os filtros
+function limparFiltros() {
+    document.getElementById('filtro-classe').value = '';
+    document.getElementById('filtro-risco').value = '';
+    document.getElementById('filtro-status').value = '';
+    aplicarFiltros();
+}
+
+// Popular dropdown de Classe Anbima com valores únicos
+function popularFiltroClasse() {
+    const filtroClasse = document.getElementById('filtro-classe');
+    const classes = new Set();
+    
+    const rows = document.querySelectorAll('#tabela-fundos tbody tr');
+    rows.forEach(row => {
+        const classe = row.getAttribute('data-classe');
+        if (classe) {
+            // Pegar apenas as 2 primeiras palavras
+            const classeSimples = classe.split(' ').slice(0, 2).join(' ');
+            classes.add(classeSimples);
+        }
+    });
+    
+    // Ordenar e adicionar opções
+    Array.from(classes).sort().forEach(classe => {
+        const option = document.createElement('option');
+        option.value = classe;
+        option.textContent = classe;
+        filtroClasse.appendChild(option);
+    });
+}
+
+// Deletar fundos selecionados
+function deletarSelecionados() {
+    const checkboxes = document.querySelectorAll('.fundo-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        alert('Selecione pelo menos um fundo para deletar.');
+        return;
+    }
+    
+    const count = checkboxes.length;
+    const confirmMsg = `Tem certeza que deseja deletar ${count} fundo${count !== 1 ? 's' : ''}?`;
+    
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+    
+    // Coletar IDs dos fundos selecionados
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    
+    // Criar formulário dinamicamente para enviar via POST
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url_for('fundos.delete_multiple_fundos') }}";
+    
+    // Adicionar IDs como campos hidden
+    ids.forEach(id => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'fundo_ids';
+        input.value = id;
+        form.appendChild(input);
+    });
+    
+    document.body.appendChild(form);
+    form.submit();
+}
+
+// Executar ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    popularFiltroClasse();
+});
+</script>
 
 
 {% endblock %}
-
-
-
-

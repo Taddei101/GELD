@@ -1,7 +1,6 @@
-
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from functools import wraps
-from app.models.geld_models import create_session, InfoFundo, RiscoEnum, StatusFundoEnum
+from app.models.geld_models import create_session, InfoFundo, RiscoEnum, StatusFundoEnum, SubtipoRiscoEnum, PosicaoFundo
 from app.services.global_services import GlobalServices, login_required
 from datetime import datetime
 from app.services.extract_services import ExtractServices
@@ -44,7 +43,13 @@ def add_fundo():
         permanencia_min= 0
         data_atualizacao = datetime.now()
         status_fundo = StatusFundoEnum["ativo"]
-        risco=RiscoEnum["baixo"]
+        risco = RiscoEnum[request.form['risco']]
+        
+        # Determinar subtipo_risco
+        if risco == RiscoEnum.baixo and 'subtipo_risco' in request.form:
+            subtipo_risco = SubtipoRiscoEnum[request.form['subtipo_risco']]
+        else:
+            subtipo_risco = SubtipoRiscoEnum.nao_aplicavel
 
         #cadastrar novo fundo
         novo_fundo = global_service.create_classe(
@@ -55,6 +60,7 @@ def add_fundo():
             classe_anbima = request.form['classe_anbima'],
             permanencia_min=permanencia_min,
             risco=risco,
+            subtipo_risco=subtipo_risco,
             status_fundo=status_fundo,
             valor_cota = 1,
             data_atualizacao = data_atualizacao
@@ -90,6 +96,53 @@ def delete_fundo(fundo_id):
     finally:
         db.close()
 
+#DELETAR MÚLTIPLOS FUNDOS
+@fundos_bp.route('/delete-multiple', methods=['POST'])
+@login_required
+def delete_multiple_fundos():
+    """Deletar múltiplos fundos selecionados"""
+    db = create_session()
+    try:
+        # Receber IDs dos fundos a serem deletados
+        fundo_ids = request.form.getlist('fundo_ids')
+        
+        if not fundo_ids:
+            flash('Nenhum fundo selecionado para deletar.', 'warning')
+            return redirect(url_for('fundos.listar_fundos'))
+        
+        # Converter para inteiros
+        fundo_ids = [int(fid) for fid in fundo_ids]
+        
+        # Deletar fundos
+        deleted_count = 0
+        for fundo_id in fundo_ids:
+            fundo = db.query(InfoFundo).filter_by(id=fundo_id).first()
+            if fundo:
+                # Verificar se há posições associadas
+                posicoes_count = db.query(PosicaoFundo).filter_by(fundo_id=fundo_id).count()
+                
+                if posicoes_count > 0:
+                    flash(f'Fundo "{fundo.nome_fundo}" possui {posicoes_count} posição(ões) associada(s) e não pode ser deletado.', 'error')
+                    continue
+                
+                db.delete(fundo)
+                deleted_count += 1
+        
+        db.commit()
+        
+        if deleted_count > 0:
+            flash(f'{deleted_count} fundo(s) deletado(s) com sucesso!', 'success')
+        else:
+            flash('Nenhum fundo pôde ser deletado.', 'warning')
+        
+        return redirect(url_for('fundos.listar_fundos'))
+        
+    except Exception as e:
+        db.rollback()
+        flash(f'Erro ao deletar fundos: {str(e)}', 'error')
+        return redirect(url_for('fundos.listar_fundos'))
+    finally:
+        db.close()
 
 #EDITAR
 @fundos_bp.route('/fundos/edit/<int:fundo_id>', methods=['GET','POST'])
@@ -132,6 +185,12 @@ def edit_fundo(fundo_id):
 
             if 'risco' in request.form and request.form['risco']:
                 dados_atualizados['risco'] = RiscoEnum[request.form['risco']]
+                
+                # Processar subtipo_risco baseado no risco selecionado
+                if RiscoEnum[request.form['risco']] == RiscoEnum.baixo and 'subtipo_risco' in request.form:
+                    dados_atualizados['subtipo_risco'] = SubtipoRiscoEnum[request.form['subtipo_risco']]
+                else:
+                    dados_atualizados['subtipo_risco'] = SubtipoRiscoEnum.nao_aplicavel
 
             if 'status_fundo' in request.form and request.form['status_fundo']:
                 dados_atualizados['status_fundo'] = StatusFundoEnum[request.form['status_fundo']]

@@ -42,9 +42,44 @@
             <input type="text" id="classe_anbima" name="classe_anbima" required>
         </div class="label">
 
+        <div class="label">
+            <label for="risco">Nível de Risco:</label>
+            <select id="risco" name="risco" required onchange="toggleSubtipo()">
+                <option value="">Selecione...</option>
+                <option value="baixo">🟢 Baixo</option>
+                <option value="moderado">🟡 Moderado</option>
+                <option value="alto">🔴 Alto</option>
+            </select>
+        </div>
+
+        <div class="label" id="subtipo_container" style="display: none;">
+            <label for="subtipo_risco">Subtipo:</label>
+            <select id="subtipo_risco" name="subtipo_risco">
+                <option value="di">DI</option>
+                <option value="rfx">RFx</option>
+            </select>
+        </div>
+
         <button title="Cadastrar" class="smlBtn" type="submit"><img src="{{ url_for('static', filename='icons/add_cliente.png') }}" class="sml-btn-icon"></button>
 
     </form>
+
+    <script>
+    function toggleSubtipo() {
+        const risco = document.getElementById('risco').value;
+        const subtipoContainer = document.getElementById('subtipo_container');
+        const subtipoSelect = document.getElementById('subtipo_risco');
+        
+        if (risco === 'baixo') {
+            subtipoContainer.style.display = 'block';
+            subtipoSelect.required = true;
+        } else {
+            subtipoContainer.style.display = 'none';
+            subtipoSelect.required = false;
+            subtipoSelect.value = '';
+        }
+    }
+    </script>
 
     <p></p>
 

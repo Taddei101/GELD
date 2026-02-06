@@ -6,7 +6,31 @@
 
 {% block content %}
 
-<!-- NOVA TABELA: Resumo por Classe de Risco -->
+<style>
+.filtro-dropdown {
+    display: block;
+    margin-top: 5px;
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    width: 100%;
+    max-width: 150px;
+}
+
+.filtro-dropdown:hover {
+    border-color: #999;
+}
+
+.filtro-dropdown:focus {
+    outline: none;
+    border-color: #4CAF50;
+}
+</style>
+
+
 <h3>Resumo por Classe de Risco</h3>
 <table class="table">
 <thead>
@@ -47,10 +71,10 @@
 
 <p></p>
 
-<!-- Tabela de Portfolio de Fundos -->
+
 <h3>Portfolio de Fundos</h3>
 
-<!-- BOTÃO DELETAR SELECIONADAS -->
+
 {% if posicoes %}
 <div style="margin-bottom: 10px;">
     <button onclick="deletarSelecionadas()" class="bigBtn" style="background-color: #d9534f;" title="Deletar posições selecionadas">
@@ -60,7 +84,7 @@
 </div>
 {% endif %}
 
-<table class="table">
+<table class="table" id="tabela-posicoes">
 <thead>
     <tr>
         <th>
@@ -69,17 +93,43 @@
             {% endif %}
         </th>
         <th>Fundo</th>
-        <th>Classe Anbima</th>
-        <th>Risco</th> 
-        <th>Fonte</th>
+        <th>
+            Classe Anbima
+            <select id="filtro-classe" onchange="aplicarFiltros()" class="filtro-dropdown">
+                <option value="">Todos</option>
+            </select>
+        </th>
+        <th>
+            Risco
+            <select id="filtro-risco" onchange="aplicarFiltros()" class="filtro-dropdown">
+                <option value="">Todos</option>
+                <option value="baixo-di">Baixo (DI)</option>
+                <option value="baixo-rfx">Baixo (RFx)</option>
+                <option value="moderado">Moderado</option>
+                <option value="alto">Alto</option>
+            </select>
+        </th> 
+        <th>
+            Fonte
+            <select id="filtro-fonte" onchange="aplicarFiltros()" class="filtro-dropdown">
+                <option value="">Todos</option>
+                <option value="BTG">BTG</option>
+                <option value="ADVISOR">Advisor</option>
+            </select>
+        </th>
         <th>Cotas</th>
         <th>Valor da cota</th>
         <th>Saldo Bruto</th>
-        <th>{% if posicoes|length > 3 %}
+        <th>
+            {% if posicoes|length > 3 %}
             <button onclick="toggleExtraFunds()" id="toggle-btn" class="smlBtn" title="Mostrar todos os fundos">
                 <img src="{{ url_for('static', filename='icons/expand.png') }}" class="sml-btn-icon" id="toggle-icon">
             </button>
-        {% endif %}</th>
+            {% endif %}
+            <button onclick="limparFiltros()" class="smlBtn" title="Limpar todos os filtros">
+                <img src="{{ url_for('static', filename='icons/clean_filter.png') }}" class="sml-btn-icon">
+            </button>
+        </th>
     </tr>
 </thead>
 
@@ -87,12 +137,14 @@
     {% if posicoes %}
         <!-- Mostrar apenas os 3 primeiros fundos -->
         {% for posicao in posicoes[:3] %}
-        <tr>
+        <tr data-classe="{{ posicao.info_fundo.classe_anbima if posicao.info_fundo.classe_anbima else '' }}"
+            data-risco="{% if posicao.info_fundo.risco.value == 'baixo' %}{% if posicao.info_fundo.subtipo_risco and posicao.info_fundo.subtipo_risco.value == 'di' %}baixo-di{% else %}baixo-rfx{% endif %}{% else %}{{ posicao.info_fundo.risco.value }}{% endif %}"
+            data-fonte="{{ posicao.banco_custodia if posicao.banco_custodia else '' }}">
             <td>
                 <input type="checkbox" class="posicao-checkbox" value="{{ posicao.id }}" onchange="updateCounter()">
             </td>
             <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:3]) }}</td>
-            <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:2]) if posicao.info_fundo.classe_anbima else '' }}</td>
+            <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:3]) if posicao.info_fundo.classe_anbima else '' }}</td>
             <td>
                 {% if posicao.info_fundo.risco.value == 'baixo' %}
                     {% if posicao.info_fundo.subtipo_risco and posicao.info_fundo.subtipo_risco.value == 'di' %}
@@ -135,12 +187,15 @@
         <!-- Fundos restantes (ocultos inicialmente) -->
         {% if posicoes|length > 3 %}
             {% for posicao in posicoes[3:] %}
-            <tr class="extra-funds" style="display: none;">
+            <tr class="extra-funds" style="display: none;"
+                data-classe="{{ posicao.info_fundo.classe_anbima if posicao.info_fundo.classe_anbima else '' }}"
+                data-risco="{% if posicao.info_fundo.risco.value == 'baixo' %}{% if posicao.info_fundo.subtipo_risco and posicao.info_fundo.subtipo_risco.value == 'di' %}baixo-di{% else %}baixo-rfx{% endif %}{% else %}{{ posicao.info_fundo.risco.value }}{% endif %}"
+                data-fonte="{{ posicao.banco_custodia if posicao.banco_custodia else '' }}">
                 <td>
                     <input type="checkbox" class="posicao-checkbox" value="{{ posicao.id }}" onchange="updateCounter()">
                 </td>
                 <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:3]) }}</td>
-                <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:2]) if posicao.info_fundo.classe_anbima else '' }}</td>
+                <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:3]) if posicao.info_fundo.classe_anbima else '' }}</td>
                 <td>
                     {% if posicao.info_fundo.risco.value == 'baixo' %}
                         {% if posicao.info_fundo.subtipo_risco and posicao.info_fundo.subtipo_risco.value == 'di' %}
@@ -251,7 +306,11 @@ function toggleExtraFunds() {
 function toggleSelectAll(checkbox) {
     const checkboxes = document.querySelectorAll('.posicao-checkbox');
     checkboxes.forEach(cb => {
-        cb.checked = checkbox.checked;
+        // Só marcar as checkboxes visíveis (que não foram filtradas)
+        const row = cb.closest('tr');
+        if (row.style.display !== 'none') {
+            cb.checked = checkbox.checked;
+        }
     });
     updateCounter();
 }
@@ -267,11 +326,81 @@ function updateCounter() {
     // Atualizar estado do "select-all"
     const selectAll = document.getElementById('select-all');
     const allCheckboxes = document.querySelectorAll('.posicao-checkbox');
+    const visibleCheckboxes = Array.from(allCheckboxes).filter(cb => cb.closest('tr').style.display !== 'none');
     
-    if (selectAll) {
-        selectAll.checked = count === allCheckboxes.length && count > 0;
+    if (selectAll && visibleCheckboxes.length > 0) {
+        const checkedVisible = visibleCheckboxes.filter(cb => cb.checked).length;
+        selectAll.checked = checkedVisible === visibleCheckboxes.length && checkedVisible > 0;
     }
 }
+
+// Aplicar filtros na tabela
+function aplicarFiltros() {
+    const filtroClasse = document.getElementById('filtro-classe').value.toLowerCase();
+    const filtroRisco = document.getElementById('filtro-risco').value.toLowerCase();
+    const filtroFonte = document.getElementById('filtro-fonte').value.toUpperCase();
+    
+    const rows = document.querySelectorAll('#tabela-posicoes tbody tr');
+    
+    rows.forEach(row => {
+        const classe = row.getAttribute('data-classe').toLowerCase();
+        const risco = row.getAttribute('data-risco').toLowerCase();
+        const fonte = row.getAttribute('data-fonte').toUpperCase();
+        
+        const matchClasse = !filtroClasse || classe.includes(filtroClasse);
+        const matchRisco = !filtroRisco || risco === filtroRisco;
+        const matchFonte = !filtroFonte || fonte === filtroFonte;
+        
+        if (matchClasse && matchRisco && matchFonte) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+            // Desmarcar checkbox de linhas ocultas
+            const checkbox = row.querySelector('.posicao-checkbox');
+            if (checkbox) checkbox.checked = false;
+        }
+    });
+    
+    updateCounter();
+}
+
+// Limpar todos os filtros
+function limparFiltros() {
+    document.getElementById('filtro-classe').value = '';
+    document.getElementById('filtro-risco').value = '';
+    document.getElementById('filtro-fonte').value = '';
+    aplicarFiltros();
+}
+
+// Popular dropdown de Classe Anbima com valores únicos
+function popularFiltroClasse() {
+    const filtroClasse = document.getElementById('filtro-classe');
+    const classes = new Set();
+    
+    const rows = document.querySelectorAll('#tabela-posicoes tbody tr');
+    rows.forEach(row => {
+        const classe = row.getAttribute('data-classe');
+        if (classe) {
+            // Pegar apenas as 2 primeiras palavras
+            const classeSimples = classe.split(' ').slice(0, 2).join(' ');
+            classes.add(classeSimples);
+        }
+    });
+    
+    // Ordenar e adicionar opções
+    Array.from(classes).sort().forEach(classe => {
+        const option = document.createElement('option');
+        option.value = classe;
+        option.textContent = classe;
+        filtroClasse.appendChild(option);
+    });
+}
+
+// Executar ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    popularFiltroClasse();
+});
+
 
 // Deletar posições selecionadas
 function deletarSelecionadas() {
