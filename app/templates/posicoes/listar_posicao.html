@@ -212,7 +212,7 @@
 
 <div class="inline-btn">
     <button title="upload_btg" class="bigBtn" onclick="window.location.href=`{{ url_for('posicao.upload_cotas', cliente_id=cliente.id) }}` ">
-    <img src="{{ url_for('static', filename='icons/btg.png') }}" class="btn-icon"> Upload Portfolio BTG
+    <img src="{{ url_for('static', filename='icons/BTG.png') }}" class="btn-icon"> Upload Portfolio BTG
     </button>
 
 
@@ -220,9 +220,9 @@
     <img src="{{ url_for('static', filename='icons/advisor.jpg') }}" class="btn-icon"> Upload Portfolio Advisor
     </button>
     
-    <button title="balancear aporte" class="bigBtn" onclick="window.location.href=`{{ url_for('objetivo.listar_objetivos', cliente_id=cliente.id) }}`">
-        <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte
-    </button>
+    <button title="balancear_aporte" class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}` ">
+        <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon"> Balancear Aporte
+        </button>
 </div>
 
 <script>

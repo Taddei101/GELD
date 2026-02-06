@@ -1,208 +1,333 @@
+"""
+Serviço de balanceamento baseado em percentuais de participação
+"""
+
+from app.models.geld_models import (
+    Objetivo, MatrizRisco, DistribuicaoObjetivo, 
+    IndicadoresEconomicos, TipoObjetivoEnum,
+    PosicaoFundo, InfoFundo, RiscoEnum, SubtipoRiscoEnum
+)
+from datetime import datetime
+from decimal import Decimal
+from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
-from typing import List, Dict
 
-# Balanceamento do aporte entre os objetivos
-class Balance:
-    def __init__(self, db: Session = None):
-        self.db = db
 
-    def balancear_aporte(self, aporte: float, objetivos: List) -> Dict:
-        """REGRA DE BALANCEAMENTO DE DO APORTE ENTRE OS OBJETIVOS. ATUALMENTE DIVIDE IGUALMENTE"""
-        try:
-            num_objetivos = len(objetivos)
-            if num_objetivos == 0:
-                return {"error": "Não há objetivos cadastrados"}
-            
-            aporte = float(aporte)
-            valor_por_objetivo = aporte / num_objetivos
-        
-            # Dicionario das quotas linkadas ao objetivo_id
-            quotas = {objetivo.id: valor_por_objetivo for objetivo in objetivos}
-           
-            return quotas
-        
-        except Exception as e:
-            return {"error": f"Erro ao balancear aporte: {str(e)}"}
-
-    def balancear_quota(self, quota: float, objetivo) -> Dict:
+class BalanceamentoService:
+    """Serviço para balanceamento de carteiras com percentuais"""
+    
+    TAXA_REAL_ANUAL = 3.5  # IPCA + 3.5% ao ano
+    
+    # ========== MÉTODOS DE CÁLCULO DE POSIÇÕES ==========
+    
+    @staticmethod
+    def calcular_totais_por_classe(cliente_id: int, session: Session) -> Dict[str, float]:
         """
-        Balanceia a quota de um objetivo entre diferentes níveis de risco
-        TEMPORÁRIO: Tabela hardcoded até implementar nova matriz
+        Calcula total investido por classe de risco a partir de PosicaoFundo
+        Returns:
+            {'baixo_di': X, 'baixo_rfx': Y, 'moderado': Z, 'alto': W}
         """
-        try:
-            if not objetivo:
-                return {"error": "Objetivo não encontrado"}
-            
-            # Obter a duração em meses do objetivo
-            duracao_meses = objetivo.duracao_meses
-            
-            # TABELA TEMPORÁRIA - substituir pela nova matriz no futuro
-            tabela_riscos = [
-                {"prazo": 12, "risco_baixo": 0.0, "risco_moderado": 0.135, "risco_alto": 0.015, "risco_di": 1},
-                {"prazo": 24, "risco_baixo": 0.635, "risco_moderado": 0.178, "risco_alto": 0.037, "risco_di": 0.15},
-                {"prazo": 36, "risco_baixo": 0.670, "risco_moderado": 0.213, "risco_alto": 0.067, "risco_di": 0.05},
-                {"prazo": 48, "risco_baixo": 0.605, "risco_moderado": 0.238, "risco_alto": 0.107, "risco_di": 0.05},
-                {"prazo": 60, "risco_baixo": 0.540, "risco_moderado": 0.254, "risco_alto": 0.156, "risco_di": 0.05},
-                {"prazo": 72, "risco_baixo": 0.475, "risco_moderado": 0.261, "risco_alto": 0.214, "risco_di": 0.05},
-                {"prazo": 84, "risco_baixo": 0.410, "risco_moderado": 0.259, "risco_alto": 0.281, "risco_di": 0.05},
-                {"prazo": 96, "risco_baixo": 0.345, "risco_moderado": 0.248, "risco_alto": 0.357, "risco_di": 0.05},
-                {"prazo": 108, "risco_baixo": 0.280, "risco_moderado": 0.228, "risco_alto": 0.442, "risco_di": 0.05},
-                {"prazo": 120, "risco_baixo": 0.215, "risco_moderado": 0.198, "risco_alto": 0.537, "risco_di": 0.05},
-                {"prazo": 132, "risco_baixo": 0.150, "risco_moderado": 0.160, "risco_alto": 0.640, "risco_di": 0.05}
-            ]
-            
-            # Encontrar a regra correspondente ao prazo do objetivo
-            regra_aplicavel = None
-            
-            # Se for menor ou igual ao menor prazo na tabela
-            if duracao_meses <= tabela_riscos[0]["prazo"]:
-                regra_aplicavel = tabela_riscos[0]
-            # Se for maior ou igual ao maior prazo na tabela
-            elif duracao_meses >= tabela_riscos[-1]["prazo"]:
-                regra_aplicavel = tabela_riscos[-1]
-            else:
-                # Percorrer a tabela para encontrar o prazo mais próximo
-                for i in range(len(tabela_riscos)-1):
-                    prazo_atual = tabela_riscos[i]["prazo"]
-                    proximo_prazo = tabela_riscos[i+1]["prazo"]
-                    
-                    # Se o prazo estiver exatamente em uma das entradas da tabela
-                    if duracao_meses == prazo_atual:
-                        regra_aplicavel = tabela_riscos[i]
-                        break
-                    
-                    # Se o prazo estiver entre duas entradas da tabela, pega a maior
-                    if prazo_atual < duracao_meses < proximo_prazo:
-                        regra_aplicavel = tabela_riscos[i+1]
-                        break
-            
-            # Aplicar a regra encontrada
-            percentagens = {
-                "risco_baixo": regra_aplicavel["risco_baixo"],
-                "risco_moderado": regra_aplicavel["risco_moderado"],
-                "risco_alto": regra_aplicavel["risco_alto"],
-                "risco_di": regra_aplicavel["risco_di"]
-            }
-            
-            # Adicionar informação da regra aplicada ao resultado
-            prazo_aplicado = regra_aplicavel["prazo"]
-            
-            # Calcular a quota para cada tipo de risco
-            balanceamento = {
-                "objetivo_id": objetivo.id,
-                "nome_objetivo": objetivo.nome_objetivo,
-                "quota_total": quota,
-                "duracao_meses": duracao_meses,
-                "prazo_referencia": prazo_aplicado,
-                "distribuicao": {
-                    "risco_baixo": {
-                        "percentagem": percentagens["risco_baixo"] * 100,
-                        "valor": quota * percentagens["risco_baixo"]
-                    },
-                    "risco_moderado": {
-                        "percentagem": percentagens["risco_moderado"] * 100,
-                        "valor": quota * percentagens["risco_moderado"]
-                    },
-                    "risco_alto": {
-                        "percentagem": percentagens["risco_alto"] * 100,
-                        "valor": quota * percentagens["risco_alto"]
-                    },
-                    "risco_di":{
-                        "percentagem": percentagens["risco_di"] * 100,
-                        "valor": quota * percentagens["risco_di"]
-                    }
-                }
-            }
-            
-            # Log opcional
-            print(f"Objetivo: {balanceamento['nome_objetivo']} (ID: {balanceamento['objetivo_id']})")
-            print(f"Quota Total: {balanceamento['quota_total']}")
-            print(f"Duração: {balanceamento['duracao_meses']} meses (Prazo ref.: {balanceamento['prazo_referencia']} meses)")
-            print(f"Distribuição:")
-            print(f"  Risco Baixo: {balanceamento['distribuicao']['risco_baixo']['percentagem']}% = {balanceamento['distribuicao']['risco_baixo']['valor']}")
-            print(f"  Risco Moderado: {balanceamento['distribuicao']['risco_moderado']['percentagem']}% = {balanceamento['distribuicao']['risco_moderado']['valor']}")
-            print(f"  Risco Alto: {balanceamento['distribuicao']['risco_alto']['percentagem']}% = {balanceamento['distribuicao']['risco_alto']['valor']}")
-            print(f"  Risco DI: {balanceamento['distribuicao']['risco_di']['percentagem']}% = {balanceamento['distribuicao']['risco_di']['valor']}")
-            
-            return balanceamento
-            
-        except Exception as e:
-            return {"error": f"Erro ao balancear quota para objetivo {objetivo.id if objetivo else 'desconhecido'}: {str(e)}"}
-        
-# ... todo o código da classe Balance permanece aqui ...
-
-# ===== NOVA FUNÇÃO PARA BALANCEAMENTO INDIVIDUAL =====
-
-def balance_objective(aporte, objetivo):
-    """
-    Distribui um aporte em reais segundo as matrizes de risco
-    
-    Args:
-        aporte: valor em reais a ser distribuído
-        objetivo: instância de Objetivo
-        
-    Returns:
-        dict com a distribuição do aporte
-    """
-    from app.models.geld_models import TipoObjetivoEnum
-    from app.models.matriz_data import MATRIZ_GERAL, MATRIZ_PREVIDENCIA
-    
-    periodo = objetivo.duracao_meses
-    
-    # Seleciona matriz baseada no tipo do objetivo
-    matriz = MATRIZ_PREVIDENCIA if objetivo.tipo_objetivo == TipoObjetivoEnum.previdencia else MATRIZ_GERAL
-    
-    # Encontra a linha adequada: primeira onde periodo <= duracao
-    distrib = matriz[-1]  # Default: última linha (maior duração)
-    
-    for linha in matriz:
-        if periodo <= linha['duracao_meses']:
-            distrib = linha
-            break
-    
-    # Acessa valores diretamente pelo nome da chave
-    perc_baixo = distrib['perc_baixo']
-    perc_moderado = distrib['perc_moderado']
-    perc_alto = distrib['perc_alto']
-    perc_di_baixo = distrib['perc_di_dentro_baixo']
-    perc_rfx_baixo = distrib['perc_rfx_dentro_baixo']
-    
-    # Calcula valores em reais
-    valor_baixo = aporte * (perc_baixo / 100)
-    valor_moderado = aporte * (perc_moderado / 100)
-    valor_alto = aporte * (perc_alto / 100)
-    
-    # Subdivide o valor de risco baixo
-    valor_di = valor_baixo * (perc_di_baixo / 100)
-    valor_rfx = valor_baixo * (perc_rfx_baixo / 100)
-    
-    return {
-        'total': aporte,
-        'periodo_meses': periodo,
-        'duracao_referencia': distrib['duracao_meses'],
-        'tipo_objetivo': objetivo.tipo_objetivo.value,
-        'risco': {
-            'baixo': {
-                'valor': round(valor_baixo, 2),
-                'percentual': round(perc_baixo, 2),
-                'subdivisao': {
-                    'di': {
-                        'valor': round(valor_di, 2),
-                        'percentual': round(perc_di_baixo, 2)
-                    },
-                    'rfx': {
-                        'valor': round(valor_rfx, 2),
-                        'percentual': round(perc_rfx_baixo, 2)
-                    }
-                }
-            },
-            'moderado': {
-                'valor': round(valor_moderado, 2),
-                'percentual': round(perc_moderado, 2)
-            },
-            'alto': {
-                'valor': round(valor_alto, 2),
-                'percentual': round(perc_alto, 2)
-            }
+        totais = {
+            'baixo_di': 0.0,
+            'baixo_rfx': 0.0,
+            'moderado': 0.0,
+            'alto': 0.0
         }
-    }
+        
+        # Buscar todas posições do cliente
+        posicoes = session.query(PosicaoFundo).filter_by(cliente_id=cliente_id).all()
+        
+        for pos in posicoes:
+            fundo = pos.info_fundo
+            valor = float(pos.cotas) * float(fundo.valor_cota)
+            
+            # Classificar por risco
+            if fundo.risco == RiscoEnum.baixo:
+                if fundo.subtipo_risco == SubtipoRiscoEnum.di:
+                    totais['baixo_di'] += valor
+                elif fundo.subtipo_risco == SubtipoRiscoEnum.rfx:
+                    totais['baixo_rfx'] += valor
+                else:
+                    # Se não tem subtipo, assumir RFx
+                    totais['baixo_rfx'] += valor
+            elif fundo.risco == RiscoEnum.moderado:
+                totais['moderado'] += valor
+            elif fundo.risco == RiscoEnum.alto:
+                totais['alto'] += valor
+        
+        return totais
+    
+    @staticmethod
+    def calcular_valores_atuais_objetivos(
+        cliente_id: int, 
+        totais_classe: Dict[str, float],
+        session: Session
+    ) -> Dict[int, Dict[str, float]]:
+        """
+        Aplica percentuais de cada objetivo aos totais para calcular valores atuais
+        Returns:{objetivo_id: {'baixo_di': valor,'baixo_rfx': valor,'moderado': valor,'alto': valor,'total': valor}}
+        """
+        objetivos = session.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        
+        valores_por_objetivo = {}
+        
+        for obj in objetivos:
+            # Buscar distribuição (percentuais)
+            dist = session.query(DistribuicaoObjetivo).filter_by(objetivo_id=obj.id).first()
+            
+            if not dist:
+                # Objetivo sem distribuição ainda
+                valores_por_objetivo[obj.id] = {
+                    'baixo_di': 0.0,
+                    'baixo_rfx': 0.0,
+                    'moderado': 0.0,
+                    'alto': 0.0,
+                    'total': 0.0
+                }
+            else:
+                # Aplicar percentuais
+                valores = {
+                    'baixo_di': totais_classe['baixo_di'] * (dist.perc_baixo_di / 100),
+                    'baixo_rfx': totais_classe['baixo_rfx'] * (dist.perc_baixo_rfx / 100),
+                    'moderado': totais_classe['moderado'] * (dist.perc_moderado / 100),
+                    'alto': totais_classe['alto'] * (dist.perc_alto / 100)
+                }
+                valores['total'] = sum(valores.values())
+                valores_por_objetivo[obj.id] = valores
+        
+        return valores_por_objetivo
+    
+    # ========== MÉTODOS DE MATRIZ DE RISCO ==========
+    
+    @staticmethod
+    def buscar_matriz_alvo(objetivo: Objetivo, session: Session) -> MatrizRisco:
+        """Busca matriz de risco baseada no prazo do objetivo"""
+        duracao = objetivo.duracao_meses
+        tipo = objetivo.tipo_objetivo
+        
+        # Prazos disponíveis
+        prazos = [12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132]
+        prazo_arredondado = min(prazos, key=lambda x: abs(x - duracao))
+        
+        matriz = session.query(MatrizRisco).filter(
+            MatrizRisco.tipo_objetivo == tipo,
+            MatrizRisco.duracao_meses == prazo_arredondado
+        ).first()
+        
+        if not matriz:
+            raise ValueError(f"Matriz não encontrada para tipo={tipo}, prazo={prazo_arredondado}")
+        
+        return matriz
+    
+    @staticmethod
+    def distribuir_aporte_por_matriz(valor_aporte: float, matriz: MatrizRisco) -> Dict[str, float]:
+        """
+        Distribui aporte em R$ conforme percentuais da matriz
+        
+        """
+        # Calcular percentuais absolutos
+        perc_baixo_di = (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100
+        perc_baixo_rfx = (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100
+        
+        return {
+            'baixo_di': valor_aporte * perc_baixo_di / 100,
+            'baixo_rfx': valor_aporte * perc_baixo_rfx / 100,
+            'moderado': valor_aporte * matriz.perc_moderado / 100,
+            'alto': valor_aporte * matriz.perc_alto / 100
+        }
+    
+    # ========== MÉTODOS DE Valor Presente (VP) IDEAL ==========
+    
+    @staticmethod
+    def calcular_vp_ideal(objetivo: Objetivo, ipca_anual: float) -> float:
+        """
+        Calcula Valor Presente Ideal
+        
+        VP Ideal = valor necessário hoje para atingir objetivo sem aportes adicionais
+        """
+        ipca_mensal = ((1 + ipca_anual / 100) ** (1/12)) - 1
+        taxa_real_mensal = ((1 + (ipca_anual + BalanceamentoService.TAXA_REAL_ANUAL) / 100) ** (1/12)) - 1
+        
+        duracao = objetivo.duracao_meses
+        
+        # Valor futuro corrigido pela inflação
+        valor_futuro = float(objetivo.valor_final) * ((1 + ipca_mensal) ** duracao)
+        
+        # Trazer a VP com taxa real
+        vp_ideal = valor_futuro / ((1 + taxa_real_mensal) ** duracao)
+        
+        return vp_ideal
+    
+    # ========== MÉTODO PRINCIPAL DE BALANCEAMENTO ==========
+    
+    @staticmethod
+    def processar_balanceamento(
+        cliente_id: int,
+        aportes_por_objetivo: List[Dict],
+        session: Session
+    ) -> Dict:
+        """
+        Processa balanceamento completo
+        Args:
+            aportes_por_objetivo: Obj1,X reais, Obj2, Y reais
+        Returns:
+            Resultado do balanceamento
+        """
+        # 1. Buscar IPCA
+        indicadores = session.query(IndicadoresEconomicos).first()
+        if not indicadores:
+            raise ValueError("IPCA não encontrado")
+        
+        ipca_anual = indicadores.ipca
+        
+        # 2. Calcular totais ATUAIS por classe (de PosicaoFundo)
+        totais_atuais = BalanceamentoService.calcular_totais_por_classe(cliente_id, session)
+        
+        # 3. Calcular valores atuais por objetivo (aplicando % atuais)
+        valores_atuais_obj = BalanceamentoService.calcular_valores_atuais_objetivos(
+            cliente_id, totais_atuais, session
+        )
+        
+        # 4. Processar TODOS os objetivos (com e sem aporte)
+        todos_objetivos = session.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        resultados_objetivos = []
+        novos_valores_por_classe = {k: 0.0 for k in totais_atuais.keys()}
+        
+        # Criar dict de aportes para lookup rápido
+        aportes_dict = {a['objetivo_id']: a['valor_aporte'] for a in aportes_por_objetivo}
+        
+        for objetivo in todos_objetivos:
+            valor_aporte = aportes_dict.get(objetivo.id, 0.0)
+            
+            # Buscar matriz e distribuir aporte (se houver)
+            matriz = BalanceamentoService.buscar_matriz_alvo(objetivo, session)
+            
+            if valor_aporte > 0:
+                distribuicao_aporte = BalanceamentoService.distribuir_aporte_por_matriz(
+                    valor_aporte, matriz
+                )
+            else:
+                distribuicao_aporte = {
+                    'baixo_di': 0.0,
+                    'baixo_rfx': 0.0,
+                    'moderado': 0.0,
+                    'alto': 0.0
+                }
+            
+            # Valores atuais deste objetivo
+            valores_atuais = valores_atuais_obj.get(objetivo.id, {
+                'baixo_di': 0, 'baixo_rfx': 0, 'moderado': 0, 'alto': 0, 'total': 0
+            })
+            
+            # Novos valores = atuais + aporte
+            novos_valores = {
+                'baixo_di': valores_atuais['baixo_di'] + distribuicao_aporte['baixo_di'],
+                'baixo_rfx': valores_atuais['baixo_rfx'] + distribuicao_aporte['baixo_rfx'],
+                'moderado': valores_atuais['moderado'] + distribuicao_aporte['moderado'],
+                'alto': valores_atuais['alto'] + distribuicao_aporte['alto']
+            }
+            novos_valores['total'] = sum([v for k, v in novos_valores.items() if k != 'total'])
+            
+            # Acumular para calcular totais depois
+            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
+                novos_valores_por_classe[classe] += novos_valores[classe]
+            
+            # Calcular VP Ideal e Gap
+            vp_ideal = BalanceamentoService.calcular_vp_ideal(objetivo, ipca_anual)
+            gap = vp_ideal - valores_atuais['total']
+            
+            # Percentuais da matriz
+            perc_alvo = {
+                'baixo_di': (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100,
+                'baixo_rfx': (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100,
+                'moderado': matriz.perc_moderado,
+                'alto': matriz.perc_alto
+            }
+            
+            resultados_objetivos.append({
+                'objetivo_id': objetivo.id,
+                'objetivo_nome': objetivo.nome_objetivo,
+                'prazo_meses': objetivo.duracao_meses,
+                'valor_desejado': float(objetivo.valor_final),
+                'vp_ideal': vp_ideal,
+                'gap': gap,
+                'valor_aporte': valor_aporte,
+                'valores_atuais': valores_atuais,
+                'distribuicao_aporte': distribuicao_aporte,
+                'novos_valores': novos_valores,
+                'percentuais_alvo': perc_alvo,
+                'matriz_prazo': matriz.duracao_meses
+            })
+        
+        # 5. Calcular novos PERCENTUAIS de cada objetivo
+        # Total geral por classe = soma dos novos valores de todos objetivos
+        totais_novos = novos_valores_por_classe
+        
+        # Calcular percentual de cada objetivo
+        for resultado in resultados_objetivos:
+            novos_percentuais = {}
+            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
+                total_classe = totais_novos[classe]
+                valor_obj = resultado['novos_valores'][classe]
+                
+                if total_classe > 0:
+                    novos_percentuais[classe] = (valor_obj / total_classe) * 100
+                else:
+                    novos_percentuais[classe] = 0.0
+            
+            resultado['novos_percentuais'] = novos_percentuais
+        
+        # 6. Resultado agregado
+        total_aporte = sum(r['valor_aporte'] for r in resultados_objetivos)
+        
+        aportes_agregados = {
+            'baixo_di': sum(r['distribuicao_aporte']['baixo_di'] for r in resultados_objetivos),
+            'baixo_rfx': sum(r['distribuicao_aporte']['baixo_rfx'] for r in resultados_objetivos),
+            'moderado': sum(r['distribuicao_aporte']['moderado'] for r in resultados_objetivos),
+            'alto': sum(r['distribuicao_aporte']['alto'] for r in resultados_objetivos)
+        }
+        
+        return {
+            'cliente_id': cliente_id,
+            'data_calculo': datetime.now().isoformat(),
+            'ipca_usado': ipca_anual,
+            'total_aporte': total_aporte,
+            'totais_atuais': totais_atuais,
+            'totais_novos': totais_novos,
+            'aportes_agregados': aportes_agregados,
+            'resultados_por_objetivo': resultados_objetivos
+        }
+    
+    @staticmethod
+    def aplicar_balanceamento(resultado: Dict, session: Session):
+        """
+        Aplica balanceamento, salvando novos percentuais em DistribuicaoObjetivo
+        e atualizando valor_real dos objetivos
+        """
+        for obj_resultado in resultado['resultados_por_objetivo']:
+            objetivo_id = obj_resultado['objetivo_id']
+            novos_percentuais = obj_resultado['novos_percentuais']
+            novo_total = obj_resultado['novos_valores']['total']
+            
+            # Buscar ou criar distribuição
+            dist = session.query(DistribuicaoObjetivo).filter_by(
+                objetivo_id=objetivo_id
+            ).first()
+            
+            if not dist:
+                dist = DistribuicaoObjetivo(objetivo_id=objetivo_id)
+                session.add(dist)
+            
+            # Atualizar percentuais
+            dist.perc_baixo_di = novos_percentuais['baixo_di']
+            dist.perc_baixo_rfx = novos_percentuais['baixo_rfx']
+            dist.perc_moderado = novos_percentuais['moderado']
+            dist.perc_alto = novos_percentuais['alto']
+            dist.data_atualizacao = datetime.now()
+            
+            # Atualizar valor_real do objetivo
+            objetivo = session.query(Objetivo).get(objetivo_id)
+            if objetivo:
+                objetivo.valor_real = Decimal(str(novo_total))
+        
+        session.commit()

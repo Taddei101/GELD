@@ -59,7 +59,7 @@ class Cliente(Base):
 
     objetivos = relationship("Objetivo", back_populates = "cliente", cascade = "all, delete-orphan")
     posicoes_fundo = relationship("PosicaoFundo", back_populates="cliente", cascade="all, delete-orphan")
-    transacoes = relationship("Transacao", back_populates="cliente", cascade="all, delete-orphan")
+    
 
 
 class Objetivo(Base):
@@ -83,7 +83,30 @@ class Objetivo(Base):
         
 
     cliente = relationship("Cliente", back_populates = "objetivos")
+    distribuicao = relationship("DistribuicaoObjetivo", back_populates="objetivo", uselist=False, cascade="all, delete-orphan")
+
+
+class DistribuicaoObjetivo(Base):
+    """
+    Armazena a participação percentual de cada objetivo nas classes de risco
+    """
+    __tablename__ = 'distribuicao_objetivos'
     
+    id = Column(Integer, primary_key=True)
+    objetivo_id = Column(Integer, ForeignKey('objetivos.id'), nullable=False, unique=True)
+    data_atualizacao = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+         
+    perc_baixo_di = Column(Float, default=0, nullable=False)   
+    perc_baixo_rfx = Column(Float, default=0, nullable=False)  
+    perc_moderado = Column(Float, default=0, nullable=False)   
+    perc_alto = Column(Float, default=0, nullable=False)       
+    
+    # Relacionamento
+    objetivo = relationship("Objetivo", back_populates="distribuicao")
+    
+    def __repr__(self):
+        return f"<DistribuicaoObjetivo(objetivo_id={self.objetivo_id})>"
+
 
 
 class InfoFundo(Base):
@@ -122,28 +145,7 @@ class PosicaoFundo(Base):
     info_fundo = relationship("InfoFundo", back_populates = "posicoes_fundo")
     cliente = relationship("Cliente", back_populates="posicoes_fundo")
 
-#Acho que isto nao esta sendo usado ainda
-class Transacao(Base):
-    """num_operacao, data_mov, data_cotizacao,data_liquidacao,tipo_operacao,quantidade_cotas"""
-    __tablename__ = 'transacoes'
 
-    #identificacao
-    id = Column(Integer, primary_key = True)
-    cliente_id = Column(Integer, ForeignKey('clientes.id'), nullable = False)
-    fundo_id = Column(Integer, ForeignKey('info_fundos.id'), nullable=False)
-    num_operacao = Column(String, nullable=True)
-
-    #datas
-    data_mov = Column(DateTime, nullable=False)
-    data_cotizacao = Column(DateTime, nullable=False)
-    data_liquidacao = Column(DateTime, nullable=False)
-
-    #dados financeiros
-    tipo_operacao = Column(Enum(TipoOperacaoEnum), nullable=False)
-    quantidade_cotas = Column(Numeric(15,6), nullable=False)
-    
-    cliente = relationship("Cliente", back_populates="transacoes")
-    info_fundo = relationship("InfoFundo")
 
 class MatrizRisco(Base):
     __tablename__ = 'matriz_risco'
@@ -185,10 +187,10 @@ def _popular_matriz_inicial():
         # Verificar se já tem dados
         existe = session.query(MatrizRisco).first()
         if existe:
-            print("ℹ️  Matriz de risco já populada")
+            print(" Matriz de risco já populada")
             return
         
-        print("📄 Populando matriz de risco inicial...")
+        print(" Populando matriz de risco inicial...")
         
         # Validar dados antes de inserir
         if not validar_todas_matrizes():
@@ -247,4 +249,3 @@ def create_session():
     engine = create_engine(DATABASE_URL)
     Session = sessionmaker(bind = engine)
     return Session()
-

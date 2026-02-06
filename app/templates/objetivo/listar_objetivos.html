@@ -21,7 +21,6 @@
                 {% if mostrar_calculo is defined and mostrar_calculo %}
                 <th>Aporte Mensal</th>
                 {% endif %}
-                <th><img src="{{ url_for('static', filename='icons/balance.png') }}" class="img"></th>
                 <th><img src="{{ url_for('static', filename='icons/cog.png') }}" class="img"></th>
                 <th><img src="{{ url_for('static', filename='icons/trophy.png') }}" class="img"></th>
             </tr>
@@ -61,13 +60,13 @@
                 </td>
                 {% endif %}
 
-                <td>
-                    <form action="{{ url_for('balancos.balancear_objetivo', objetivo_id=objetivo.id) }}" method="GET">
-                        <button class="smlBtn" title="Balancear Aporte">
-                            <img src="{{ url_for('static', filename='icons/balance.png') }}" class="sml-btn-icon">
+                <!-- <td>
+                    
+                        <button onclick="window.location.href='{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}'">
+                        Balancear Aportes
                         </button>
                     </form>
-                </td>
+                </td> -->
 
                 <td>
                     <form action="{{ url_for('objetivo.edit_objetivo', objetivo_id=objetivo.id) }}" method="GET">
@@ -110,16 +109,15 @@
     </table>
 
     <p></p>
-    <div class="class_func">
-        {% if mostrar_calculo is defined and mostrar_calculo %}
-        
-        <p><small>Taxa IPCA + 3,5% ao ano</small></p>
-        {% else %}
-        <a href="{{ url_for('objetivo.listar_objetivos', cliente_id=cliente.id, calcular='true') }}" class="bigBtn">
-            Calcular Aporte<img src="{{ url_for('static', filename='icons/calculadora.png') }}" class="btn-icon">
-        </a>
-        {% endif %}
+    <div class="inline-btn">
+        <button title="balancear_aporte" class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}` ">
+        <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon"> Balancear Aporte
+        </button>
+
+
     </div>
+    
+
     <p></p>
 
     <div style="margin-top: 20px;">

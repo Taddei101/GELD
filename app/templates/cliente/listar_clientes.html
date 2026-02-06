@@ -50,7 +50,13 @@
         </tbody>
     </table>
 <p></p>
+
+<div class="inline-btn">
 <button class="smlBtn" onclick="window.location.href=`{{ url_for('dashboard.cliente_dashboard') }}`">
         <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+
+<button class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.register_client') }}`">
+        <img src="{{ url_for('static', filename='icons/add.png') }}" class="sml-btn-icon"></button>
+</div>
 
 {% endblock %}
