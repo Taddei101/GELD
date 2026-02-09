@@ -25,11 +25,6 @@
         <div class="label">
             <label for="valor_final">Valor Final:</label>
             <input type="number" id="valor_final" step="0.01" name="valor_final" required>
-        </div class="label">
-
-        <div class="label">
-            <label for="valor_real">Valor Atual:</label>
-            <input type="number" id="valor_real" step="0.01" name="valor_real" required>
         </div>
 
         <div class="label">
@@ -42,12 +37,10 @@
             <input type="date" id="data_inicial" name="data_inicial" required>
         </div>
 
-
         <div class="label">
             <label for="data_final">Data Final: </label>
             <input type="date" id="data_final" name="data_final" required>
         </div>
-
 
         
         <button type="submit" class="smlBtn"><img src="{{ url_for('static', filename='icons/save.png') }}" class="sml-btn-icon"></button>
@@ -56,12 +49,8 @@
         <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{ url_for('objetivo.listar_objetivos', cliente_id=cliente.id) }}`">
             <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
 
-
-
     </form>
     
 </div>
-
-
 
 {% endblock %}

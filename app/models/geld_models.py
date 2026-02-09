@@ -70,7 +70,6 @@ class Objetivo(Base):
     nome_objetivo = Column(String, nullable =False)
     tipo_objetivo = Column(Enum(TipoObjetivoEnum), nullable=False, default=TipoObjetivoEnum.geral)
     valor_final = Column(Numeric(15,2), nullable = False)
-    valor_real = Column(Numeric(15,2), nullable = False)
     valor_inicial = Column(Numeric(15,2), nullable = False)
     data_inicial = Column(DateTime, nullable = False)
     data_final = Column(DateTime, nullable = False)
@@ -187,10 +186,10 @@ def _popular_matriz_inicial():
         # Verificar se já tem dados
         existe = session.query(MatrizRisco).first()
         if existe:
-            print(" Matriz de risco já populada")
+            print("✓ Matriz de risco já populada")
             return
         
-        print(" Populando matriz de risco inicial...")
+        print("→ Populando matriz de risco inicial...")
         
         # Validar dados antes de inserir
         if not validar_todas_matrizes():

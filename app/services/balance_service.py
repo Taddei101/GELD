@@ -287,6 +287,14 @@ class BalanceamentoService:
             'alto': sum(r['distribuicao_aporte']['alto'] for r in resultados_objetivos)
         }
         
+        # ✅ CALCULAR GAPS AGREGADOS (diferença entre novo e atual)
+        gaps_agregados = {
+            'baixo_di': totais_novos['baixo_di'] - totais_atuais['baixo_di'],
+            'baixo_rfx': totais_novos['baixo_rfx'] - totais_atuais['baixo_rfx'],
+            'moderado': totais_novos['moderado'] - totais_atuais['moderado'],
+            'alto': totais_novos['alto'] - totais_atuais['alto']
+        }
+        
         return {
             'cliente_id': cliente_id,
             'data_calculo': datetime.now().isoformat(),
@@ -295,6 +303,7 @@ class BalanceamentoService:
             'totais_atuais': totais_atuais,
             'totais_novos': totais_novos,
             'aportes_agregados': aportes_agregados,
+            'gaps_agregados': gaps_agregados,  # ✅ NOVO CAMPO
             'resultados_por_objetivo': resultados_objetivos
         }
     
@@ -302,12 +311,11 @@ class BalanceamentoService:
     def aplicar_balanceamento(resultado: Dict, session: Session):
         """
         Aplica balanceamento, salvando novos percentuais em DistribuicaoObjetivo
-        e atualizando valor_real dos objetivos
+        ✅ REMOVIDO: atualização de valor_real (campo não existe mais)
         """
         for obj_resultado in resultado['resultados_por_objetivo']:
             objetivo_id = obj_resultado['objetivo_id']
             novos_percentuais = obj_resultado['novos_percentuais']
-            novo_total = obj_resultado['novos_valores']['total']
             
             # Buscar ou criar distribuição
             dist = session.query(DistribuicaoObjetivo).filter_by(
@@ -325,9 +333,6 @@ class BalanceamentoService:
             dist.perc_alto = novos_percentuais['alto']
             dist.data_atualizacao = datetime.now()
             
-            # Atualizar valor_real do objetivo
-            objetivo = session.query(Objetivo).get(objetivo_id)
-            if objetivo:
-                objetivo.valor_real = Decimal(str(novo_total))
+            # ✅ REMOVIDO: objetivo.valor_real (campo não existe mais no modelo)
         
         session.commit()

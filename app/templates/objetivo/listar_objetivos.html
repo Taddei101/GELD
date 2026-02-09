@@ -48,7 +48,16 @@
                     {% endif %}
                     R$ {{ '{:,.2f}'.format(valor_presente_necessario).replace(',', ' ').replace('.', ',').replace(' ', '.') }}
                 </td>
-                <td>R$ {{ '{:,.2f}'.format(objetivo.valor_real).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                
+                {# ✅ VALOR ATUAL CALCULADO DINAMICAMENTE #}
+                <td>
+                    {% if valores_por_objetivo and objetivo.id in valores_por_objetivo %}
+                        {% set valor_atual = valores_por_objetivo[objetivo.id].get('total', 0) if valores_por_objetivo[objetivo.id] is mapping else valores_por_objetivo[objetivo.id] %}
+                    {% else %}
+                        {% set valor_atual = 0 %}
+                    {% endif %}
+                    R$ {{ '{:,.2f}'.format(valor_atual).replace(',', ' ').replace('.', ',').replace(' ', '.') }}
+                </td>
                 
                 {% if mostrar_calculo is defined and mostrar_calculo %}
                 <td>
@@ -59,14 +68,6 @@
                     {% endfor %}
                 </td>
                 {% endif %}
-
-                <!-- <td>
-                    
-                        <button onclick="window.location.href='{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}'">
-                        Balancear Aportes
-                        </button>
-                    </form>
-                </td> -->
 
                 <td>
                     <form action="{{ url_for('objetivo.edit_objetivo', objetivo_id=objetivo.id) }}" method="GET">
@@ -83,7 +84,16 @@
                     <div class="progress-bar-container">
                       <div class="progress-bar-vertical">
                         {% if objetivo.valor_final > 0 %}
-                          {% set percentage = ((objetivo.valor_real|float / (objetivo.valor_final|float * ((1+ipca_mes/100)**((objetivo.data_final.year - objetivo.data_inicial.year) * 12 + (objetivo.data_final.month - objetivo.data_inicial.month))))) * 100)|round(0)|int %}
+                          {# ✅ USAR VALOR ATUAL CALCULADO PARA A BARRA DE PROGRESSO #}
+                          {% if valores_por_objetivo and objetivo.id in valores_por_objetivo %}
+                              {% set valor_dict = valores_por_objetivo[objetivo.id] %}
+                              {% set valor_atual_obj = valor_dict.get('total', 0) if valor_dict is mapping else valor_dict %}
+                          {% else %}
+                              {% set valor_atual_obj = 0 %}
+                          {% endif %}
+                          
+                          {% set valor_futuro_obj = objetivo.valor_final|float * ((1+ipca_mes/100)**((objetivo.data_final.year - objetivo.data_inicial.year) * 12 + (objetivo.data_final.month - objetivo.data_inicial.month))) %}
+                          {% set percentage = ((valor_atual_obj / valor_futuro_obj) * 100)|round(0)|int %}
                           {% if percentage > 100 %}{% set percentage = 100 %}{% endif %}
                                                    
                           <div class="progress-fill" style="height: {{ percentage }}%"></div>
@@ -113,8 +123,6 @@
         <button title="balancear_aporte" class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}` ">
         <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon"> Balancear Aporte
         </button>
-
-
     </div>
     
 

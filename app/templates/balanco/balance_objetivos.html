@@ -6,6 +6,95 @@
 {% block content %}
 <div class="center">
     
+
+    {#  TABELA DE FATIAS ALOCADAS (PERCENTUAIS SALVOS) #}
+    <h3 style="margin-top: 20px; margin-bottom: 15px;"> Fatias Alocadas por Objetivo</h3>
+        
+    <div style="overflow-x: auto; margin-bottom: 30px;">
+        <table class="table table-bordered table-sm" style="font-size: 0.85em; max-width: 800px;">
+            <thead style="background-color: #f8f9fa;">
+                <tr>
+                    <th style="min-width: 120px;">Classe de Risco</th>
+                    {% for objetivo in objetivos %}
+                    <th class="text-center">{{ objetivo.nome_objetivo }}</th>
+                    {% endfor %}
+                    <th class="text-center" style="background-color: #e9ecef;"><strong>Total</strong></th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Linha: Baixo DI #}
+                <tr>
+                    <td style="background-color: #d4edda;"><strong>Baixo DI</strong></td>
+                    {% for objetivo in objetivos %}
+                        {% set perc = percentuais_salvos[objetivo.id].baixo_di %}
+                        <td class="text-center" style="background-color: #d4edda;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
+                </tr>
+                
+                {# Linha: Baixo RFx #}
+                <tr>
+                    <td style="background-color: #d4edda;"><strong>Baixo RFx</strong></td>
+                    {% for objetivo in objetivos %}
+                        {% set perc = percentuais_salvos[objetivo.id].baixo_rfx %}
+                        <td class="text-center" style="background-color: #d4edda;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
+                </tr>
+                
+                {# Linha: Moderado #}
+                <tr>
+                    <td style="background-color: #fff3cd;"><strong>Moderado</strong></td>
+                    {% for objetivo in objetivos %}
+                        {% set perc = percentuais_salvos[objetivo.id].moderado %}
+                        <td class="text-center" style="background-color: #fff3cd;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #ffeaa7;"><strong>100%</strong></td>
+                </tr>
+                
+                {# Linha: Alto #}
+                <tr>
+                    <td style="background-color: #f8d7da;"><strong>Alto</strong></td>
+                    {% for objetivo in objetivos %}
+                        {% set perc = percentuais_salvos[objetivo.id].alto %}
+                        <td class="text-center" style="background-color: #f8d7da;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #f5c6cb;"><strong>100%</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <hr style="margin: 30px 0;">
+    
+    
+
+
+
     <form method="POST" action="{{ url_for('balanco.calcular', cliente_id=cliente.id) }}">
                         
         <div style="overflow-x: auto;">
@@ -218,7 +307,7 @@
         
         <!-- RESUMO AGREGADO - AÇÕES NECESSÁRIAS -->
         <div style="margin-top: 30px;">
-            <h5>📊 Resumo Agregado - Ações Necessárias (Todos os Objetivos)</h5>
+            <h3> Ações Necessárias</h3>
             
             {# Calcular totais agregados #}
             {% set ns = namespace(

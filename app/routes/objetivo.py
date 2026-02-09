@@ -47,7 +47,6 @@ def add_objetivo(cliente_id):
             nome_objetivo=request.form['nome_objetivo'],
             tipo_objetivo=request.form['tipo_objetivo'],
             valor_final=float(request.form['valor_final']),
-            valor_real=float(request.form['valor_real']), 
             valor_inicial=float(request.form['valor_inicial']),
             data_inicial=data_inicial,
             data_final=data_final
@@ -95,7 +94,6 @@ def edit_objetivo(objetivo_id):
                 'nome_objetivo': request.form['nome_objetivo'],
                 'tipo_objetivo': request.form['tipo_objetivo'],
                 'valor_final': float(request.form['valor_final']),
-                'valor_real': float(request.form['valor_real']),
                 'data_final': datetime.strptime(request.form['data_final'], '%Y-%m-%d')
             }
             
@@ -164,7 +162,17 @@ def listar_objetivos(cliente_id):
         
         objetivos = db.query(Objetivo).filter(Objetivo.cliente_id == cliente_id).all()
         
-        ipca_mes = db.query(IndicadoresEconomicos.ipca_mes).order_by(IndicadoresEconomicos.data_atualizacao.desc()).scalar() or 0
+        # ✅ CALCULAR VALORES ATUAIS DINAMICAMENTE (mesma lógica do balanceamento)
+        from app.services.balance_service import BalanceamentoService
+        
+        totais_atuais = BalanceamentoService.calcular_totais_por_classe(cliente_id, db)
+        valores_por_objetivo = BalanceamentoService.calcular_valores_atuais_objetivos(
+            cliente_id, totais_atuais, db
+        )
+        
+        ipca_mes = db.query(IndicadoresEconomicos.ipca_mes).order_by(
+            IndicadoresEconomicos.data_atualizacao.desc()
+        ).scalar() or 0
         
         # Check if the "calcular" parameter is present in the URL
         calcular_aporte = request.args.get('calcular', 'false') == 'true'
@@ -185,6 +193,7 @@ def listar_objetivos(cliente_id):
         return render_template('objetivo/listar_objetivos.html', 
                               objetivos=objetivos, 
                               cliente=cliente, 
+                              valores_por_objetivo=valores_por_objetivo,  # ✅ NOVA VARIÁVEL
                               ipca_mes=ipca_mes,
                               calculo_aportes=calculo_aportes,
                               mostrar_calculo=calcular_aporte)

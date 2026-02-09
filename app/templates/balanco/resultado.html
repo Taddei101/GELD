@@ -4,9 +4,11 @@
 {% block header %}Resultado do Balanceamento - {{ cliente.nome }}{% endblock %}
 
 {% block content %}
+
+    
 <div class="center">
     
-    <h5 class="mb-3"> Resultado do Balanceamento (Pós-Aporte)</h5>
+    <h3 > Resultado do Balanceamento (Pós-Aporte)</h3>
     
     <div style="overflow-x: auto;">
     <table class="table table-bordered" style="font-size: 0.8em;">
@@ -196,40 +198,12 @@
     
     <!-- RESUMO AGREGADO - AÇÕES NECESSÁRIAS (PÓS-APORTE) -->
     <div style="margin-top: 30px;">
-        <h5>📊 Resumo Agregado - Ações Necessárias (Pós-Aporte)</h5>
+        <h5>Ações Necessárias</h5>
         
-        {# Calcular totais agregados #}
-        {% set ns = namespace(
-            target_di=0, novo_di=0,
-            target_rfx=0, novo_rfx=0,
-            target_moderado=0, novo_moderado=0,
-            target_alto=0, novo_alto=0
-        ) %}
-        
-        {% for obj in resultado.resultados_por_objetivo %}
-            {% set target_di_pct = obj.percentuais_alvo.baixo_di %}
-            {% set target_rfx_pct = obj.percentuais_alvo.baixo_rfx %}
-            {% set target_moderado_pct = obj.percentuais_alvo.moderado %}
-            {% set target_alto_pct = obj.percentuais_alvo.alto %}
-            {% set novo_total = obj.novos_valores.total %}
-            
-            {% set ns.target_di = ns.target_di + (novo_total * target_di_pct / 100) %}
-            {% set ns.novo_di = ns.novo_di + obj.novos_valores.baixo_di %}
-            
-            {% set ns.target_rfx = ns.target_rfx + (novo_total * target_rfx_pct / 100) %}
-            {% set ns.novo_rfx = ns.novo_rfx + obj.novos_valores.baixo_rfx %}
-            
-            {% set ns.target_moderado = ns.target_moderado + (novo_total * target_moderado_pct / 100) %}
-            {% set ns.novo_moderado = ns.novo_moderado + obj.novos_valores.moderado %}
-            
-            {% set ns.target_alto = ns.target_alto + (novo_total * target_alto_pct / 100) %}
-            {% set ns.novo_alto = ns.novo_alto + obj.novos_valores.alto %}
-        {% endfor %}
-        
-        {% set gap_di = ns.target_di - ns.novo_di %}
-        {% set gap_rfx = ns.target_rfx - ns.novo_rfx %}
-        {% set gap_moderado = ns.target_moderado - ns.novo_moderado %}
-        {% set gap_alto = ns.target_alto - ns.novo_alto %}
+        {% set gap_di = resultado.gaps_agregados.baixo_di %}
+        {% set gap_rfx = resultado.gaps_agregados.baixo_rfx %}
+        {% set gap_moderado = resultado.gaps_agregados.moderado %}
+        {% set gap_alto = resultado.gaps_agregados.alto %}
         
         <table class="table table-bordered" style="max-width: 500px;">
             <thead class="thead-dark">
@@ -302,19 +276,107 @@
             * <strong>Target R$</strong> = % da Matriz × Novo Total (quanto deveria ter após aporte para estar balanceado)
         </small>
     </div>
+<p></p>
+    <div>{# TABELA DE FATIAS ALOCADAS  #}
+    <h3 > Fatias Alocadas por Objetivo </h3>
+        
+    <div style="overflow-x: auto; margin-bottom: 30px;">
+        <table class="table table-bordered table-sm" style="font-size: 0.85em; max-width: 800px;">
+            <thead style="background-color: #f8f9fa;">
+                <tr>
+                    <th style="min-width: 120px;">Classe de Risco</th>
+                    {% for obj in resultado.resultados_por_objetivo %}
+                    <th class="text-center">{{ obj.objetivo_nome }}</th>
+                    {% endfor %}
+                    <th class="text-center" style="background-color: #e9ecef;"><strong>Total</strong></th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Linha: Baixo DI #}
+                <tr>
+                    <td style="background-color: #d4edda;"><strong>Baixo DI</strong></td>
+                    {% for obj in resultado.resultados_por_objetivo %}
+                        {% set perc = obj.novos_percentuais.baixo_di %}
+                        <td class="text-center" style="background-color: #d4edda;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
+                </tr>
+                
+                {# Linha: Baixo RFx #}
+                <tr>
+                    <td style="background-color: #d4edda;"><strong>Baixo RFx</strong></td>
+                    {% for obj in resultado.resultados_por_objetivo %}
+                        {% set perc = obj.novos_percentuais.baixo_rfx %}
+                        <td class="text-center" style="background-color: #d4edda;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
+                </tr>
+                
+                {# Linha: Moderado #}
+                <tr>
+                    <td style="background-color: #fff3cd;"><strong>Moderado</strong></td>
+                    {% for obj in resultado.resultados_por_objetivo %}
+                        {% set perc = obj.novos_percentuais.moderado %}
+                        <td class="text-center" style="background-color: #fff3cd;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #ffeaa7;"><strong>100%</strong></td>
+                </tr>
+                
+                {# Linha: Alto #}
+                <tr>
+                    <td style="background-color: #f8d7da;"><strong>Alto</strong></td>
+                    {% for obj in resultado.resultados_por_objetivo %}
+                        {% set perc = obj.novos_percentuais.alto %}
+                        <td class="text-center" style="background-color: #f8d7da;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #f5c6cb;"><strong>100%</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <hr style="margin: 30px 0;">
+    
+    
+
+</div>
     
     <!-- Botões de Ação -->
-    <div style="margin-top: 30px;">
+    <div>
         <form method="POST" action="{{ url_for('balanco.aplicar', cliente_id=cliente.id) }}" style="display: inline;">
-            <button type="submit" class="bigBtn" style="background-color: #28a745;" onclick="return confirm('Confirma aplicação? Os percentuais e valores serão salvos.')">
-                <img src="{{ url_for('static', filename='icons/check.png') }}" class="btn-icon" style="filter: brightness(0) invert(1);">
+            <button type="submit" class="bigBtn"  onclick="return confirm('Confirma aplicação? Os percentuais e valores serão salvos.')">
+                <img src="{{ url_for('static', filename='icons/save.png') }}" class="btn-icon" >
                 Aplicar e Salvar
             </button>
         </form>
         
         <form method="POST" action="{{ url_for('balanco.descartar', cliente_id=cliente.id) }}" style="display: inline;">
-            <button type="submit" class="bigBtn" style="background-color: #dc3545;">
-                <img src="{{ url_for('static', filename='icons/trash.png') }}" class="btn-icon" style="filter: brightness(0) invert(1);">
+            <button type="submit" class="bigBtn" >
+                <img src="{{ url_for('static', filename='icons/discard.png') }}" class="btn-icon" >
                 Descartar
             </button>
         </form>

@@ -1,4 +1,3 @@
-# app/routes/balanco.py
 """
 Rotas para balanceamento de carteiras
 """
@@ -37,6 +36,26 @@ def iniciar(cliente_id):
             cliente_id, totais_atuais, db
         )
         
+        # ✅ NOVO: Buscar percentuais salvos (fatias do bolo)
+        from app.models.geld_models import DistribuicaoObjetivo
+        percentuais_salvos = {}
+        for objetivo in objetivos:
+            dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo.id).first()
+            if dist:
+                percentuais_salvos[objetivo.id] = {
+                    'baixo_di': dist.perc_baixo_di,
+                    'baixo_rfx': dist.perc_baixo_rfx,
+                    'moderado': dist.perc_moderado,
+                    'alto': dist.perc_alto
+                }
+            else:
+                percentuais_salvos[objetivo.id] = {
+                    'baixo_di': 0.0,
+                    'baixo_rfx': 0.0,
+                    'moderado': 0.0,
+                    'alto': 0.0
+                }
+        
         # Buscar matrizes de risco para cada objetivo
         matrizes_risco = {}
         vp_ideal_por_objetivo = {}
@@ -62,6 +81,7 @@ def iniciar(cliente_id):
             objetivos=objetivos,
             totais_atuais=totais_atuais,
             valores_por_objetivo=valores_por_objetivo,
+            percentuais_salvos=percentuais_salvos,  # ✅ NOVO
             matrizes_risco=matrizes_risco,
             vp_ideal_por_objetivo=vp_ideal_por_objetivo
         )
@@ -87,7 +107,7 @@ def calcular(cliente_id):
             return redirect(url_for('dashboard.index'))
         
         # Coletar aportes do formulário
-        # Formato: aporte_1=10000, aporte_2=5000, etc
+        
         aportes_por_objetivo = []
         
         for key, value in request.form.items():

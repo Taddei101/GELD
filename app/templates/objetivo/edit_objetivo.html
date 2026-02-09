@@ -32,16 +32,10 @@
         </div>
         
         <div class="label">
-            <label for="valor_real">Valor Atual:</label>
-            <input type="number" step="0.01" id="valor_real" name="valor_real" value="{{ objetivo.valor_real }}" required>
-        </div>
-        
-        <div class="label">
             <label for="data_inicial">Data Inicial: </label>
             <input type="date" id="data_inicial" name="data_inicial" value="{{ objetivo.data_inicial.strftime('%Y-%m-%d') }}" readonly>
         </div>
            
-        
         <div class="label">
             <label for="data_final">Data Final: </label>
             <input type="date" id="data_final" name="data_final" value="{{ objetivo.data_final.strftime('%Y-%m-%d') }}" required>
@@ -57,7 +51,5 @@
             </div>
     </form>
 </div>
-
-
 
 {% endblock %}
