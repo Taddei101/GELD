@@ -94,7 +94,7 @@
     
 
 
-
+    <h3> Alocação por Objetivo</h3>
     <form method="POST" action="{{ url_for('balanco.calcular', cliente_id=cliente.id) }}">
                         
         <div style="overflow-x: auto;">
@@ -297,14 +297,48 @@
         </table>
         </div>
         
-        <div style="margin-top: 10px;">
-            <small class="text-muted">
-                <strong>Gap R$</strong> = Diferença entre Target e Atual | 
-                <span style="color: green;">Verde (+)</span> = COMPRAR | 
-                <span style="color: red;">Vermelho (-)</span> = VENDER
-            </small>
-        </div>
-        
+<p></p>
+<!-- Tabela NOVA -->
+{% if total_orfao > 100 %}
+<div class="alert alert-warning" style="margin-bottom: 20px;">
+    <h3> Capital Não Alocado </h3>
+    
+    <table class="table table-sm" style="max-width: 400px;">
+        <tbody>
+            {% if capital_orfao.baixo_di > 1 %}
+            <tr>
+                <td><strong>Baixo DI:</strong></td>
+                <td class="text-right">R$ {{ '{:,.0f}'.format(capital_orfao.baixo_di).replace(',', '.') }}</td>
+            </tr>
+            {% endif %}
+            {% if capital_orfao.baixo_rfx > 1 %}
+            <tr>
+                <td><strong>Baixo RFx:</strong></td>
+                <td class="text-right">R$ {{ '{:,.0f}'.format(capital_orfao.baixo_rfx).replace(',', '.') }}</td>
+            </tr>
+            {% endif %}
+            {% if capital_orfao.moderado > 1 %}
+            <tr>
+                <td><strong>Moderado:</strong></td>
+                <td class="text-right">R$ {{ '{:,.0f}'.format(capital_orfao.moderado).replace(',', '.') }}</td>
+            </tr>
+            {% endif %}
+            {% if capital_orfao.alto > 1 %}
+            <tr>
+                <td><strong>Alto:</strong></td>
+                <td class="text-right">R$ {{ '{:,.0f}'.format(capital_orfao.alto).replace(',', '.') }}</td>
+            </tr>
+            {% endif %}
+            <tr style="border-top: 2px solid #000;">
+                <td><strong>TOTAL:</strong></td>
+                <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(total_orfao).replace(',', '.') }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+
         <!-- RESUMO AGREGADO - AÇÕES NECESSÁRIAS -->
         <div style="margin-top: 30px;">
             <h3> Ações Necessárias</h3>
@@ -412,9 +446,7 @@
                 </tbody>
             </table>
             
-            <small class="text-muted">
-                * <strong>Target R$</strong> = % da Matriz × Total Atual (quanto deveria ter para estar balanceado)
-            </small>
+            
         </div>
         
         <!-- Botões -->

@@ -119,16 +119,8 @@
     </table>
 
     <p></p>
+
     <div class="inline-btn">
-        <button title="balancear_aporte" class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}` ">
-        <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon"> Balancear Aporte
-        </button>
-    </div>
-    
-
-    <p></p>
-
-    <div style="margin-top: 20px;">
         <button title="Adicionar" class="smlBtn" onclick="window.location.href='{{ url_for('objetivo.add_objetivo', cliente_id=cliente.id) }}'">
             <img src="{{ url_for('static', filename='icons/add.png') }}" class="sml-btn-icon">
         </button>
@@ -136,6 +128,11 @@
         <button title="Voltar" class="smlBtn" onclick="window.location.href='{{ url_for('cliente.area_cliente', cliente_id=cliente.id) }}'">
             <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
         </button>
+
+        <button title="balancear_aporte" class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}` ">
+        <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon"> Balancear Aporte
+        </button>
     </div> 
 </div>
+
 {% endblock %}

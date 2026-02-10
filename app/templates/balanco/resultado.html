@@ -25,8 +25,8 @@
                 {% for obj in resultado.resultados_por_objetivo %}
                 <th class="text-center">Tgt %</th>
                 <th class="text-center">Tgt R$</th>
-                <th class="text-center">Novo %</th>
-                <th class="text-center">Novo R$</th>
+                <th class="text-center">Atual %</th>
+                <th class="text-center">Atual R$</th>
                 <th class="text-center">Gap R$</th>
                 {% endfor %}
             </tr>
@@ -198,12 +198,12 @@
     
     <!-- RESUMO AGREGADO - AÇÕES NECESSÁRIAS (PÓS-APORTE) -->
     <div style="margin-top: 30px;">
-        <h5>Ações Necessárias</h5>
+        <h3>Ações Necessárias</h3>
         
-        {% set gap_di = resultado.gaps_agregados.baixo_di %}
-        {% set gap_rfx = resultado.gaps_agregados.baixo_rfx %}
-        {% set gap_moderado = resultado.gaps_agregados.moderado %}
-        {% set gap_alto = resultado.gaps_agregados.alto %}
+        {% set gap_di = resultado.acoes_necessarias.baixo_di %}
+        {% set gap_rfx = resultado.acoes_necessarias.baixo_rfx %}
+        {% set gap_moderado = resultado.acoes_necessarias.moderado %}
+        {% set gap_alto = resultado.acoes_necessarias.alto %}
         
         <table class="table table-bordered" style="max-width: 500px;">
             <thead class="thead-dark">
@@ -273,7 +273,7 @@
         </table>
         
         <small class="text-muted">
-            * <strong>Target R$</strong> = % da Matriz × Novo Total (quanto deveria ter após aporte para estar balanceado)
+            * <strong>Target R$</strong> = % da Matriz × Atual Total
         </small>
     </div>
 <p></p>

@@ -228,6 +228,25 @@ class BalanceamentoService:
             }
             novos_valores['total'] = sum([v for k, v in novos_valores.items() if k != 'total'])
             
+            #  Calcular quanto DEVERIA ter (estado alvo pós-aporte)
+            perc_baixo_di = (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100
+            perc_baixo_rfx = (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100
+            
+            estado_alvo = {
+                'baixo_di': novos_valores['total'] * perc_baixo_di / 100,
+                'baixo_rfx': novos_valores['total'] * perc_baixo_rfx / 100,
+                'moderado': novos_valores['total'] * matriz.perc_moderado / 100,
+                'alto': novos_valores['total'] * matriz.perc_alto / 100
+            }
+            
+            #  Gap individual (quanto falta para o ideal)
+            gap_individual = {
+                'baixo_di': estado_alvo['baixo_di'] - novos_valores['baixo_di'],
+                'baixo_rfx': estado_alvo['baixo_rfx'] - novos_valores['baixo_rfx'],
+                'moderado': estado_alvo['moderado'] - novos_valores['moderado'],
+                'alto': estado_alvo['alto'] - novos_valores['alto']
+            }
+            
             # Acumular para calcular totais depois
             for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
                 novos_valores_por_classe[classe] += novos_valores[classe]
@@ -255,6 +274,7 @@ class BalanceamentoService:
                 'valores_atuais': valores_atuais,
                 'distribuicao_aporte': distribuicao_aporte,
                 'novos_valores': novos_valores,
+                'gap_individual': gap_individual,  
                 'percentuais_alvo': perc_alvo,
                 'matriz_prazo': matriz.duracao_meses
             })
@@ -287,12 +307,12 @@ class BalanceamentoService:
             'alto': sum(r['distribuicao_aporte']['alto'] for r in resultados_objetivos)
         }
         
-        # ✅ CALCULAR GAPS AGREGADOS (diferença entre novo e atual)
-        gaps_agregados = {
-            'baixo_di': totais_novos['baixo_di'] - totais_atuais['baixo_di'],
-            'baixo_rfx': totais_novos['baixo_rfx'] - totais_atuais['baixo_rfx'],
-            'moderado': totais_novos['moderado'] - totais_atuais['moderado'],
-            'alto': totais_novos['alto'] - totais_atuais['alto']
+        
+        acoes_necessarias = {
+            'baixo_di': sum(r['gap_individual']['baixo_di'] for r in resultados_objetivos),
+            'baixo_rfx': sum(r['gap_individual']['baixo_rfx'] for r in resultados_objetivos),
+            'moderado': sum(r['gap_individual']['moderado'] for r in resultados_objetivos),
+            'alto': sum(r['gap_individual']['alto'] for r in resultados_objetivos)
         }
         
         return {
@@ -303,7 +323,7 @@ class BalanceamentoService:
             'totais_atuais': totais_atuais,
             'totais_novos': totais_novos,
             'aportes_agregados': aportes_agregados,
-            'gaps_agregados': gaps_agregados,  # ✅ NOVO CAMPO
+            'acoes_necessarias': acoes_necessarias,  
             'resultados_por_objetivo': resultados_objetivos
         }
     
@@ -311,7 +331,7 @@ class BalanceamentoService:
     def aplicar_balanceamento(resultado: Dict, session: Session):
         """
         Aplica balanceamento, salvando novos percentuais em DistribuicaoObjetivo
-        ✅ REMOVIDO: atualização de valor_real (campo não existe mais)
+        
         """
         for obj_resultado in resultado['resultados_por_objetivo']:
             objetivo_id = obj_resultado['objetivo_id']
@@ -333,6 +353,6 @@ class BalanceamentoService:
             dist.perc_alto = novos_percentuais['alto']
             dist.data_atualizacao = datetime.now()
             
-            # ✅ REMOVIDO: objetivo.valor_real (campo não existe mais no modelo)
+            
         
         session.commit()

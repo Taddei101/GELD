@@ -36,7 +36,7 @@ def iniciar(cliente_id):
             cliente_id, totais_atuais, db
         )
         
-        # ✅ NOVO: Buscar percentuais salvos (fatias do bolo)
+        # Buscar percentuais salvos (fatias do bolo)
         from app.models.geld_models import DistribuicaoObjetivo
         percentuais_salvos = {}
         for objetivo in objetivos:
@@ -75,15 +75,34 @@ def iniciar(cliente_id):
             vp_ideal = BalanceamentoService.calcular_vp_ideal(objetivo, ipca_anual)
             vp_ideal_por_objetivo[objetivo.id] = vp_ideal
         
+        
+        # ✅ NOVO: Calcular capital órfão
+        capital_alocado = {
+            'baixo_di': 0.0, 'baixo_rfx': 0.0, 'moderado': 0.0, 'alto': 0.0
+        }
+
+        for obj_id, valores in valores_por_objetivo.items():
+            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
+                capital_alocado[classe] += valores[classe]
+
+        capital_orfao = {
+            classe: totais_atuais[classe] - capital_alocado[classe]
+            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']
+        }
+
+        total_orfao = sum(capital_orfao.values())
+
         return render_template(
             'balanco/balance_objetivos.html',
             cliente=cliente,
             objetivos=objetivos,
             totais_atuais=totais_atuais,
             valores_por_objetivo=valores_por_objetivo,
-            percentuais_salvos=percentuais_salvos,  # ✅ NOVO
+            percentuais_salvos=percentuais_salvos,  
             matrizes_risco=matrizes_risco,
-            vp_ideal_por_objetivo=vp_ideal_por_objetivo
+            vp_ideal_por_objetivo=vp_ideal_por_objetivo,
+            capital_orfao=capital_orfao,  
+            total_orfao=total_orfao        
         )
     
     except Exception as e:
@@ -106,8 +125,7 @@ def calcular(cliente_id):
             flash('Cliente não encontrado', 'error')
             return redirect(url_for('dashboard.index'))
         
-        # Coletar aportes do formulário
-        
+        # Coletar aportes do formulário (incluindo zeros)
         aportes_por_objetivo = []
         
         for key, value in request.form.items():
@@ -115,15 +133,12 @@ def calcular(cliente_id):
                 objetivo_id = int(key.split('_')[1])
                 valor = float(value or 0)
                 
-                if valor > 0:
-                    aportes_por_objetivo.append({
-                        'objetivo_id': objetivo_id,
-                        'valor_aporte': valor
-                    })
-        
-        if not aportes_por_objetivo:
-            flash('Informe ao menos um aporte', 'warning')
-            return redirect(url_for('balanco.iniciar', cliente_id=cliente_id))
+                #  Incluir TODOS os objetivos, mesmo com aporte zero
+                aportes_por_objetivo.append({
+                    'objetivo_id': objetivo_id,
+                    'valor_aporte': valor
+                })
+                      
         
         # Processar balanceamento
         resultado = BalanceamentoService.processar_balanceamento(
@@ -132,6 +147,8 @@ def calcular(cliente_id):
         
         # Salvar na sessão Flask
         flask_session['balanceamento_resultado'] = resultado
+
+        
         
         return render_template(
             'balanco/resultado.html',

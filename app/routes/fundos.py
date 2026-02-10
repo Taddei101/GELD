@@ -49,7 +49,7 @@ def add_fundo():
         if risco == RiscoEnum.baixo and 'subtipo_risco' in request.form:
             subtipo_risco = SubtipoRiscoEnum[request.form['subtipo_risco']]
         else:
-            subtipo_risco = SubtipoRiscoEnum.nao_aplicavel
+            subtipo_risco = SubtipoRiscoEnum = None
 
         #cadastrar novo fundo
         novo_fundo = global_service.create_classe(
@@ -190,7 +190,7 @@ def edit_fundo(fundo_id):
                 if RiscoEnum[request.form['risco']] == RiscoEnum.baixo and 'subtipo_risco' in request.form:
                     dados_atualizados['subtipo_risco'] = SubtipoRiscoEnum[request.form['subtipo_risco']]
                 else:
-                    dados_atualizados['subtipo_risco'] = SubtipoRiscoEnum.nao_aplicavel
+                    dados_atualizados['subtipo_risco'] = SubtipoRiscoEnum = None
 
             if 'status_fundo' in request.form and request.form['status_fundo']:
                 dados_atualizados['status_fundo'] = StatusFundoEnum[request.form['status_fundo']]
