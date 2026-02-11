@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from werkzeug.utils import secure_filename
 from app.services.global_services import login_required, GlobalServices
-from app.models.geld_models import create_session, Cliente, InfoFundo, PosicaoFundo, RiscoEnum
+from app.models.geld_models import create_session, Cliente, InfoFundo, PosicaoFundo, RiscoEnum, SubtipoRiscoEnum
 from sqlalchemy import func
 from datetime import datetime
 import os
@@ -37,13 +37,26 @@ def listar_posicao(cliente_id):
             ).scalar() or 0.0)
 
         # NOVOS CÁLCULOS POR RISCO - TODOS CONVERTIDOS PARA FLOAT
+        # Fundos DI (baixo risco com subtipo = 'di')
+        saldo_fundo_di = float(db.query(
+            func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
+        ).join(
+            InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
+        ).filter(
+            PosicaoFundo.cliente_id == cliente_id,
+            InfoFundo.risco == RiscoEnum.baixo,
+            InfoFundo.subtipo_risco == SubtipoRiscoEnum.di
+        ).scalar() or 0.0)
+        
+        # Fundos RFx (baixo risco com subtipo = 'rfx' ou NULL)
         saldo_baixo = float(db.query(
             func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
         ).join(
             InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
         ).filter(
             PosicaoFundo.cliente_id == cliente_id,
-            InfoFundo.risco == RiscoEnum.baixo
+            InfoFundo.risco == RiscoEnum.baixo,
+            (InfoFundo.subtipo_risco == SubtipoRiscoEnum.rfx) | (InfoFundo.subtipo_risco == None)
         ).scalar() or 0.0)
 
         saldo_moderado = float(db.query(
@@ -67,7 +80,7 @@ def listar_posicao(cliente_id):
         
 
         print(f"DEBUG: Found {len(posicoes)} positions")
-        print(f"DEBUG: Saldos por risco - Baixo: {saldo_baixo}, Moderado: {saldo_moderado}, Alto: {saldo_alto}")
+        print(f"DEBUG: Saldos por risco - DI: {saldo_fundo_di}, RFx: {saldo_baixo}, Moderado: {saldo_moderado}, Alto: {saldo_alto}")
 
         if not cliente:
             print('Cliente não encontrado.')
@@ -77,6 +90,7 @@ def listar_posicao(cliente_id):
                              cliente=cliente, 
                              montante_cliente=montante_cliente, 
                              posicoes=posicoes,
+                             saldo_fundo_di=saldo_fundo_di,
                              saldo_baixo=saldo_baixo,
                              saldo_moderado=saldo_moderado,
                              saldo_alto=saldo_alto)

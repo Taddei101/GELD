@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from app.services.global_services import GlobalServices,login_required
-from app.models.geld_models import create_session,RiscoEnum, BancoEnum, Cliente, StatusEnum, PosicaoFundo, InfoFundo, Objetivo
+from app.models.geld_models import create_session,RiscoEnum, SubtipoRiscoEnum, BancoEnum, Cliente, StatusEnum, PosicaoFundo, InfoFundo, Objetivo
 from datetime import datetime
 from functools import wraps
 from sqlalchemy import func
@@ -174,6 +174,7 @@ def area_cliente(cliente_id):
         n_fundos = db.query(func.count(PosicaoFundo.id).filter(PosicaoFundo.cliente_id==cliente_id)).scalar() or 0
 
         # NOVOS CÁLCULOS POR RISCO
+        saldo_fundo_di = 0.0
         saldo_baixo = 0.0
         saldo_moderado = 0.0
         saldo_alto = 0.0
@@ -189,14 +190,26 @@ def area_cliente(cliente_id):
                 PosicaoFundo.cliente_id == cliente_id
             ).scalar() or 0.0)
 
-            # Saldos por risco
+            # Fundos DI (baixo risco com subtipo = 'di')
+            saldo_fundo_di = float(db.query(
+                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
+            ).join(
+                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
+            ).filter(
+                PosicaoFundo.cliente_id == cliente_id,
+                InfoFundo.risco == RiscoEnum.baixo,
+                InfoFundo.subtipo_risco == SubtipoRiscoEnum.di
+            ).scalar() or 0.0)
+
+            # Fundos RFx (baixo risco com subtipo = 'rfx' ou NULL)
             saldo_baixo = float(db.query(
                 func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
             ).join(
                 InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
             ).filter(
                 PosicaoFundo.cliente_id == cliente_id,
-                InfoFundo.risco == RiscoEnum.baixo
+                InfoFundo.risco == RiscoEnum.baixo,
+                (InfoFundo.subtipo_risco == SubtipoRiscoEnum.rfx) | (InfoFundo.subtipo_risco == None)
             ).scalar() or 0.0)
 
             saldo_moderado = float(db.query(
@@ -225,6 +238,7 @@ def area_cliente(cliente_id):
                               has_positions=has_positions,
                               n_objetivos=n_objetivos, 
                               n_fundos=n_fundos,
+                              saldo_fundo_di=saldo_fundo_di,
                               saldo_baixo=saldo_baixo,
                               saldo_moderado=saldo_moderado,
                               saldo_alto=saldo_alto)
