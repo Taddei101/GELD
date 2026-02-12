@@ -7,19 +7,18 @@
 {% block content %}
 <div class="client_area">
     <table class="table">
-        <tr>
-            <th>Montante sob Gestão</th>
-            <th>Objetivos</th>
-            <th>Fundos em subscrição</th>
-        </tr>
-    </tbody>
-    <tbody>
-        <tr>
-            <td>R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-            <td>{{n_objetivos}}</td>
-            <td>{{n_fundos}}</td>
-        </tr>
-    </tbody>
+        <thead>
+            <tr>
+                <th style="text-align: center; font-size: 1em;">Montante sob Gestão</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="text-align: center; font-size: 1.2em; font-weight: bold; color: #2c3e50;">
+                    R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}
+                </td>
+            </tr>
+        </tbody>
     </table>
 </div>
 
@@ -69,85 +68,277 @@
 
 <p></p>
 
-<!-- SEÇÃO: Ações Necessárias Pós-Aporte (se houver) -->
-{% if acoes_necessarias is defined and acoes_necessarias %}
+<!-- TABELA: Fatias Alocadas por Objetivo -->
+{% if objetivos %}
 <div class="client_area">
-    <h3>⚠️ Ações Necessárias - Balanceamento Aplicado</h3>
-    <div class="alert alert-info">
-        <p><strong>Último balanceamento aplicado em:</strong> {{ acoes_necessarias.data_aplicacao }}</p>
-        <p><strong>Total aportado:</strong> R$ {{ '{:,.2f}'.format(acoes_necessarias.total_aporte).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</p>
+    <h3 style="margin-bottom: 15px;">📊 Fatias Alocadas por Objetivo</h3>
+        
+    <div style="overflow-x: auto; margin-bottom: 30px;">
+        <table class="table table-bordered table-sm" style="font-size: 0.85em; max-width: 800px;">
+            <thead style="background-color: #f8f9fa;">
+                <tr>
+                    <th style="min-width: 120px;">Classe de Risco</th>
+                    {% for objetivo in objetivos %}
+                    <th class="text-center">{{ objetivo.nome_objetivo }}</th>
+                    {% endfor %}
+                    <th class="text-center" style="background-color: #e9ecef;"><strong>Total</strong></th>
+                </tr>
+            </thead>
+            <tbody>
+                {# Linha: Baixo DI #}
+                <tr>
+                    <td style="background-color: #d4edda;"><strong>Baixo DI</strong></td>
+                    {% for objetivo in objetivos %}
+                        {% set perc = percentuais_salvos[objetivo.id].baixo_di %}
+                        <td class="text-center" style="background-color: #d4edda;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
+                </tr>
+                
+                {# Linha: Baixo RFx #}
+                <tr>
+                    <td style="background-color: #d4edda;"><strong>Baixo RFx</strong></td>
+                    {% for objetivo in objetivos %}
+                        {% set perc = percentuais_salvos[objetivo.id].baixo_rfx %}
+                        <td class="text-center" style="background-color: #d4edda;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
+                </tr>
+                
+                {# Linha: Moderado #}
+                <tr>
+                    <td style="background-color: #fff3cd;"><strong>Moderado</strong></td>
+                    {% for objetivo in objetivos %}
+                        {% set perc = percentuais_salvos[objetivo.id].moderado %}
+                        <td class="text-center" style="background-color: #fff3cd;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #ffeaa7;"><strong>100%</strong></td>
+                </tr>
+                
+                {# Linha: Alto #}
+                <tr>
+                    <td style="background-color: #f8d7da;"><strong>Alto</strong></td>
+                    {% for objetivo in objetivos %}
+                        {% set perc = percentuais_salvos[objetivo.id].alto %}
+                        <td class="text-center" style="background-color: #f8d7da;">
+                            {% if perc > 0 %}
+                                {{ '{:.1f}'.format(perc) }}%
+                            {% else %}
+                                <span style="color: #999;">-</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                    <td class="text-center" style="background-color: #f5c6cb;"><strong>100%</strong></td>
+                </tr>
+            </tbody>
+        </table>
     </div>
+</div>
+
+<p></p>
+
+<!-- TABELA: Alocação por Objetivo -->
+<div class="client_area">
+    <h3 style="margin-bottom: 15px;">📈 Alocação por Objetivo</h3>
     
-    <table class="table table-bordered">
+    <div style="overflow-x: auto;">
+    <table class="table table-bordered" style="font-size: 0.8em;">
         <thead class="thead-dark">
             <tr>
-                <th>Classe</th>
-                <th>Tinha</th>
-                <th>Aporte</th>
-                <th>Deve Ter</th>
-                <th>Ação</th>
+                <th rowspan="2" style="vertical-align: middle; min-width: 120px;">Classe de Risco</th>
+                {% for objetivo in objetivos %}
+                <th colspan="5" class="text-center">
+                    {{ objetivo.nome_objetivo }} ({{ objetivo.duracao_meses }}m)
+                </th>
+                {% endfor %}
+            </tr>
+            <tr style="font-size: 0.75em;">
+                {% for objetivo in objetivos %}
+                <th class="text-center">Tgt %</th>
+                <th class="text-center">Tgt R$</th>
+                <th class="text-center">Atual %</th>
+                <th class="text-center">Atual R$</th>
+                <th class="text-center">Gap R$</th>
+                {% endfor %}
             </tr>
         </thead>
         <tbody>
+            <!-- Linha: Baixo DI -->
             <tr>
-                <td> <strong>Baixo DI</strong></td>
-                <td>R$ {{ '{:,.2f}'.format(acoes_necessarias.antes.baixo_di).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td class="text-primary">+R$ {{ '{:,.2f}'.format(acoes_necessarias.aportes.baixo_di).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>R$ {{ '{:,.2f}'.format(acoes_necessarias.depois.baixo_di).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>
-                    {% if acoes_necessarias.aportes.baixo_di > 0 %}
-                        <span class="badge badge-success">✅ COMPRAR R$ {{ '{:,.2f}'.format(acoes_necessarias.aportes.baixo_di).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</span>
+                <td style="background-color: #d4edda;"><strong> Baixo DI</strong></td>
+                {% for objetivo in objetivos %}
+                    {% set valores = valores_por_objetivo[objetivo.id] %}
+                    {% set matriz = matrizes_risco[objetivo.id] %}
+                    {% set total_atual = valores.total %}
+                    
+                    {% set target_pct = (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100 %}
+                    {% set target_reais = total_atual * target_pct / 100 %}
+                    {% set atual_reais = valores.baixo_di %}
+                    {% set gap = target_reais - atual_reais %}
+                    
+                    {% if total_atual > 0 %}
+                        {% set atual_pct = (atual_reais / total_atual) * 100 %}
                     {% else %}
-                        <span class="badge badge-secondary">-</span>
+                        {% set atual_pct = 0 %}
                     {% endif %}
-                </td>
+                    
+                    <td class="text-center" style="background-color: #d4edda;">{{ '{:.1f}'.format(target_pct) }}%</td>
+                    <td class="text-right" style="background-color: #d4edda;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
+                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
+                        {{ '{:.1f}'.format(atual_pct) }}%
+                    </td>
+                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
+                    <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
+                        {% if gap > 0 %}
+                            <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
+                        {% elif gap < 0 %}
+                            <span style="color: red;">{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
+                        {% else %}
+                            0
+                        {% endif %}
+                    </td>
+                {% endfor %}
             </tr>
+            
+            <!-- Linha: Baixo RFx -->
             <tr>
-                <td> <strong>Baixo RFx</strong></td>
-                <td>R$ {{ '{:,.2f}'.format(acoes_necessarias.antes.baixo_rfx).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td class="text-primary">+R$ {{ '{:,.2f}'.format(acoes_necessarias.aportes.baixo_rfx).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>R$ {{ '{:,.2f}'.format(acoes_necessarias.depois.baixo_rfx).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>
-                    {% if acoes_necessarias.aportes.baixo_rfx > 0 %}
-                        <span class="badge badge-success">✅ COMPRAR R$ {{ '{:,.2f}'.format(acoes_necessarias.aportes.baixo_rfx).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</span>
+                <td style="background-color: #d4edda;"><strong> Baixo RFx</strong></td>
+                {% for objetivo in objetivos %}
+                    {% set valores = valores_por_objetivo[objetivo.id] %}
+                    {% set matriz = matrizes_risco[objetivo.id] %}
+                    {% set total_atual = valores.total %}
+                    
+                    {% set target_pct = (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100 %}
+                    {% set target_reais = total_atual * target_pct / 100 %}
+                    {% set atual_reais = valores.baixo_rfx %}
+                    {% set gap = target_reais - atual_reais %}
+                    
+                    {% if total_atual > 0 %}
+                        {% set atual_pct = (atual_reais / total_atual) * 100 %}
                     {% else %}
-                        <span class="badge badge-secondary">-</span>
+                        {% set atual_pct = 0 %}
                     {% endif %}
-                </td>
+                    
+                    <td class="text-center" style="background-color: #d4edda;">{{ '{:.1f}'.format(target_pct) }}%</td>
+                    <td class="text-right" style="background-color: #d4edda;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
+                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
+                        {{ '{:.1f}'.format(atual_pct) }}%
+                    </td>
+                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
+                    <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
+                        {% if gap > 0 %}
+                            <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
+                        {% elif gap < 0 %}
+                            <span style="color: red;">{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
+                        {% else %}
+                            0
+                        {% endif %}
+                    </td>
+                {% endfor %}
             </tr>
+            
+            <!-- Linha: Moderado -->
             <tr>
-                <td> <strong>Moderado</strong></td>
-                <td>R$ {{ '{:,.2f}'.format(acoes_necessarias.antes.moderado).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td class="text-primary">+R$ {{ '{:,.2f}'.format(acoes_necessarias.aportes.moderado).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>R$ {{ '{:,.2f}'.format(acoes_necessarias.depois.moderado).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>
-                    {% if acoes_necessarias.aportes.moderado > 0 %}
-                        <span class="badge badge-success">✅ COMPRAR R$ {{ '{:,.2f}'.format(acoes_necessarias.aportes.moderado).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</span>
+                <td style="background-color: #fff3cd;"><strong> Moderado</strong></td>
+                {% for objetivo in objetivos %}
+                    {% set valores = valores_por_objetivo[objetivo.id] %}
+                    {% set matriz = matrizes_risco[objetivo.id] %}
+                    {% set total_atual = valores.total %}
+                    
+                    {% set target_pct = matriz.perc_moderado %}
+                    {% set target_reais = total_atual * target_pct / 100 %}
+                    {% set atual_reais = valores.moderado %}
+                    {% set gap = target_reais - atual_reais %}
+                    
+                    {% if total_atual > 0 %}
+                        {% set atual_pct = (atual_reais / total_atual) * 100 %}
                     {% else %}
-                        <span class="badge badge-secondary">-</span>
+                        {% set atual_pct = 0 %}
                     {% endif %}
-                </td>
+                    
+                    <td class="text-center" style="background-color: #fff3cd;">{{ '{:.1f}'.format(target_pct) }}%</td>
+                    <td class="text-right" style="background-color: #fff3cd;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
+                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
+                        {{ '{:.1f}'.format(atual_pct) }}%
+                    </td>
+                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
+                    <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
+                        {% if gap > 0 %}
+                            <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
+                        {% elif gap < 0 %}
+                            <span style="color: red;">{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
+                        {% else %}
+                            0
+                        {% endif %}
+                    </td>
+                {% endfor %}
             </tr>
+            
+            <!-- Linha: Alto -->
             <tr>
-                <td> <strong>Alto</strong></td>
-                <td>R$ {{ '{:,.2f}'.format(acoes_necessarias.antes.alto).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td class="text-primary">+R$ {{ '{:,.2f}'.format(acoes_necessarias.aportes.alto).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>R$ {{ '{:,.2f}'.format(acoes_necessarias.depois.alto).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>
-                    {% if acoes_necessarias.aportes.alto > 0 %}
-                        <span class="badge badge-success">✅ COMPRAR R$ {{ '{:,.2f}'.format(acoes_necessarias.aportes.alto).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</span>
+                <td style="background-color: #f8d7da;"><strong> Alto</strong></td>
+                {% for objetivo in objetivos %}
+                    {% set valores = valores_por_objetivo[objetivo.id] %}
+                    {% set matriz = matrizes_risco[objetivo.id] %}
+                    {% set total_atual = valores.total %}
+                    
+                    {% set target_pct = matriz.perc_alto %}
+                    {% set target_reais = total_atual * target_pct / 100 %}
+                    {% set atual_reais = valores.alto %}
+                    {% set gap = target_reais - atual_reais %}
+                    
+                    {% if total_atual > 0 %}
+                        {% set atual_pct = (atual_reais / total_atual) * 100 %}
                     {% else %}
-                        <span class="badge badge-secondary">-</span>
+                        {% set atual_pct = 0 %}
                     {% endif %}
-                </td>
+                    
+                    <td class="text-center" style="background-color: #f8d7da;">{{ '{:.1f}'.format(target_pct) }}%</td>
+                    <td class="text-right" style="background-color: #f8d7da;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
+                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
+                        {{ '{:.1f}'.format(atual_pct) }}%
+                    </td>
+                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
+                    <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
+                        {% if gap > 0 %}
+                            <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
+                        {% elif gap < 0 %}
+                            <span style="color: red;">{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
+                        {% else %}
+                            0
+                        {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+            
+            <!-- Linha: Total Atual -->
+            <tr class="table-active">
+                <td><strong>TOTAL ATUAL</strong></td>
+                {% for objetivo in objetivos %}
+                    {% set valores = valores_por_objetivo[objetivo.id] %}
+                    <td colspan="5" class="text-right"><strong>R$ {{ '{:,.0f}'.format(valores.total).replace(',', '.') }}</strong></td>
+                {% endfor %}
             </tr>
         </tbody>
     </table>
-    
-    <div class="text-right">
-        <button class="btn btn-sm btn-secondary" onclick="if(confirm('Limpar histórico de ações?')) window.location.href='{{ url_for('balanceamento.limpar_acoes', cliente_id=cliente.id) }}'">
-            Limpar Histórico
-        </button>
     </div>
 </div>
 

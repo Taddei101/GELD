@@ -1,6 +1,10 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from app.services.global_services import GlobalServices,login_required
-from app.models.geld_models import create_session,RiscoEnum, SubtipoRiscoEnum, BancoEnum, Cliente, StatusEnum, PosicaoFundo, InfoFundo, Objetivo
+from app.services.balance_service import BalanceamentoService
+from app.models.geld_models import (
+    create_session, RiscoEnum, SubtipoRiscoEnum, BancoEnum, Cliente, StatusEnum, 
+    PosicaoFundo, InfoFundo, Objetivo, DistribuicaoObjetivo, IndicadoresEconomicos
+)
 from datetime import datetime
 from functools import wraps
 from sqlalchemy import func
@@ -230,6 +234,56 @@ def area_cliente(cliente_id):
                 InfoFundo.risco == RiscoEnum.alto
             ).scalar() or 0.0)
 
+        # ========== DADOS PARA TABELAS DE BALANCEAMENTO ==========
+        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        
+        # Inicializar variáveis
+        totais_atuais = {'baixo_di': 0.0, 'baixo_rfx': 0.0, 'moderado': 0.0, 'alto': 0.0}
+        valores_por_objetivo = {}
+        percentuais_salvos = {}
+        matrizes_risco = {}
+        vp_ideal_por_objetivo = {}
+        
+        if objetivos:
+            # Calcular totais por classe
+            totais_atuais = BalanceamentoService.calcular_totais_por_classe(cliente_id, db)
+            
+            # Calcular valores atuais por objetivo
+            valores_por_objetivo = BalanceamentoService.calcular_valores_atuais_objetivos(
+                cliente_id, totais_atuais, db
+            )
+            
+            # Buscar percentuais salvos
+            for objetivo in objetivos:
+                dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo.id).first()
+                if dist:
+                    percentuais_salvos[objetivo.id] = {
+                        'baixo_di': dist.perc_baixo_di,
+                        'baixo_rfx': dist.perc_baixo_rfx,
+                        'moderado': dist.perc_moderado,
+                        'alto': dist.perc_alto
+                    }
+                else:
+                    percentuais_salvos[objetivo.id] = {
+                        'baixo_di': 0.0,
+                        'baixo_rfx': 0.0,
+                        'moderado': 0.0,
+                        'alto': 0.0
+                    }
+            
+            # Buscar matrizes de risco
+            ipca = db.query(IndicadoresEconomicos).order_by(
+                IndicadoresEconomicos.data_atualizacao.desc()
+            ).first()
+            ipca_anual = ipca.ipca if ipca else 4.5
+            
+            for objetivo in objetivos:
+                matriz = BalanceamentoService.buscar_matriz_alvo(objetivo, db)
+                matrizes_risco[objetivo.id] = matriz
+                
+                # Calcular VP Ideal
+                vp_ideal = BalanceamentoService.calcular_vp_ideal(objetivo, ipca_anual)
+                vp_ideal_por_objetivo[objetivo.id] = vp_ideal
             
         
         return render_template('cliente/area_cliente.html', 
@@ -241,7 +295,13 @@ def area_cliente(cliente_id):
                               saldo_fundo_di=saldo_fundo_di,
                               saldo_baixo=saldo_baixo,
                               saldo_moderado=saldo_moderado,
-                              saldo_alto=saldo_alto)
+                              saldo_alto=saldo_alto,
+                              objetivos=objetivos,
+                              totais_atuais=totais_atuais,
+                              valores_por_objetivo=valores_por_objetivo,
+                              percentuais_salvos=percentuais_salvos,
+                              matrizes_risco=matrizes_risco,
+                              vp_ideal_por_objetivo=vp_ideal_por_objetivo)
 
     except Exception as e:
         print(f'Erro ao acessar área do cliente: {str(e)}', "error")
