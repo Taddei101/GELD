@@ -359,6 +359,9 @@
 
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}`">
         <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte</button>
+
+    <button class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.editar_fatias', cliente_id=cliente.id) }}`">
+        <img src="{{ url_for('static', filename='icons/edit.png') }}" class="btn-icon">Editar Fatias</button>
     
     <form method="POST" action="{{ url_for('balanco.resetar_distribuicao', cliente_id=cliente.id) }}" style="display: inline;">
         <button type="submit" class="bigBtn" style="background-color: #6c757d;" onclick="return confirm('Resetar TODOS os percentuais de distribuição?')">

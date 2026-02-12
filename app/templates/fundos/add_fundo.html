@@ -60,8 +60,10 @@
             </select>
         </div>
 
-        <button title="Cadastrar" class="smlBtn" type="submit"><img src="{{ url_for('static', filename='icons/add_cliente.png') }}" class="sml-btn-icon"></button>
-
+        <button title="Cadastrar" class="smlBtn" type="submit">
+            <img src="{{ url_for('static', filename='icons/add_cliente.png') }}" class="sml-btn-icon"></button>
+        <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{ url_for('fundos.listar_fundos') }}`">
+            <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
     </form>
 
     <script>
@@ -82,11 +84,9 @@
     </script>
 
     <p></p>
-
     
-        
-    <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.listar_clientes') }}`">
-        <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+    
+    
 </div>
 
 

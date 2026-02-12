@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Percentuais - {{ cliente.nome }}{% endblock %}
+{% block header %}Editar percentuais - {{ cliente.nome }}{% endblock %}
+
+{% block content %}
+
+<div class="center">
+    
+    <h3>Editar Percentuais de Alocação</h3>
+      
+
+    <form method="POST" action="{{ url_for('balanco.salvar_fatias', cliente_id=cliente.id) }}" id="formFatias">
+        
+        <div style="overflow-x: auto;">
+            <table class="table table-bordered" style="font-size: 0.85em;">
+                <thead class="thead-dark">
+                    <tr>
+                        <th style="min-width: 120px;">Classe de Risco</th>
+                        {% for objetivo in objetivos %}
+                        <th class="text-center">{{ objetivo.nome_objetivo }} </th>
+                        {% endfor %}
+                        <th class="text-center" style="background-color: #f8f9fa;">
+                            <strong>Total</strong>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    
+                    <!-- Linha: Baixo DI -->
+                    <tr>
+                        <td style="background-color: #d4edda;"><strong>Baixo DI</strong></td>
+                        {% for objetivo in objetivos %}
+                        <td class="text-center">
+                            <input 
+                                type="number" 
+                                name="baixo_di_{{ objetivo.id }}" 
+                                class="form-control form-control-sm text-center input-fatia" 
+                                data-classe="baixo_di"
+                                value="{{ '{:.2f}'.format(percentuais_salvos[objetivo.id]['baixo_di']) }}" 
+                                step="0.01" 
+                                min="0" 
+                                max="100" 
+                                required
+                                
+                            > 
+                        </td>
+                        {% endfor %}
+                        <td class="text-center total-cell" id="total_baixo_di" style="background-color: #f8f9fa; font-weight: bold;">
+                            0.00%
+                        </td>
+                    </tr>
+
+                    <!-- Linha: Baixo RFx -->
+                    <tr>
+                        <td style="background-color: #d4edda;"><strong>Baixo RFx</strong></td>
+                        {% for objetivo in objetivos %}
+                        <td class="text-center">
+                            <input 
+                                type="number" 
+                                name="baixo_rfx_{{ objetivo.id }}" 
+                                class="form-control form-control-sm text-center input-fatia" 
+                                data-classe="baixo_rfx"
+                                value="{{ '{:.2f}'.format(percentuais_salvos[objetivo.id]['baixo_rfx']) }}" 
+                                step="0.01" 
+                                min="0" 
+                                max="100" 
+                                required
+                                style="width: 80px; display: inline-block;"
+                            > 
+                        </td>
+                        {% endfor %}
+                        <td class="text-center total-cell" id="total_baixo_rfx" style="background-color: #f8f9fa; font-weight: bold;">
+                            0.00%
+                        </td>
+                    </tr>
+
+                    <!-- Linha: Moderado -->
+                    <tr>
+                        <td style="background-color: #fff3cd;"><strong>Moderado</strong></td>
+                        {% for objetivo in objetivos %}
+                        <td class="text-center">
+                            <input 
+                                type="number" 
+                                name="moderado_{{ objetivo.id }}" 
+                                class="form-control form-control-sm text-center input-fatia" 
+                                data-classe="moderado"
+                                value="{{ '{:.2f}'.format(percentuais_salvos[objetivo.id]['moderado']) }}" 
+                                step="0.01" 
+                                min="0" 
+                                max="100" 
+                                required
+                                style="width: 80px; display: inline-block;"
+                            > 
+                        </td>
+                        {% endfor %}
+                        <td class="text-center total-cell" id="total_moderado" style="background-color: #f8f9fa; font-weight: bold;">
+                            0.00%
+                        </td>
+                    </tr>
+
+                    <!-- Linha: Alto -->
+                    <tr>
+                        <td style="background-color: #f8d7da;"><strong>Alto</strong></td>
+                        {% for objetivo in objetivos %}
+                        <td class="text-center">
+                            <input 
+                                type="number" 
+                                name="alto_{{ objetivo.id }}" 
+                                class="form-control form-control-sm text-center input-fatia" 
+                                data-classe="alto"
+                                value="{{ '{:.2f}'.format(percentuais_salvos[objetivo.id]['alto']) }}" 
+                                step="0.01" 
+                                min="0" 
+                                max="100" 
+                                required
+                                style="width: 80px; display: inline-block;"
+                            > 
+                        </td>
+                        {% endfor %}
+                        <td class="text-center total-cell" id="total_alto" style="background-color: #f8f9fa; font-weight: bold;">
+                            0.00%
+                        </td>
+                    </tr>
+
+                </tbody>
+            </table>
+        </div>
+
+        <div class="inline-btn">
+            <button type="submit" class="bigBtn" id="btnSalvar">
+                <img src="{{ url_for('static', filename='icons/save.png') }}" class="btn-icon">Salvar Alterações</button>
+
+            
+            <button class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.area_cliente', cliente_id=cliente.id) }}`">
+                <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+            
+        </div>
+
+    </form>
+
+</div>
+
+<style>
+    .total-cell {
+        font-size: 1.1em;
+        min-width: 100px;
+    }
+    
+    .total-valido {
+        color: green;
+        background-color: #d4edda !important;
+    }
+    
+    .total-invalido {
+        color: red;
+        background-color: #f8d7da !important;
+    }
+    
+    input.input-fatia:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+</style>
+
+<script>
+    // Calcular totais em tempo real
+    function calcularTotais() {
+        const classes = ['baixo_di', 'baixo_rfx', 'moderado', 'alto'];
+        let todosValidos = true;
+        
+        classes.forEach(classe => {
+            const inputs = document.querySelectorAll(`input[data-classe="${classe}"]`);
+            let total = 0;
+            
+            inputs.forEach(input => {
+                const valor = parseFloat(input.value) || 0;
+                total += valor;
+            });
+            
+            const celTotal = document.getElementById(`total_${classe}`);
+            celTotal.textContent = total.toFixed(2) + '%';
+            
+            // Validação visual
+            const diff = Math.abs(total - 100);
+            if (diff < 0.01) {
+                celTotal.classList.remove('total-invalido');
+                celTotal.classList.add('total-valido');
+            } else {
+                celTotal.classList.remove('total-valido');
+                celTotal.classList.add('total-invalido');
+                todosValidos = false;
+            }
+        });
+        
+        // Habilitar/desabilitar botão salvar
+        const btnSalvar = document.getElementById('btnSalvar');
+        btnSalvar.disabled = !todosValidos;
+        
+        if (!todosValidos) {
+            btnSalvar.title = 'Corrija os totais para salvar';
+        } else {
+            btnSalvar.title = '';
+        }
+    }
+    
+    // Adicionar listeners
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputs = document.querySelectorAll('.input-fatia');
+        
+        inputs.forEach(input => {
+            input.addEventListener('input', calcularTotais);
+            input.addEventListener('change', calcularTotais);
+        });
+        
+        // Calcular totais iniciais
+        calcularTotais();
+    });
+    
+    // Validação antes de submeter
+    document.getElementById('formFatias').addEventListener('submit', function(e) {
+        const classes = ['baixo_di', 'baixo_rfx', 'moderado', 'alto'];
+        const erros = [];
+        
+        classes.forEach(classe => {
+            const inputs = document.querySelectorAll(`input[data-classe="${classe}"]`);
+            let total = 0;
+            
+            inputs.forEach(input => {
+                total += parseFloat(input.value) || 0;
+            });
+            
+            const diff = Math.abs(total - 100);
+            if (diff >= 0.01) {
+                const nomeClasse = classe.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                erros.push(`${nomeClasse}: ${total.toFixed(2)}%`);
+            }
+        });
+        
+        if (erros.length > 0) {
+            e.preventDefault();
+            alert('Erro: As fatias devem somar 100% por classe.\n\nTotais incorretos:\n' + erros.join('\n'));
+            return false;
+        }
+    });
+</script>
+
+{% endblock %}

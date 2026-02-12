@@ -238,3 +238,145 @@ def resetar_distribuicao(cliente_id):
         db.close()
     
     return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
+
+
+@balanco_bp.route('/editar_fatias/<int:cliente_id>', methods=['GET'])
+@login_required
+def editar_fatias(cliente_id):
+    """Formulário para editar percentuais (fatias) dos objetivos manualmente"""
+    from app.models.geld_models import DistribuicaoObjetivo
+    
+    db = create_session()
+    
+    try:
+        cliente = db.query(Cliente).get(cliente_id)
+        if not cliente:
+            flash('Cliente não encontrado', 'error')
+            return redirect(url_for('dashboard.index'))
+        
+        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        
+        if not objetivos:
+            flash('Cliente não possui objetivos cadastrados.', 'warning')
+            return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
+        
+        # Buscar percentuais salvos para cada objetivo
+        percentuais_salvos = {}
+        for objetivo in objetivos:
+            dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo.id).first()
+            if dist:
+                percentuais_salvos[objetivo.id] = {
+                    'baixo_di': dist.perc_baixo_di,
+                    'baixo_rfx': dist.perc_baixo_rfx,
+                    'moderado': dist.perc_moderado,
+                    'alto': dist.perc_alto
+                }
+            else:
+                # Se não existe distribuição, inicializa com zeros
+                percentuais_salvos[objetivo.id] = {
+                    'baixo_di': 0.0,
+                    'baixo_rfx': 0.0,
+                    'moderado': 0.0,
+                    'alto': 0.0
+                }
+        
+        return render_template(
+            'balanco/editar_fatias.html',
+            cliente=cliente,
+            objetivos=objetivos,
+            percentuais_salvos=percentuais_salvos
+        )
+    
+    except Exception as e:
+        flash(f'Erro ao carregar edição: {str(e)}', 'error')
+        return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
+    
+    finally:
+        db.close()
+
+
+@balanco_bp.route('/salvar_fatias/<int:cliente_id>', methods=['POST'])
+@login_required
+def salvar_fatias(cliente_id):
+    """Salvar percentuais editados manualmente"""
+    from app.models.geld_models import DistribuicaoObjetivo
+    
+    db = create_session()
+    
+    try:
+        cliente = db.query(Cliente).get(cliente_id)
+        if not cliente:
+            flash('Cliente não encontrado', 'error')
+            return redirect(url_for('dashboard.index'))
+        
+        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        
+        # Coletar dados do formulário
+        dados_objetivos = {}
+        for objetivo in objetivos:
+            dados_objetivos[objetivo.id] = {
+                'baixo_di': float(request.form.get(f'baixo_di_{objetivo.id}', 0)),
+                'baixo_rfx': float(request.form.get(f'baixo_rfx_{objetivo.id}', 0)),
+                'moderado': float(request.form.get(f'moderado_{objetivo.id}', 0)),
+                'alto': float(request.form.get(f'alto_{objetivo.id}', 0))
+            }
+        
+        # Validação: Soma por classe de risco deve ser 100%
+        totais_por_classe = {
+            'baixo_di': 0.0,
+            'baixo_rfx': 0.0,
+            'moderado': 0.0,
+            'alto': 0.0
+        }
+        
+        for objetivo_id, percentuais in dados_objetivos.items():
+            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
+                totais_por_classe[classe] += percentuais[classe]
+        
+        # Verificar se cada classe soma 100% (tolerância de 0.01 para arredondamento)
+        erros = []
+        for classe, total in totais_por_classe.items():
+            if abs(total - 100.0) > 0.01:
+                nome_classe = classe.replace('_', ' ').title()
+                erros.append(f'{nome_classe}: {total:.2f}%')
+        
+        if erros:
+            flash(f'Erro: As fatias devem somar 100% por classe. Totais incorretos: {", ".join(erros)}', 'error')
+            return redirect(url_for('balanco.editar_fatias', cliente_id=cliente_id))
+        
+        # Salvar no banco
+        for objetivo_id, percentuais in dados_objetivos.items():
+            dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo_id).first()
+            
+            if dist:
+                # Atualizar existente
+                dist.perc_baixo_di = percentuais['baixo_di']
+                dist.perc_baixo_rfx = percentuais['baixo_rfx']
+                dist.perc_moderado = percentuais['moderado']
+                dist.perc_alto = percentuais['alto']
+            else:
+                # Criar novo
+                nova_dist = DistribuicaoObjetivo(
+                    objetivo_id=objetivo_id,
+                    perc_baixo_di=percentuais['baixo_di'],
+                    perc_baixo_rfx=percentuais['baixo_rfx'],
+                    perc_moderado=percentuais['moderado'],
+                    perc_alto=percentuais['alto']
+                )
+                db.add(nova_dist)
+        
+        db.commit()
+        flash('Fatias atualizadas com sucesso!', 'success')
+        return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
+    
+    except ValueError as e:
+        flash(f'Erro nos valores informados: {str(e)}', 'error')
+        return redirect(url_for('balanco.editar_fatias', cliente_id=cliente_id))
+    
+    except Exception as e:
+        db.rollback()
+        flash(f'Erro ao salvar: {str(e)}', 'error')
+        return redirect(url_for('balanco.editar_fatias', cliente_id=cliente_id))
+    
+    finally:
+        db.close()
