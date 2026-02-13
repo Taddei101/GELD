@@ -36,7 +36,7 @@ def iniciar(cliente_id):
             cliente_id, totais_atuais, db
         )
         
-        # Buscar percentuais salvos (fatias do bolo)
+        # Buscar percentuais salvos (fatias)
         from app.models.geld_models import DistribuicaoObjetivo
         percentuais_salvos = {}
         for objetivo in objetivos:

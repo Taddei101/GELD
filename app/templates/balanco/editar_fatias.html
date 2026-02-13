@@ -132,7 +132,7 @@
                 <img src="{{ url_for('static', filename='icons/save.png') }}" class="btn-icon">Salvar Alterações</button>
 
             
-            <button class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.area_cliente', cliente_id=cliente.id) }}`">
+            <button class="smlBtn" type="button" onclick="window.location.href=`{{ url_for('cliente.area_cliente', cliente_id=cliente.id) }}`">
                 <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
             
         </div>

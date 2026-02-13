@@ -5,24 +5,6 @@
 {% block header %} {{cliente.nome}} {% endblock %}
 
 {% block content %}
-<div class="client_area">
-    <table class="table">
-        <thead>
-            <tr>
-                <th style="text-align: center; font-size: 1em;">Montante sob Gestão</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td style="text-align: center; font-size: 1.2em; font-weight: bold; color: #2c3e50;">
-                    R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}
-                </td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-<p></p>
 
 <!-- SEÇÃO: Resumo por Classe de Risco (Detalhado) -->
 {% if has_positions %}
@@ -66,12 +48,16 @@
     </table>
 </div>
 
+{% else %}
+<h2 style="color: rgb(29, 56, 209); font-size: 1.5em">Sem capital alocado</h2>
+{% endif %}
+
 <p></p>
 
 <!-- TABELA: Fatias Alocadas por Objetivo -->
 {% if objetivos %}
 <div class="client_area">
-    <h3 style="margin-bottom: 15px;">📊 Fatias Alocadas por Objetivo</h3>
+    <h3> Fatias Alocadas por Objetivo</h3>
         
     <div style="overflow-x: auto; margin-bottom: 30px;">
         <table class="table table-bordered table-sm" style="font-size: 0.85em; max-width: 800px;">
@@ -157,11 +143,11 @@
 
 <!-- TABELA: Alocação por Objetivo -->
 <div class="client_area">
-    <h3 style="margin-bottom: 15px;">📈 Alocação por Objetivo</h3>
+    <h3 style="margin-bottom: 15px;"> Alocação por Objetivo</h3>
     
     <div style="overflow-x: auto;">
-    <table class="table table-bordered" style="font-size: 0.8em;">
-        <thead class="thead-dark">
+    <table class="table" ;>
+        <thead>
             <tr>
                 <th rowspan="2" style="vertical-align: middle; min-width: 120px;">Classe de Risco</th>
                 {% for objetivo in objetivos %}
@@ -342,10 +328,14 @@
     </div>
 </div>
 
-<p></p>
+{% else %}
+<h2 style="color:rgb(29, 56, 209);font-size: 1.5em">Sem Objetivos Cadastrados </h2>
 {% endif %}
 
-{% endif %}
+<p></p>
+
+
+
 
 <div class="client_area">
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('cliente.info_cliente',cliente_id=cliente.id) }}`">
@@ -361,7 +351,7 @@
         <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte</button>
 
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.editar_fatias', cliente_id=cliente.id) }}`">
-        <img src="{{ url_for('static', filename='icons/edit.png') }}" class="btn-icon">Editar Fatias</button>
+        <img src="{{ url_for('static', filename='icons/pie.png') }}" class="btn-icon">Editar Fatias</button>
     
     <form method="POST" action="{{ url_for('balanco.resetar_distribuicao', cliente_id=cliente.id) }}" style="display: inline;">
         <button type="submit" class="bigBtn" style="background-color: #6c757d;" onclick="return confirm('Resetar TODOS os percentuais de distribuição?')">
