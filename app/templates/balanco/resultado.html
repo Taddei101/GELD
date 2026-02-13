@@ -195,142 +195,50 @@
             <span style="color: red;">Vermelho (-)</span> = Ainda precisa VENDER
         </small>
     </div>
-    
-    <!-- RESUMO AGREGADO - DUAS TABELAS LADO A LADO -->
-    <div style="margin-top: 30px;">
-        <h3>Resumo Consolidado</h3>
+    <p></p>
+    <!-- RESUMO DO APORTE -->
+    <div>
+        <h3 >Resumo Consolidado</h3>
         
-        <div style="display: flex; gap: 20px; justify-content: center; flex-wrap: wrap;">
+        <div style="max-width: 500px;">
+                        
+            {% set aporte_di = resultado.aportes_agregados.baixo_di %}
+            {% set aporte_rfx = resultado.aportes_agregados.baixo_rfx %}
+            {% set aporte_moderado = resultado.aportes_agregados.moderado %}
+            {% set aporte_alto = resultado.aportes_agregados.alto %}
+            {% set total_aporte = aporte_di + aporte_rfx + aporte_moderado + aporte_alto %}
             
-            <!-- TABELA 1: RESUMO DO APORTE -->
-            <div style="flex: 1; min-width: 300px; max-width: 450px;">
-                <h4 style="text-align: center; margin-bottom: 15px;">💰 Resumo do Aporte</h4>
-                
-                {% set aporte_di = resultado.aportes_agregados.baixo_di %}
-                {% set aporte_rfx = resultado.aportes_agregados.baixo_rfx %}
-                {% set aporte_moderado = resultado.aportes_agregados.moderado %}
-                {% set aporte_alto = resultado.aportes_agregados.alto %}
-                {% set total_aporte = aporte_di + aporte_rfx + aporte_moderado + aporte_alto %}
-                
-                <table class="table table-bordered">
-                    <thead class="thead-dark">
-                        <tr>
-                            <th>Classe de Risco</th>
-                            <th class="text-right">Valor Investido</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="background-color: #d4edda;">
-                            <td><strong>Baixo DI</strong></td>
-                            <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(aporte_di).replace(',', '.') }}</strong></td>
-                        </tr>
-                        <tr style="background-color: #d4edda;">
-                            <td><strong>Baixo RFx</strong></td>
-                            <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(aporte_rfx).replace(',', '.') }}</strong></td>
-                        </tr>
-                        <tr style="background-color: #fff3cd;">
-                            <td><strong>Moderado</strong></td>
-                            <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(aporte_moderado).replace(',', '.') }}</strong></td>
-                        </tr>
-                        <tr style="background-color: #f8d7da;">
-                            <td><strong>Alto</strong></td>
-                            <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(aporte_alto).replace(',', '.') }}</strong></td>
-                        </tr>
-                        <tr style="background-color: #e9ecef; font-weight: bold; border-top: 2px solid #333;">
-                            <td><strong>TOTAL</strong></td>
-                            <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(total_aporte).replace(',', '.') }}</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- TABELA 2: AÇÕES NECESSÁRIAS -->
-            <div style="flex: 1; min-width: 300px; max-width: 450px;">
-                <h4 style="text-align: center; margin-bottom: 15px;">⚖️ Ações Necessárias</h4>
-                
-                {% set gap_di = resultado.acoes_necessarias.baixo_di %}
-                {% set gap_rfx = resultado.acoes_necessarias.baixo_rfx %}
-                {% set gap_moderado = resultado.acoes_necessarias.moderado %}
-                {% set gap_alto = resultado.acoes_necessarias.alto %}
-                
-                <table class="table table-bordered">
-                    <thead class="thead-dark">
-                        <tr>
-                            <th>Classe de Risco</th>
-                            <th class="text-right">Ajuste Necessário</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Baixo DI</strong></td>
-                            <td class="text-right" style="background-color: {% if gap_di > 0 %}#d4edda{% elif gap_di < 0 %}#f8d7da{% else %}#f8f9fa{% endif %};">
-                                <strong>
-                                {% if gap_di > 0 %}
-                                    +R$ {{ '{:,.0f}'.format(gap_di).replace(',', '.') }} <span style="color: green; font-size: 0.85em;">(COMPRAR)</span>
-                                {% elif gap_di < 0 %}
-                                    -R$ {{ '{:,.0f}'.format(-gap_di).replace(',', '.') }} <span style="color: red; font-size: 0.85em;">(VENDER)</span>
-                                {% else %}
-                                    R$ 0 <span style="color: gray; font-size: 0.85em;">(OK)</span>
-                                {% endif %}
-                                </strong>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Baixo RFx</strong></td>
-                            <td class="text-right" style="background-color: {% if gap_rfx > 0 %}#d4edda{% elif gap_rfx < 0 %}#f8d7da{% else %}#f8f9fa{% endif %};">
-                                <strong>
-                                {% if gap_rfx > 0 %}
-                                    +R$ {{ '{:,.0f}'.format(gap_rfx).replace(',', '.') }} <span style="color: green; font-size: 0.85em;">(COMPRAR)</span>
-                                {% elif gap_rfx < 0 %}
-                                    -R$ {{ '{:,.0f}'.format(-gap_rfx).replace(',', '.') }} <span style="color: red; font-size: 0.85em;">(VENDER)</span>
-                                {% else %}
-                                    R$ 0 <span style="color: gray; font-size: 0.85em;">(OK)</span>
-                                {% endif %}
-                                </strong>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Moderado</strong></td>
-                            <td class="text-right" style="background-color: {% if gap_moderado > 0 %}#d4edda{% elif gap_moderado < 0 %}#f8d7da{% else %}#f8f9fa{% endif %};">
-                                <strong>
-                                {% if gap_moderado > 0 %}
-                                    +R$ {{ '{:,.0f}'.format(gap_moderado).replace(',', '.') }} <span style="color: green; font-size: 0.85em;">(COMPRAR)</span>
-                                {% elif gap_moderado < 0 %}
-                                    -R$ {{ '{:,.0f}'.format(-gap_moderado).replace(',', '.') }} <span style="color: red; font-size: 0.85em;">(VENDER)</span>
-                                {% else %}
-                                    R$ 0 <span style="color: gray; font-size: 0.85em;">(OK)</span>
-                                {% endif %}
-                                </strong>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td><strong>Alto</strong></td>
-                            <td class="text-right" style="background-color: {% if gap_alto > 0 %}#d4edda{% elif gap_alto < 0 %}#f8d7da{% else %}#f8f9fa{% endif %};">
-                                <strong>
-                                {% if gap_alto > 0 %}
-                                    +R$ {{ '{:,.0f}'.format(gap_alto).replace(',', '.') }} <span style="color: green; font-size: 0.85em;">(COMPRAR)</span>
-                                {% elif gap_alto < 0 %}
-                                    -R$ {{ '{:,.0f}'.format(-gap_alto).replace(',', '.') }} <span style="color: red; font-size: 0.85em;">(VENDER)</span>
-                                {% else %}
-                                    R$ 0 <span style="color: gray; font-size: 0.85em;">(OK)</span>
-                                {% endif %}
-                                </strong>
-                            </td>
-                        </tr>
-                        <tr style="background-color: #f8f9fa;">
-                            <td colspan="2" style="text-align: center; font-size: 0.85em; color: #666;">
-                                <em>Gap = Estado Ideal - Estado Atual</em>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            
+            <table class="table table-bordered">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Classe de Risco</th>
+                        <th class="text-right">Valor Investido</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background-color: #d4edda;">
+                        <td><strong>Baixo DI</strong></td>
+                        <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(aporte_di).replace(',', '.') }}</strong></td>
+                    </tr>
+                    <tr style="background-color: #d4edda;">
+                        <td><strong>Baixo RFx</strong></td>
+                        <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(aporte_rfx).replace(',', '.') }}</strong></td>
+                    </tr>
+                    <tr style="background-color: #fff3cd;">
+                        <td><strong>Moderado</strong></td>
+                        <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(aporte_moderado).replace(',', '.') }}</strong></td>
+                    </tr>
+                    <tr style="background-color: #f8d7da;">
+                        <td><strong>Alto</strong></td>
+                        <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(aporte_alto).replace(',', '.') }}</strong></td>
+                    </tr>
+                    <tr style="background-color: #e9ecef; font-weight: bold; border-top: 2px solid #333;">
+                        <td><strong>TOTAL</strong></td>
+                        <td class="text-right"><strong>R$ {{ '{:,.0f}'.format(total_aporte).replace(',', '.') }}</strong></td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        
-        <small class="text-muted" style="display: block; text-align: center; margin-top: 10px;">
-            * <strong>Resumo do Aporte</strong>: Total investido por classe | <strong>Ações Necessárias</strong>: Ajustes para atingir perfil ideal
-        </small>
     </div>
 <p></p>
     <div>{# TABELA DE FATIAS ALOCADAS  #}
@@ -417,10 +325,116 @@
     
     <hr style="margin: 30px 0;">
     
+    <!-- Ações Consolidadas -->
+    <h3 > Ações Recomendadas </h3>
     
+    <div style="max-width: 600px;">
+        <table class="table table-bordered">
+            <thead class="thead-dark">
+                <tr>
+                    <th style="width: 40%;">Classe de Risco</th>
+                    <th class="text-center">Ação Recomendada</th>
+                    <th class="text-right" style="width: 25%;">Valor/Gap</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set acao_di = resultado.acoes_consolidadas.baixo_di %}
+                <tr>
+                    <td style="background-color: #d4edda;"><strong>Baixo DI</strong></td>
+                    <td class="text-center" style="background-color: {% if acao_di.tipo == 'REDISTRIBUIR' %}#e3f2fd{% elif acao_di.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        <strong>
+                        {% if acao_di.tipo == 'REDISTRIBUIR' %}
+                            ✅ REDISTRIBUIR
+                        {% elif acao_di.tipo == 'COMPRAR' %}
+                            🟢 COMPRAR
+                        {% else %}
+                            🔴 VENDER
+                        {% endif %}
+                        </strong>
+                    </td>
+                    <td class="text-right" style="background-color: {% if acao_di.tipo == 'REDISTRIBUIR' %}#e3f2fd{% elif acao_di.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        {% if acao_di.tipo == 'REDISTRIBUIR' %}
+                            <span style="font-size: 0.85em; color: #666;">Gap: R$ {{ '{:,.0f}'.format(acao_di.gap_total).replace(',', '.') }}</span>
+                        {% else %}
+                            <strong>R$ {{ '{:,.0f}'.format(acao_di.valor).replace(',', '.') }}</strong>
+                        {% endif %}
+                    </td>
+                </tr>
+                
+                {% set acao_rfx = resultado.acoes_consolidadas.baixo_rfx %}
+                <tr>
+                    <td style="background-color: #d4edda;"><strong>Baixo RFx</strong></td>
+                    <td class="text-center" style="background-color: {% if acao_rfx.tipo == 'REDISTRIBUIR' %}#e3f2fd{% elif acao_rfx.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        <strong>
+                        {% if acao_rfx.tipo == 'REDISTRIBUIR' %}
+                            ✅ REDISTRIBUIR
+                        {% elif acao_rfx.tipo == 'COMPRAR' %}
+                            🟢 COMPRAR
+                        {% else %}
+                            🔴 VENDER
+                        {% endif %}
+                        </strong>
+                    </td>
+                    <td class="text-right" style="background-color: {% if acao_rfx.tipo == 'REDISTRIBUIR' %}#e3f2fd{% elif acao_rfx.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        {% if acao_rfx.tipo == 'REDISTRIBUIR' %}
+                            <span style="font-size: 0.85em; color: #666;">Gap: R$ {{ '{:,.0f}'.format(acao_rfx.gap_total).replace(',', '.') }}</span>
+                        {% else %}
+                            <strong>R$ {{ '{:,.0f}'.format(acao_rfx.valor).replace(',', '.') }}</strong>
+                        {% endif %}
+                    </td>
+                </tr>
+                
+                {% set acao_mod = resultado.acoes_consolidadas.moderado %}
+                <tr>
+                    <td style="background-color: #fff3cd;"><strong>Moderado</strong></td>
+                    <td class="text-center" style="background-color: {% if acao_mod.tipo == 'REDISTRIBUIR' %}#e3f2fd{% elif acao_mod.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        <strong>
+                        {% if acao_mod.tipo == 'REDISTRIBUIR' %}
+                            ✅ REDISTRIBUIR
+                        {% elif acao_mod.tipo == 'COMPRAR' %}
+                            🟢 COMPRAR
+                        {% else %}
+                            🔴 VENDER
+                        {% endif %}
+                        </strong>
+                    </td>
+                    <td class="text-right" style="background-color: {% if acao_mod.tipo == 'REDISTRIBUIR' %}#e3f2fd{% elif acao_mod.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        {% if acao_mod.tipo == 'REDISTRIBUIR' %}
+                            <span style="font-size: 0.85em; color: #666;">Gap: R$ {{ '{:,.0f}'.format(acao_mod.gap_total).replace(',', '.') }}</span>
+                        {% else %}
+                            <strong>R$ {{ '{:,.0f}'.format(acao_mod.valor).replace(',', '.') }}</strong>
+                        {% endif %}
+                    </td>
+                </tr>
+                
+                {% set acao_alto = resultado.acoes_consolidadas.alto %}
+                <tr>
+                    <td style="background-color: #f8d7da;"><strong>Alto</strong></td>
+                    <td class="text-center" style="background-color: {% if acao_alto.tipo == 'REDISTRIBUIR' %}#e3f2fd{% elif acao_alto.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        <strong>
+                        {% if acao_alto.tipo == 'REDISTRIBUIR' %}
+                            ✅ REDISTRIBUIR
+                        {% elif acao_alto.tipo == 'COMPRAR' %}
+                            🟢 COMPRAR
+                        {% else %}
+                            🔴 VENDER
+                        {% endif %}
+                        </strong>
+                    </td>
+                    <td class="text-right" style="background-color: {% if acao_alto.tipo == 'REDISTRIBUIR' %}#e3f2fd{% elif acao_alto.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        {% if acao_alto.tipo == 'REDISTRIBUIR' %}
+                            <span style="font-size: 0.85em; color: #666;">Gap: R$ {{ '{:,.0f}'.format(acao_alto.gap_total).replace(',', '.') }}</span>
+                        {% else %}
+                            <strong>R$ {{ '{:,.0f}'.format(acao_alto.valor).replace(',', '.') }}</strong>
+                        {% endif %}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
 </div>
-    
+    <p></p>
     <!-- Botões de Ação -->
     <div>
         <form method="POST" action="{{ url_for('balanco.aplicar', cliente_id=cliente.id) }}" style="display: inline;">
@@ -451,11 +465,6 @@
 .table th, .table td {
     padding: 5px;
     white-space: nowrap;
-}
-.table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
 }
 </style>
 {% endblock %}

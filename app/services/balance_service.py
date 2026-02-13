@@ -158,6 +158,81 @@ class BalanceamentoService:
         
         return vp_ideal
     
+    # ========== RECÁLCULO DE PERCENTUAIS BALANCEADOS ==========
+    
+    @staticmethod
+    def recalcular_percentuais_balanceados(
+        objetivos: List[Objetivo],
+        totais_disponiveis: Dict[str, float],
+        ipca_anual: float,
+        session: Session
+    ) -> Dict[int, Dict[str, float]]:
+        """
+        Recalcula percentuais ótimos para eliminar gaps sem aportes/resgates.
+        Usa matrizes de risco como referência e ajusta proporcionalmente.
+        
+        Args:
+            objetivos: Lista de objetivos do cliente
+            totais_disponiveis: Capital disponível por classe {'baixo_di': X, ...}
+            ipca_anual: IPCA para cálculo de VP
+            session: Sessão do banco
+            
+        Returns:
+            {objetivo_id: {'baixo_di': %, 'baixo_rfx': %, 'moderado': %, 'alto': %}}
+        """
+        novos_percentuais = {}
+        
+        # Para cada classe de risco, calcular percentuais balanceados
+        for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
+            
+            # 1. Calcular valores IDEAIS (baseado nas matrizes de risco)
+            valores_ideais = {}
+            
+            for obj in objetivos:
+                matriz = BalanceamentoService.buscar_matriz_alvo(obj, session)
+                vp_ideal = BalanceamentoService.calcular_vp_ideal(obj, ipca_anual)
+                
+                # Percentual que este objetivo QUER desta classe (segundo matriz)
+                if classe == 'baixo_di':
+                    perc_matriz = (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100
+                elif classe == 'baixo_rfx':
+                    perc_matriz = (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100
+                elif classe == 'moderado':
+                    perc_matriz = matriz.perc_moderado
+                else:  # alto
+                    perc_matriz = matriz.perc_alto
+                
+                # Valor ideal = VP ideal × percentual da matriz
+                valor_ideal_classe = vp_ideal * (perc_matriz / 100)
+                valores_ideais[obj.id] = valor_ideal_classe
+            
+            # 2. Somar todos valores ideais
+            soma_ideal = sum(valores_ideais.values())
+            total_disponivel = totais_disponiveis[classe]
+            
+            # 3. Calcular fator de ajuste
+            if soma_ideal > 0:
+                fator_ajuste = total_disponivel / soma_ideal
+            else:
+                # Se soma ideal é zero, dividir igualmente
+                fator_ajuste = 1.0 / len(objetivos) if objetivos else 1.0
+            
+            # 4. Calcular percentuais ajustados (fatias do bolo)
+            for obj_id, valor_ideal in valores_ideais.items():
+                valor_ajustado = valor_ideal * fator_ajuste
+                
+                if obj_id not in novos_percentuais:
+                    novos_percentuais[obj_id] = {}
+                
+                if total_disponivel > 0:
+                    perc_fatia = (valor_ajustado / total_disponivel) * 100
+                else:
+                    perc_fatia = 0.0
+                
+                novos_percentuais[obj_id][classe] = perc_fatia
+        
+        return novos_percentuais
+    
     # ========== MÉTODO PRINCIPAL DE BALANCEAMENTO ==========
     
     @staticmethod
@@ -279,25 +354,7 @@ class BalanceamentoService:
                 'matriz_prazo': matriz.duracao_meses
             })
         
-        # 5. Calcular novos PERCENTUAIS de cada objetivo
-        # Total geral por classe = soma dos novos valores de todos objetivos
-        totais_novos = novos_valores_por_classe
-        
-        # Calcular percentual de cada objetivo
-        for resultado in resultados_objetivos:
-            novos_percentuais = {}
-            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
-                total_classe = totais_novos[classe]
-                valor_obj = resultado['novos_valores'][classe]
-                
-                if total_classe > 0:
-                    novos_percentuais[classe] = (valor_obj / total_classe) * 100
-                else:
-                    novos_percentuais[classe] = 0.0
-            
-            resultado['novos_percentuais'] = novos_percentuais
-        
-        # 6. Resultado agregado
+        # 5. Calcular agregados ANTES de usar
         total_aporte = sum(r['valor_aporte'] for r in resultados_objetivos)
         
         aportes_agregados = {
@@ -307,7 +364,6 @@ class BalanceamentoService:
             'alto': sum(r['distribuicao_aporte']['alto'] for r in resultados_objetivos)
         }
         
-        
         acoes_necessarias = {
             'baixo_di': sum(r['gap_individual']['baixo_di'] for r in resultados_objetivos),
             'baixo_rfx': sum(r['gap_individual']['baixo_rfx'] for r in resultados_objetivos),
@@ -315,15 +371,71 @@ class BalanceamentoService:
             'alto': sum(r['gap_individual']['alto'] for r in resultados_objetivos)
         }
         
+        # 6. RECALCULAR percentuais balanceados
+        # Usa matrizes de risco + capital disponível pós-aporte
+        totais_pos_aporte = {
+            'baixo_di': totais_atuais['baixo_di'] + aportes_agregados['baixo_di'],
+            'baixo_rfx': totais_atuais['baixo_rfx'] + aportes_agregados['baixo_rfx'],
+            'moderado': totais_atuais['moderado'] + aportes_agregados['moderado'],
+            'alto': totais_atuais['alto'] + aportes_agregados['alto']
+        }
+        
+        percentuais_balanceados = BalanceamentoService.recalcular_percentuais_balanceados(
+            todos_objetivos,
+            totais_pos_aporte,
+            ipca_anual,
+            session
+        )
+        
+        # 7. Aplicar percentuais balanceados aos resultados
+        for resultado in resultados_objetivos:
+            obj_id = resultado['objetivo_id']
+            resultado['novos_percentuais'] = percentuais_balanceados.get(obj_id, {
+                'baixo_di': 0.0, 'baixo_rfx': 0.0, 'moderado': 0.0, 'alto': 0.0
+            })
+        
+        # 8. Consolidar ações por classe de risco
+        acoes_consolidadas = {}
+        TOLERANCIA_GAP = 100.0  # R$ 100 de tolerância
+        
+        for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
+            gap_total = acoes_necessarias[classe]
+            
+            if abs(gap_total) < TOLERANCIA_GAP:
+                # Gap próximo de zero → apenas REDISTRIBUIR %
+                acoes_consolidadas[classe] = {
+                    'tipo': 'REDISTRIBUIR',
+                    'gap_total': gap_total,
+                    'descricao': 'Ajustar percentuais entre objetivos (sem aportes/resgates)'
+                }
+            elif gap_total > 0:
+                # Gap positivo → COMPRAR
+                acoes_consolidadas[classe] = {
+                    'tipo': 'COMPRAR',
+                    'gap_total': gap_total,
+                    'valor': gap_total,
+                    'descricao': f'Aportar R$ {gap_total:,.0f} nesta classe'
+                }
+            else:
+                # Gap negativo → VENDER
+                acoes_consolidadas[classe] = {
+                    'tipo': 'VENDER',
+                    'gap_total': gap_total,
+                    'valor': abs(gap_total),
+                    'descricao': f'Resgatar R$ {abs(gap_total):,.0f} desta classe'
+                }
+        
+        # 9. Retornar resultado completo
         return {
             'cliente_id': cliente_id,
             'data_calculo': datetime.now().isoformat(),
             'ipca_usado': ipca_anual,
             'total_aporte': total_aporte,
             'totais_atuais': totais_atuais,
-            'totais_novos': totais_novos,
+            'totais_novos': totais_pos_aporte,
             'aportes_agregados': aportes_agregados,
-            'acoes_necessarias': acoes_necessarias,  
+            'acoes_necessarias': acoes_necessarias,
+            'acoes_consolidadas': acoes_consolidadas,  # NOVO
             'resultados_por_objetivo': resultados_objetivos
         }
     
