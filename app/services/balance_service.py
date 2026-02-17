@@ -256,6 +256,7 @@ class BalanceamentoService:
                 'valores_atuais': valores_atuais,
                 'distribuicao_aporte': distribuicao_aporte,
                 'novos_valores': novos_valores,
+                'estado_alvo': estado_alvo,  # valores-alvo pós-rebalanceamento por classe
                 'gap_individual': gap_individual,
                 'percentuais_alvo': perc_alvo,
                 'matriz_prazo': matriz.duracao_meses
@@ -285,22 +286,30 @@ class BalanceamentoService:
             'alto': totais_atuais['alto'] + aportes_agregados['alto']
         }
         
-        # 6. Recalcular percentuais (fatias) por divisão direta dos valores absolutos.
+        # 6. Recalcular percentuais (fatias) usando estado_alvo e pool pos-redistribuicao.
         #
-        #    REGRA: fatia(obj, classe) = novos_valores(obj, classe) / pool_total(classe)
+        #    REGRA: fatia(obj, classe) = estado_alvo(obj, classe) / pool_pos_rebalanceamento(classe)
         #
-        #    Isso garante estabilidade porque:
-        #    - Objetivos sem aporte preservam seu valor absoluto → sua fatia só diminui
-        #      proporcionalmente se o pool cresceu, sem perturbação na composição.
-        #    - Objetivos com aporte crescem exatamente pela matriz → convergem gradualmente.
-        #    - A soma das fatias por classe é sempre 100% por definição matemática.
+        #    O pool deve incluir as acoes_necessarias (compras/vendas recomendadas), pois
+        #    e exatamente esse o estado real do pool depois que o usuario executa os trades.
+        #    Salvar as fatias assim garante que, apos as operacoes serem executadas e as
+        #    posicoes atualizadas, o gap calculado volte a zero.
+        #
+        #    Antes (bug): usava novos_valores / totais_pos_aporte
+        #    - novos_valores ignora a redistribuicao -> fatias salvas ficam desalinhadas
+        #      com o pool real apos os trades, gerando gap residual persistente.
+        
+        totais_pos_rebalanceamento = {
+            classe: totais_pos_aporte[classe] + acoes_necessarias[classe]
+            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']
+        }
         
         for resultado in resultados_objetivos:
             novos_percentuais = {}
             for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
-                pool = totais_pos_aporte[classe]
+                pool = totais_pos_rebalanceamento[classe]
                 if pool > 0:
-                    novos_percentuais[classe] = (resultado['novos_valores'][classe] / pool) * 100
+                    novos_percentuais[classe] = (resultado['estado_alvo'][classe] / pool) * 100
                 else:
                     novos_percentuais[classe] = 0.0
             resultado['novos_percentuais'] = novos_percentuais
