@@ -34,21 +34,18 @@ class BalanceamentoService:
             'alto': 0.0
         }
         
-        # Buscar todas posições do cliente
         posicoes = session.query(PosicaoFundo).filter_by(cliente_id=cliente_id).all()
         
         for pos in posicoes:
             fundo = pos.info_fundo
             valor = float(pos.cotas) * float(fundo.valor_cota)
             
-            # Classificar por risco
             if fundo.risco == RiscoEnum.baixo:
                 if fundo.subtipo_risco == SubtipoRiscoEnum.di:
                     totais['baixo_di'] += valor
                 elif fundo.subtipo_risco == SubtipoRiscoEnum.rfx:
                     totais['baixo_rfx'] += valor
                 else:
-                    # Se não tem subtipo, assumir RFx
                     totais['baixo_rfx'] += valor
             elif fundo.risco == RiscoEnum.moderado:
                 totais['moderado'] += valor
@@ -72,11 +69,9 @@ class BalanceamentoService:
         valores_por_objetivo = {}
         
         for obj in objetivos:
-            # Buscar distribuição (percentuais)
             dist = session.query(DistribuicaoObjetivo).filter_by(objetivo_id=obj.id).first()
             
             if not dist:
-                # Objetivo sem distribuição ainda
                 valores_por_objetivo[obj.id] = {
                     'baixo_di': 0.0,
                     'baixo_rfx': 0.0,
@@ -85,7 +80,6 @@ class BalanceamentoService:
                     'total': 0.0
                 }
             else:
-                # Aplicar percentuais
                 valores = {
                     'baixo_di': totais_classe['baixo_di'] * (dist.perc_baixo_di / 100),
                     'baixo_rfx': totais_classe['baixo_rfx'] * (dist.perc_baixo_rfx / 100),
@@ -105,7 +99,6 @@ class BalanceamentoService:
         duracao = objetivo.duracao_meses
         tipo = objetivo.tipo_objetivo
         
-        # Prazos disponíveis
         prazos = [12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132]
         prazo_arredondado = min(prazos, key=lambda x: abs(x - duracao))
         
@@ -123,9 +116,7 @@ class BalanceamentoService:
     def distribuir_aporte_por_matriz(valor_aporte: float, matriz: MatrizRisco) -> Dict[str, float]:
         """
         Distribui aporte em R$ conforme percentuais da matriz
-        
         """
-        # Calcular percentuais absolutos
         perc_baixo_di = (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100
         perc_baixo_rfx = (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100
         
@@ -150,88 +141,10 @@ class BalanceamentoService:
         
         duracao = objetivo.duracao_meses
         
-        # Valor futuro corrigido pela inflação
         valor_futuro = float(objetivo.valor_final) * ((1 + ipca_mensal) ** duracao)
-        
-        # Trazer a VP com taxa real
         vp_ideal = valor_futuro / ((1 + taxa_real_mensal) ** duracao)
         
         return vp_ideal
-    
-    # ========== RECÁLCULO DE PERCENTUAIS BALANCEADOS ==========
-    
-    @staticmethod
-    def recalcular_percentuais_balanceados(
-        objetivos: List[Objetivo],
-        totais_disponiveis: Dict[str, float],
-        ipca_anual: float,
-        session: Session
-    ) -> Dict[int, Dict[str, float]]:
-        """
-        Recalcula percentuais ótimos para eliminar gaps sem aportes/resgates.
-        Usa matrizes de risco como referência e ajusta proporcionalmente.
-        
-        Args:
-            objetivos: Lista de objetivos do cliente
-            totais_disponiveis: Capital disponível por classe {'baixo_di': X, ...}
-            ipca_anual: IPCA para cálculo de VP
-            session: Sessão do banco
-            
-        Returns:
-            {objetivo_id: {'baixo_di': %, 'baixo_rfx': %, 'moderado': %, 'alto': %}}
-        """
-        novos_percentuais = {}
-        
-        # Para cada classe de risco, calcular percentuais balanceados
-        for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
-            
-            # 1. Calcular valores IDEAIS (baseado nas matrizes de risco)
-            valores_ideais = {}
-            
-            for obj in objetivos:
-                matriz = BalanceamentoService.buscar_matriz_alvo(obj, session)
-                vp_ideal = BalanceamentoService.calcular_vp_ideal(obj, ipca_anual)
-                
-                # Percentual que este objetivo QUER desta classe (segundo matriz)
-                if classe == 'baixo_di':
-                    perc_matriz = (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100
-                elif classe == 'baixo_rfx':
-                    perc_matriz = (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100
-                elif classe == 'moderado':
-                    perc_matriz = matriz.perc_moderado
-                else:  # alto
-                    perc_matriz = matriz.perc_alto
-                
-                # Valor ideal = VP ideal × percentual da matriz
-                valor_ideal_classe = vp_ideal * (perc_matriz / 100)
-                valores_ideais[obj.id] = valor_ideal_classe
-            
-            # 2. Somar todos valores ideais
-            soma_ideal = sum(valores_ideais.values())
-            total_disponivel = totais_disponiveis[classe]
-            
-            # 3. Calcular fator de ajuste
-            if soma_ideal > 0:
-                fator_ajuste = total_disponivel / soma_ideal
-            else:
-                # Se soma ideal é zero, dividir igualmente
-                fator_ajuste = 1.0 / len(objetivos) if objetivos else 1.0
-            
-            # 4. Calcular percentuais ajustados (fatias do bolo)
-            for obj_id, valor_ideal in valores_ideais.items():
-                valor_ajustado = valor_ideal * fator_ajuste
-                
-                if obj_id not in novos_percentuais:
-                    novos_percentuais[obj_id] = {}
-                
-                if total_disponivel > 0:
-                    perc_fatia = (valor_ajustado / total_disponivel) * 100
-                else:
-                    perc_fatia = 0.0
-                
-                novos_percentuais[obj_id][classe] = perc_fatia
-        
-        return novos_percentuais
     
     # ========== MÉTODO PRINCIPAL DE BALANCEAMENTO ==========
     
@@ -242,11 +155,15 @@ class BalanceamentoService:
         session: Session
     ) -> Dict:
         """
-        Processa balanceamento completo
-        Args:
-            aportes_por_objetivo: Obj1,X reais, Obj2, Y reais
-        Returns:
-            Resultado do balanceamento
+        Processa balanceamento completo.
+
+        Lógica de estabilização:
+        - Cada aporte é distribuído pela MATRIZ do objetivo que recebeu o dinheiro.
+        - Os novos percentuais (fatias) são recalculados simplesmente dividindo o
+          valor absoluto de cada objetivo pelo novo pool total da classe.
+        - Objetivos sem aporte preservam seus valores absolutos em R$ — apenas sua
+          fatia percentual diminui proporcionalmente porque o pool cresceu.
+        - Isso garante convergência: nenhum objetivo é perturbado sem ter recebido capital.
         """
         # 1. Buscar IPCA
         indicadores = session.query(IndicadoresEconomicos).first()
@@ -258,7 +175,7 @@ class BalanceamentoService:
         # 2. Calcular totais ATUAIS por classe (de PosicaoFundo)
         totais_atuais = BalanceamentoService.calcular_totais_por_classe(cliente_id, session)
         
-        # 3. Calcular valores atuais por objetivo (aplicando % atuais)
+        # 3. Calcular valores atuais por objetivo (aplicando % salvos)
         valores_atuais_obj = BalanceamentoService.calcular_valores_atuais_objetivos(
             cliente_id, totais_atuais, session
         )
@@ -266,18 +183,16 @@ class BalanceamentoService:
         # 4. Processar TODOS os objetivos (com e sem aporte)
         todos_objetivos = session.query(Objetivo).filter_by(cliente_id=cliente_id).all()
         resultados_objetivos = []
-        novos_valores_por_classe = {k: 0.0 for k in totais_atuais.keys()}
         
-        # Criar dict de aportes para lookup rápido
         aportes_dict = {a['objetivo_id']: a['valor_aporte'] for a in aportes_por_objetivo}
         
         for objetivo in todos_objetivos:
             valor_aporte = aportes_dict.get(objetivo.id, 0.0)
             
-            # Buscar matriz e distribuir aporte (se houver)
             matriz = BalanceamentoService.buscar_matriz_alvo(objetivo, session)
             
             if valor_aporte > 0:
+                # Distribui o aporte pela matriz DESTE objetivo
                 distribuicao_aporte = BalanceamentoService.distribuir_aporte_por_matriz(
                     valor_aporte, matriz
                 )
@@ -289,21 +204,20 @@ class BalanceamentoService:
                     'alto': 0.0
                 }
             
-            # Valores atuais deste objetivo
             valores_atuais = valores_atuais_obj.get(objetivo.id, {
                 'baixo_di': 0, 'baixo_rfx': 0, 'moderado': 0, 'alto': 0, 'total': 0
             })
             
-            # Novos valores = atuais + aporte
+            # Novos valores absolutos = atuais + aporte distribuído
             novos_valores = {
                 'baixo_di': valores_atuais['baixo_di'] + distribuicao_aporte['baixo_di'],
                 'baixo_rfx': valores_atuais['baixo_rfx'] + distribuicao_aporte['baixo_rfx'],
                 'moderado': valores_atuais['moderado'] + distribuicao_aporte['moderado'],
                 'alto': valores_atuais['alto'] + distribuicao_aporte['alto']
             }
-            novos_valores['total'] = sum([v for k, v in novos_valores.items() if k != 'total'])
+            novos_valores['total'] = sum(v for k, v in novos_valores.items() if k != 'total')
             
-            #  Calcular quanto DEVERIA ter (estado alvo pós-aporte)
+            # Estado alvo DESTE objetivo segundo sua matriz (para exibição de gap)
             perc_baixo_di = (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100
             perc_baixo_rfx = (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100
             
@@ -314,7 +228,6 @@ class BalanceamentoService:
                 'alto': novos_valores['total'] * matriz.perc_alto / 100
             }
             
-            #  Gap individual (quanto falta para o ideal)
             gap_individual = {
                 'baixo_di': estado_alvo['baixo_di'] - novos_valores['baixo_di'],
                 'baixo_rfx': estado_alvo['baixo_rfx'] - novos_valores['baixo_rfx'],
@@ -322,18 +235,12 @@ class BalanceamentoService:
                 'alto': estado_alvo['alto'] - novos_valores['alto']
             }
             
-            # Acumular para calcular totais depois
-            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
-                novos_valores_por_classe[classe] += novos_valores[classe]
-            
-            # Calcular VP Ideal e Gap
             vp_ideal = BalanceamentoService.calcular_vp_ideal(objetivo, ipca_anual)
             gap = vp_ideal - valores_atuais['total']
             
-            # Percentuais da matriz
             perc_alvo = {
-                'baixo_di': (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100,
-                'baixo_rfx': (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100,
+                'baixo_di': perc_baixo_di,
+                'baixo_rfx': perc_baixo_rfx,
                 'moderado': matriz.perc_moderado,
                 'alto': matriz.perc_alto
             }
@@ -349,12 +256,12 @@ class BalanceamentoService:
                 'valores_atuais': valores_atuais,
                 'distribuicao_aporte': distribuicao_aporte,
                 'novos_valores': novos_valores,
-                'gap_individual': gap_individual,  
+                'gap_individual': gap_individual,
                 'percentuais_alvo': perc_alvo,
                 'matriz_prazo': matriz.duracao_meses
             })
         
-        # 5. Calcular agregados ANTES de usar
+        # 5. Calcular agregados
         total_aporte = sum(r['valor_aporte'] for r in resultados_objetivos)
         
         aportes_agregados = {
@@ -371,8 +278,6 @@ class BalanceamentoService:
             'alto': sum(r['gap_individual']['alto'] for r in resultados_objetivos)
         }
         
-        # 6. RECALCULAR percentuais balanceados
-        # Usa matrizes de risco + capital disponível pós-aporte
         totais_pos_aporte = {
             'baixo_di': totais_atuais['baixo_di'] + aportes_agregados['baixo_di'],
             'baixo_rfx': totais_atuais['baixo_rfx'] + aportes_agregados['baixo_rfx'],
@@ -380,21 +285,27 @@ class BalanceamentoService:
             'alto': totais_atuais['alto'] + aportes_agregados['alto']
         }
         
-        percentuais_balanceados = BalanceamentoService.recalcular_percentuais_balanceados(
-            todos_objetivos,
-            totais_pos_aporte,
-            ipca_anual,
-            session
-        )
+        # 6. Recalcular percentuais (fatias) por divisão direta dos valores absolutos.
+        #
+        #    REGRA: fatia(obj, classe) = novos_valores(obj, classe) / pool_total(classe)
+        #
+        #    Isso garante estabilidade porque:
+        #    - Objetivos sem aporte preservam seu valor absoluto → sua fatia só diminui
+        #      proporcionalmente se o pool cresceu, sem perturbação na composição.
+        #    - Objetivos com aporte crescem exatamente pela matriz → convergem gradualmente.
+        #    - A soma das fatias por classe é sempre 100% por definição matemática.
         
-        # 7. Aplicar percentuais balanceados aos resultados
         for resultado in resultados_objetivos:
-            obj_id = resultado['objetivo_id']
-            resultado['novos_percentuais'] = percentuais_balanceados.get(obj_id, {
-                'baixo_di': 0.0, 'baixo_rfx': 0.0, 'moderado': 0.0, 'alto': 0.0
-            })
+            novos_percentuais = {}
+            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
+                pool = totais_pos_aporte[classe]
+                if pool > 0:
+                    novos_percentuais[classe] = (resultado['novos_valores'][classe] / pool) * 100
+                else:
+                    novos_percentuais[classe] = 0.0
+            resultado['novos_percentuais'] = novos_percentuais
         
-        # 8. Consolidar ações por classe de risco
+        # 7. Consolidar ações por classe de risco
         acoes_consolidadas = {}
         TOLERANCIA_GAP = 100.0  # R$ 100 de tolerância
         
@@ -402,14 +313,12 @@ class BalanceamentoService:
             gap_total = acoes_necessarias[classe]
             
             if abs(gap_total) < TOLERANCIA_GAP:
-                # Gap próximo de zero → apenas REDISTRIBUIR %
                 acoes_consolidadas[classe] = {
                     'tipo': 'REDISTRIBUIR',
                     'gap_total': gap_total,
                     'descricao': 'Ajustar percentuais entre objetivos (sem aportes/resgates)'
                 }
             elif gap_total > 0:
-                # Gap positivo → COMPRAR
                 acoes_consolidadas[classe] = {
                     'tipo': 'COMPRAR',
                     'gap_total': gap_total,
@@ -417,7 +326,6 @@ class BalanceamentoService:
                     'descricao': f'Aportar R$ {gap_total:,.0f} nesta classe'
                 }
             else:
-                # Gap negativo → VENDER
                 acoes_consolidadas[classe] = {
                     'tipo': 'VENDER',
                     'gap_total': gap_total,
@@ -425,7 +333,7 @@ class BalanceamentoService:
                     'descricao': f'Resgatar R$ {abs(gap_total):,.0f} desta classe'
                 }
         
-        # 9. Retornar resultado completo
+        # 8. Retornar resultado completo
         return {
             'cliente_id': cliente_id,
             'data_calculo': datetime.now().isoformat(),
@@ -435,7 +343,7 @@ class BalanceamentoService:
             'totais_novos': totais_pos_aporte,
             'aportes_agregados': aportes_agregados,
             'acoes_necessarias': acoes_necessarias,
-            'acoes_consolidadas': acoes_consolidadas,  # NOVO
+            'acoes_consolidadas': acoes_consolidadas,
             'resultados_por_objetivo': resultados_objetivos
         }
     
@@ -443,13 +351,11 @@ class BalanceamentoService:
     def aplicar_balanceamento(resultado: Dict, session: Session):
         """
         Aplica balanceamento, salvando novos percentuais em DistribuicaoObjetivo
-        
         """
         for obj_resultado in resultado['resultados_por_objetivo']:
             objetivo_id = obj_resultado['objetivo_id']
             novos_percentuais = obj_resultado['novos_percentuais']
             
-            # Buscar ou criar distribuição
             dist = session.query(DistribuicaoObjetivo).filter_by(
                 objetivo_id=objetivo_id
             ).first()
@@ -458,13 +364,10 @@ class BalanceamentoService:
                 dist = DistribuicaoObjetivo(objetivo_id=objetivo_id)
                 session.add(dist)
             
-            # Atualizar percentuais
             dist.perc_baixo_di = novos_percentuais['baixo_di']
             dist.perc_baixo_rfx = novos_percentuais['baixo_rfx']
             dist.perc_moderado = novos_percentuais['moderado']
             dist.perc_alto = novos_percentuais['alto']
             dist.data_atualizacao = datetime.now()
-            
-            
         
         session.commit()
