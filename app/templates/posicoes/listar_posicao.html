@@ -121,7 +121,7 @@
         <th>Valor da cota</th>
         <th>Saldo Bruto</th>
         <th>
-            {% if posicoes|length > 3 %}
+            {% if posicoes|length > 4 %}
             <button onclick="toggleExtraFunds()" id="toggle-btn" class="smlBtn" title="Mostrar todos os fundos">
                 <img src="{{ url_for('static', filename='icons/expand.png') }}" class="sml-btn-icon" id="toggle-icon">
             </button>
@@ -135,16 +135,16 @@
 
 <tbody>
     {% if posicoes %}
-        <!-- Mostrar apenas os 3 primeiros fundos -->
-        {% for posicao in posicoes[:3] %}
+        <!-- Mostrar apenas os 4 primeiros fundos -->
+        {% for posicao in posicoes[:4] %}
         <tr data-classe="{{ posicao.info_fundo.classe_anbima if posicao.info_fundo.classe_anbima else '' }}"
             data-risco="{% if posicao.info_fundo.risco.value == 'baixo' %}{% if posicao.info_fundo.subtipo_risco and posicao.info_fundo.subtipo_risco.value == 'di' %}baixo-di{% else %}baixo-rfx{% endif %}{% else %}{{ posicao.info_fundo.risco.value }}{% endif %}"
             data-fonte="{{ posicao.banco_custodia if posicao.banco_custodia else '' }}">
             <td>
                 <input type="checkbox" class="posicao-checkbox" value="{{ posicao.id }}" onchange="updateCounter()">
             </td>
-            <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:3]) }}</td>
-            <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:3]) if posicao.info_fundo.classe_anbima else '' }}</td>
+            <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:4]) }}</td>
+            <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:4]) if posicao.info_fundo.classe_anbima else '' }}</td>
             <td>
                 {% if posicao.info_fundo.risco.value == 'baixo' %}
                     {% if posicao.info_fundo.subtipo_risco and posicao.info_fundo.subtipo_risco.value == 'di' %}
@@ -185,8 +185,8 @@
         {% endfor %}
         
         <!-- Fundos restantes (ocultos inicialmente) -->
-        {% if posicoes|length > 3 %}
-            {% for posicao in posicoes[3:] %}
+        {% if posicoes|length > 4 %}
+            {% for posicao in posicoes[4:] %}
             <tr class="extra-funds" style="display: none;"
                 data-classe="{{ posicao.info_fundo.classe_anbima if posicao.info_fundo.classe_anbima else '' }}"
                 data-risco="{% if posicao.info_fundo.risco.value == 'baixo' %}{% if posicao.info_fundo.subtipo_risco and posicao.info_fundo.subtipo_risco.value == 'di' %}baixo-di{% else %}baixo-rfx{% endif %}{% else %}{{ posicao.info_fundo.risco.value }}{% endif %}"
@@ -194,8 +194,8 @@
                 <td>
                     <input type="checkbox" class="posicao-checkbox" value="{{ posicao.id }}" onchange="updateCounter()">
                 </td>
-                <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:3]) }}</td>
-                <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:3]) if posicao.info_fundo.classe_anbima else '' }}</td>
+                <td>{{ " ".join(posicao.info_fundo.nome_fundo.split()[:4]) }}</td>
+                <td>{{ " ".join(posicao.info_fundo.classe_anbima.split()[:4]) if posicao.info_fundo.classe_anbima else '' }}</td>
                 <td>
                     {% if posicao.info_fundo.risco.value == 'baixo' %}
                         {% if posicao.info_fundo.subtipo_risco and posicao.info_fundo.subtipo_risco.value == 'di' %}
@@ -246,7 +246,7 @@
     <th colspan="5"></th>
     <th>R$ {{ '{:,.2f}'.format(montante_cliente if montante_cliente is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</th>
     <td>
-        {% if posicoes|length > 3 %}
+        {% if posicoes|length > 4 %}
             <button onclick="toggleExtraFunds()" id="toggle-btn" class="smlBtn" title="Mostrar todos os fundos">
                 <img src="{{ url_for('static', filename='icons/expand.png') }}" class="sml-btn-icon" id="toggle-icon">
             </button>

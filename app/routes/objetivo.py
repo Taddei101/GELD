@@ -4,6 +4,7 @@ from app.models.geld_models import create_session, Objetivo, Cliente, Indicadore
 from datetime import datetime
 from functools import wraps
 from app.services.objetivo_services import ObjetivoServices
+from app.services.balance_service import BalanceamentoService
 
 objetivo_bp = Blueprint('objetivo', __name__)
 
@@ -117,34 +118,40 @@ def edit_objetivo(objetivo_id):
     finally:
         db.close()
 
-# DELETAR OBJETIVO
+# DELETAR OBJETIVO - rebalanceia o capital
+
 @objetivo_bp.route('/objetivo/<int:objetivo_id>/delete', methods=['POST'])
 @login_required
 def delete_objetivo(objetivo_id):
     try:
         db = create_session()
         global_service = GlobalServices(db)
-                
+
         objetivo = global_service.get_by_id(Objetivo, objetivo_id)
         if not objetivo:
             flash('Objetivo não encontrado.')
             return redirect(url_for('cliente.dashboard'))
-            
+
         cliente_id = objetivo.cliente_id
+
+        # Redistribuir fatias ANTES de deletar
         
+        BalanceamentoService.redistribuir_fatias_apos_delecao(objetivo_id, cliente_id, db)
+
         # Deletar o objetivo
         if global_service.delete(Objetivo, objetivo_id):
-            flash('Objetivo deletado com sucesso!')
-            return redirect(url_for('objetivo.listar_objetivos', cliente_id=cliente_id))
+            flash('Objetivo deletado e fatias redistribuídas com sucesso!', 'success')
         else:
-            flash('Objetivo não encontrado.')
-            return redirect(url_for('objetivo.listar_objetivos', cliente_id=cliente_id))
-        
+            flash('Objetivo não encontrado.', 'error')
+
+        return redirect(url_for('objetivo.listar_objetivos', cliente_id=cliente_id))
+
     except Exception as e:
-        flash(f'Erro ao deletar objetivo: {str(e)}')
+        flash(f'Erro ao deletar objetivo: {str(e)}', 'error')
         return redirect(url_for('objetivo.listar_objetivos', cliente_id=cliente_id))
     finally:
         db.close()
+
 
 
 #LISTAR
@@ -193,7 +200,7 @@ def listar_objetivos(cliente_id):
         return render_template('objetivo/listar_objetivos.html', 
                               objetivos=objetivos, 
                               cliente=cliente, 
-                              valores_por_objetivo=valores_por_objetivo,  # ✅ NOVA VARIÁVEL
+                              valores_por_objetivo=valores_por_objetivo,  
                               ipca_mes=ipca_mes,
                               calculo_aportes=calculo_aportes,
                               mostrar_calculo=calcular_aporte)

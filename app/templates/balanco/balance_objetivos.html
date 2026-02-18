@@ -92,36 +92,7 @@
     <hr style="margin: 30px 0;">
     
     
-<!-- ALERTA se as fatias não somarem 100% -->
 
-{% if not fatias_validas %}
-<div class="alert alert-warning" style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 5px;">
-    <h4 style="margin-top: 0; color: #856404;">⚠️ Inconsistência Detectada nas Fatias!</h4>
-    <p style="margin: 10px 0;">As fatias alocadas não somam 100% em todas as classes:</p>
-    <ul style="margin: 10px 0;">
-        {% if somas_fatias.baixo_di > 0 and (somas_fatias.baixo_di < 99 or somas_fatias.baixo_di > 101) %}
-        <li><strong>Baixo DI:</strong> {{ '{:.1f}%'.format(somas_fatias.baixo_di) }} (deveria ser 100%)</li>
-        {% endif %}
-        {% if somas_fatias.baixo_rfx > 0 and (somas_fatias.baixo_rfx < 99 or somas_fatias.baixo_rfx > 101) %}
-        <li><strong>Baixo RFx:</strong> {{ '{:.1f}%'.format(somas_fatias.baixo_rfx) }} (deveria ser 100%)</li>
-        {% endif %}
-        {% if somas_fatias.moderado > 0 and (somas_fatias.moderado < 99 or somas_fatias.moderado > 101) %}
-        <li><strong>Moderado:</strong> {{ '{:.1f}%'.format(somas_fatias.moderado) }} (deveria ser 100%)</li>
-        {% endif %}
-        {% if somas_fatias.alto > 0 and (somas_fatias.alto < 99 or somas_fatias.alto > 101) %}
-        <li><strong>Alto:</strong> {{ '{:.1f}%'.format(somas_fatias.alto) }} (deveria ser 100%)</li>
-        {% endif %}
-    </ul>
-    <p style="margin: 10px 0; font-weight: bold;">
-        Isto pode ter sido causado por balanceamentos incompletos ou objetivos deletados.
-    </p>
-    <form method="POST" action="{{ url_for('balanco.recalcular_fatias', cliente_id=cliente.id) }}" style="margin-top: 15px;">
-        <button type="submit" class="btn btn-warning" onclick="return confirm('Recalcular fatias baseado nas posições atuais?')">
-            🔄 Recalcular Fatias Automaticamente
-        </button>
-    </form>
-</div>
-{% endif %}
 
 <!-- TABELA de aporte por objetivo  -->
 
@@ -374,8 +345,8 @@
 {% endif %}
 
 
-        <!-- RESUMO AGREGADO - Somatoria dos deltas de compra e venda em cada risco -->
-        <div style="margin-top: 30px;">
+        <!-- RESUMO AGREGADO - Somatoria dos deltas de compra e venda em cada risco VOU TIRAR porque so confunde-->
+        <!-- <div style="margin-top: 30px;">
             <h3> Ações Necessárias</h3>
             
             {# Calcular totais agregados #}
@@ -482,7 +453,7 @@
             </table>
             
             
-        </div>
+        </div> -->
         
 <!-- Botões -->
     <div style="margin-top: 30px;">
