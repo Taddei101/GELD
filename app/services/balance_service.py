@@ -9,7 +9,7 @@ from app.models.geld_models import (
 )
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 from sqlalchemy.orm import Session
 
 
@@ -146,6 +146,101 @@ class BalanceamentoService:
         
         return vp_ideal
     
+    # ========== VALIDAÇÃO E RECÁLCULO ==========
+    
+    @staticmethod
+    def validar_fatias(cliente_id: int, session: Session) -> Tuple[bool, Dict[str, float]]:
+        """
+        Valida se as fatias somam 100% por classe
+        
+        Returns:
+            (is_valid, somas_por_classe)
+            is_valid: True se todas as classes somam ~100% (tolerância 1%)
+            somas_por_classe: {'baixo_di': soma, 'baixo_rfx': soma, ...}
+        """
+        objetivos = session.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        
+        somas = {
+            'baixo_di': 0.0,
+            'baixo_rfx': 0.0,
+            'moderado': 0.0,
+            'alto': 0.0
+        }
+        
+        for obj in objetivos:
+            dist = session.query(DistribuicaoObjetivo).filter_by(objetivo_id=obj.id).first()
+            if dist:
+                somas['baixo_di'] += dist.perc_baixo_di
+                somas['baixo_rfx'] += dist.perc_baixo_rfx
+                somas['moderado'] += dist.perc_moderado
+                somas['alto'] += dist.perc_alto
+        
+        # Verifica se todas somam ~100% (tolerância 1%)
+        is_valid = all(abs(soma - 100.0) < 1.0 for soma in somas.values() if soma > 0)
+        
+        return is_valid, somas
+    
+    @staticmethod
+    def recalcular_fatias_do_pool(cliente_id: int, session: Session):
+        """
+        Recalcula fatias baseado no estado REAL atual das posições.
+        
+        Distribui o pool TODO entre objetivos proporcionalmente aos seus
+        valores atuais, eliminando capital órfão.
+        
+        IMPORTANTE: Só usar quando fatias estão inconsistentes (não somam 100%)
+        """
+        # Calcular pools reais
+        totais_atuais = BalanceamentoService.calcular_totais_por_classe(cliente_id, session)
+        
+        # Calcular valores atuais por objetivo (usando fatias antigas)
+        valores_atuais = BalanceamentoService.calcular_valores_atuais_objetivos(
+            cliente_id, totais_atuais, session
+        )
+        
+        # Calcular SOMA dos valores atuais por classe (para normalizar)
+        somas_valores = {
+            'baixo_di': sum(v['baixo_di'] for v in valores_atuais.values()),
+            'baixo_rfx': sum(v['baixo_rfx'] for v in valores_atuais.values()),
+            'moderado': sum(v['moderado'] for v in valores_atuais.values()),
+            'alto': sum(v['alto'] for v in valores_atuais.values())
+        }
+        
+        # Recalcular percentuais NORMALIZADOS
+        # Se soma < pool, distribui o capital órfão proporcionalmente
+        for obj_id, valores in valores_atuais.items():
+            dist = session.query(DistribuicaoObjetivo).filter_by(objetivo_id=obj_id).first()
+            
+            if not dist:
+                dist = DistribuicaoObjetivo(objetivo_id=obj_id)
+                session.add(dist)
+            
+            # Calcular novos percentuais proporcionais
+            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
+                soma_classe = somas_valores[classe]
+                pool_classe = totais_atuais[classe]
+                
+                if pool_classe > 0 and soma_classe > 0:
+                    # Percentual proporcional: (valor_obj / soma_valores) × 100
+                    # Isso distribui o pool TODO (incluindo órfãos) proporcionalmente
+                    proporcao = valores[classe] / soma_classe
+                    novo_perc = proporcao * 100
+                else:
+                    novo_perc = 0.0
+                
+                if classe == 'baixo_di':
+                    dist.perc_baixo_di = novo_perc
+                elif classe == 'baixo_rfx':
+                    dist.perc_baixo_rfx = novo_perc
+                elif classe == 'moderado':
+                    dist.perc_moderado = novo_perc
+                elif classe == 'alto':
+                    dist.perc_alto = novo_perc
+            
+            dist.data_atualizacao = datetime.now()
+        
+        session.commit()
+    
     # ========== MÉTODO PRINCIPAL DE BALANCEAMENTO ==========
     
     @staticmethod
@@ -157,13 +252,11 @@ class BalanceamentoService:
         """
         Processa balanceamento completo.
 
-        Lógica de estabilização:
-        - Cada aporte é distribuído pela MATRIZ do objetivo que recebeu o dinheiro.
-        - Os novos percentuais (fatias) são recalculados simplesmente dividindo o
-          valor absoluto de cada objetivo pelo novo pool total da classe.
-        - Objetivos sem aporte preservam seus valores absolutos em R$ — apenas sua
-          fatia percentual diminui proporcionalmente porque o pool cresceu.
-        - Isso garante convergência: nenhum objetivo é perturbado sem ter recebido capital.
+        CORREÇÃO DO BUG:
+        - Quando há APORTE: novos_percentuais = novos_valores / totais_pos_aporte
+        - Quando NÃO há aporte: novos_percentuais = estado_alvo / totais_pos_redistribuicao
+        
+        Isso garante que após executar as operações recomendadas, o gap zera.
         """
         # 1. Buscar IPCA
         indicadores = session.query(IndicadoresEconomicos).first()
@@ -256,7 +349,7 @@ class BalanceamentoService:
                 'valores_atuais': valores_atuais,
                 'distribuicao_aporte': distribuicao_aporte,
                 'novos_valores': novos_valores,
-                'estado_alvo': estado_alvo,  # valores-alvo pós-rebalanceamento por classe
+                'estado_alvo': estado_alvo,  # ✅ ADICIONADO
                 'gap_individual': gap_individual,
                 'percentuais_alvo': perc_alvo,
                 'matriz_prazo': matriz.duracao_meses
@@ -286,32 +379,48 @@ class BalanceamentoService:
             'alto': totais_atuais['alto'] + aportes_agregados['alto']
         }
         
-        # 6. Recalcular percentuais (fatias) usando estado_alvo e pool pos-redistribuicao.
-        #
-        #    REGRA: fatia(obj, classe) = estado_alvo(obj, classe) / pool_pos_rebalanceamento(classe)
-        #
-        #    O pool deve incluir as acoes_necessarias (compras/vendas recomendadas), pois
-        #    e exatamente esse o estado real do pool depois que o usuario executa os trades.
-        #    Salvar as fatias assim garante que, apos as operacoes serem executadas e as
-        #    posicoes atualizadas, o gap calculado volte a zero.
-        #
-        #    Antes (bug): usava novos_valores / totais_pos_aporte
-        #    - novos_valores ignora a redistribuicao -> fatias salvas ficam desalinhadas
-        #      com o pool real apos os trades, gerando gap residual persistente.
-        
-        totais_pos_rebalanceamento = {
-            classe: totais_pos_aporte[classe] + acoes_necessarias[classe]
-            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']
+        # ✅ CORREÇÃO DO BUG: Pool após redistribuição
+        totais_pos_redistribuicao = {
+            'baixo_di': totais_pos_aporte['baixo_di'] + acoes_necessarias['baixo_di'],
+            'baixo_rfx': totais_pos_aporte['baixo_rfx'] + acoes_necessarias['baixo_rfx'],
+            'moderado': totais_pos_aporte['moderado'] + acoes_necessarias['moderado'],
+            'alto': totais_pos_aporte['alto'] + acoes_necessarias['alto']
         }
+        
+        # 6. Recalcular percentuais (fatias) - LÓGICA CORRIGIDA
+        #
+        # Se objetivo RECEBEU APORTE:
+        #   - Usar novos_valores (atual + aporte)
+        #   - Dividir por totais_pos_aporte (pool após aportes)
+        #
+        # Se objetivo NÃO recebeu aporte (rebalanceamento puro):
+        #   - Usar estado_alvo (onde deveria estar após redistribuição)
+        #   - Dividir por totais_pos_redistribuicao (pool após redistribuir)
+        #
+        # Isso garante que após executar as operações, o gap zera.
         
         for resultado in resultados_objetivos:
             novos_percentuais = {}
+            
+            # Verificar se este objetivo recebeu aporte
+            teve_aporte = resultado['valor_aporte'] > 0
+            
+            if teve_aporte:
+                # Objetivo com aporte: usar novos_valores / totais_pos_aporte
+                valores_para_calculo = resultado['novos_valores']
+                pool_para_calculo = totais_pos_aporte
+            else:
+                # Objetivo sem aporte: usar estado_alvo / totais_pos_redistribuicao
+                valores_para_calculo = resultado['estado_alvo']
+                pool_para_calculo = totais_pos_redistribuicao
+            
             for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
-                pool = totais_pos_rebalanceamento[classe]
+                pool = pool_para_calculo[classe]
                 if pool > 0:
-                    novos_percentuais[classe] = (resultado['estado_alvo'][classe] / pool) * 100
+                    novos_percentuais[classe] = (valores_para_calculo[classe] / pool) * 100
                 else:
                     novos_percentuais[classe] = 0.0
+            
             resultado['novos_percentuais'] = novos_percentuais
         
         # 7. Consolidar ações por classe de risco

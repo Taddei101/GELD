@@ -91,7 +91,10 @@ def iniciar(cliente_id):
         }
 
         total_orfao = sum(capital_orfao.values())
-
+        
+        # ✅ VALIDAR FATIAS (detectar inconsistências)
+        fatias_validas, somas_fatias = BalanceamentoService.validar_fatias(cliente_id, db)
+        
         return render_template(
             'balanco/balance_objetivos.html',
             cliente=cliente,
@@ -102,7 +105,9 @@ def iniciar(cliente_id):
             matrizes_risco=matrizes_risco,
             vp_ideal_por_objetivo=vp_ideal_por_objetivo,
             capital_orfao=capital_orfao,  
-            total_orfao=total_orfao        
+            total_orfao=total_orfao,
+            fatias_validas=fatias_validas,
+            somas_fatias=somas_fatias
         )
     
     except Exception as e:
@@ -238,6 +243,41 @@ def resetar_distribuicao(cliente_id):
         db.close()
     
     return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
+
+
+@balanco_bp.route('/recalcular_fatias/<int:cliente_id>', methods=['POST'])
+@login_required
+def recalcular_fatias(cliente_id):
+    """Recalcular fatias automaticamente baseado no pool real"""
+    db = create_session()
+    
+    try:
+        cliente = db.query(Cliente).get(cliente_id)
+        if not cliente:
+            flash('Cliente não encontrado', 'error')
+            return redirect(url_for('dashboard.index'))
+        
+        # Verificar se há objetivos
+        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        if not objetivos:
+            flash('Cliente não possui objetivos para recalcular.', 'warning')
+            return redirect(url_for('balanco.iniciar', cliente_id=cliente_id))
+        
+        # Recalcular fatias
+        BalanceamentoService.recalcular_fatias_do_pool(cliente_id, db)
+        
+        flash('✅ Fatias recalculadas com sucesso! Capital órfão foi redistribuído proporcionalmente.', 'success')
+        return redirect(url_for('balanco.iniciar', cliente_id=cliente_id))
+        
+    except Exception as e:
+        db.rollback()
+        import traceback
+        traceback.print_exc()
+        flash(f'Erro ao recalcular: {str(e)}', 'error')
+        return redirect(url_for('balanco.iniciar', cliente_id=cliente_id))
+    
+    finally:
+        db.close()
 
 
 @balanco_bp.route('/editar_fatias/<int:cliente_id>', methods=['GET'])
