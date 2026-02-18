@@ -8,7 +8,7 @@
     
 
     {#  TABELA DE FATIAS ALOCADAS (PERCENTUAIS SALVOS) #}
-    <h3 style="margin-top: 20px; margin-bottom: 15px;"> Fatias Alocadas por Objetivo</h3>
+    <h3 style="margin-top: 20px; margin-bottom: 15px;"> Percentuais por Objetivo</h3>
         
     <div style="overflow-x: auto; margin-bottom: 30px;">
         <table class="table table-bordered table-sm" style="font-size: 0.85em; max-width: 800px;">
@@ -91,8 +91,8 @@
     
     <hr style="margin: 30px 0;">
     
-    <!-- ✅ ADICIONAR ESTE BLOCO NO balance_objetivos.html -->
-<!-- Colocar logo APÓS o </form> de input de aportes, ANTES da tabela de Fatias -->
+    
+<!-- ALERTA se as fatias não somarem 100% -->
 
 {% if not fatias_validas %}
 <div class="alert alert-warning" style="margin: 20px 0; padding: 15px; background-color: #fff3cd; border: 1px solid #ffc107; border-radius: 5px;">
@@ -123,7 +123,7 @@
 </div>
 {% endif %}
 
-<!-- FIM DO BLOCO -->
+<!-- TABELA de aporte por objetivo  -->
 
 
     <h3> Alocação por Objetivo</h3>
@@ -330,7 +330,10 @@
         </div>
         
 <p></p>
-<!-- Tabela NOVA -->
+
+
+<!-- Tabela De capital não alocado -->
+
 {% if total_orfao > 100 %}
 <div class="alert alert-warning" style="margin-bottom: 20px;">
     <h3> Capital Não Alocado </h3>
@@ -371,7 +374,7 @@
 {% endif %}
 
 
-        <!-- RESUMO AGREGADO - AÇÕES NECESSÁRIAS -->
+        <!-- RESUMO AGREGADO - Somatoria dos deltas de compra e venda em cada risco -->
         <div style="margin-top: 30px;">
             <h3> Ações Necessárias</h3>
             
@@ -481,22 +484,22 @@
             
         </div>
         
-        <!-- Botões -->
-        <div style="margin-top: 30px;">
-            <button type="submit" class="bigBtn">
-                <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">
-                Calcular Balanceamento
-            </button>
-            
-            <button type="button" title="Voltar" class="smlBtn" onclick="window.location.href='{{ url_for('cliente.area_cliente', cliente_id=cliente.id) }}'">
-                <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
-            </button>
-        </div>
-    </form>
+<!-- Botões -->
+    <div style="margin-top: 30px;">
+        <button type="submit" class="bigBtn">
+            <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">
+            Calcular Balanceamento
+        </button>
+                
+        <button type="button" title="Voltar" class="smlBtn" onclick="window.location.href='{{ url_for('cliente.area_cliente', cliente_id=cliente.id) }}'">
+            <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
+        </button>
+    </div>
+</form>
 
 </div>
 
-<style>
+<!-- <style>
 .table {
     font-size: 0.8em;
 }
@@ -509,5 +512,5 @@
     top: 0;
     z-index: 10;
 }
-</style>
+</style> -->
 {% endblock %}

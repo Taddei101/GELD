@@ -188,13 +188,7 @@
     </table>
     </div>
     
-    <div style="margin-top: 10px;">
-        <small class="text-muted">
-            <strong>Gap R$</strong> = Diferença entre Target e Novo | 
-            <span style="color: green;">Verde (+)</span> = Ainda precisa COMPRAR | 
-            <span style="color: red;">Vermelho (-)</span> = Ainda precisa VENDER
-        </small>
-    </div>
+    
     <p></p>
     <!-- RESUMO DO APORTE -->
     <div>
@@ -451,14 +445,12 @@
             </button>
         </form>
         
-        <button type="button" class="smlBtn" onclick="window.location.href='{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}'">
-            <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
-        </button>
+        
     </div>
 
 </div>
 
-<style>
+<!-- <style>
 .table {
     font-size: 0.8em;
 }
@@ -466,5 +458,5 @@
     padding: 5px;
     white-space: nowrap;
 }
-</style>
+</style> -->
 {% endblock %}

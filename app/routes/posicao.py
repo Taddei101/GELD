@@ -1,7 +1,17 @@
+"""
+Rotas de posições em fundos de investimento (Blueprint: posicao_bp)
+Gerencia as cotas que um cliente possui em fundos: listagem com saldos por classe
+de risco, cadastro/edição/exclusão manual e importação via planilha BTG.
+
+Depende de PosicaoService para cálculos de saldo, ExtractBTGService para parsing
+da planilha e FundoRegistrationService para cadastro automático de fundos via CVM.
+"""
+
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from werkzeug.utils import secure_filename
 from app.services.global_services import login_required, GlobalServices
 from app.models.geld_models import create_session, Cliente, InfoFundo, PosicaoFundo, RiscoEnum, SubtipoRiscoEnum
+from app.services.posicao_service import PosicaoService   # NOVO
 from sqlalchemy import func
 from datetime import datetime
 import os
@@ -25,70 +35,28 @@ def listar_posicao(cliente_id):
         db = create_session()
         global_services = GlobalServices(db)
         cliente = global_services.get_by_id(Cliente, cliente_id)
-        posicoes = db.query(PosicaoFundo).filter(PosicaoFundo.cliente_id == cliente_id).all()
-
-        # Cálculo do montante total (já existia) - CONVERTIDO PARA FLOAT
-        montante_cliente = float(db.query(
-                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-            ).join(
-                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-            ).filter(
-                PosicaoFundo.cliente_id == cliente_id
-            ).scalar() or 0.0)
-
-        # NOVOS CÁLCULOS POR RISCO - TODOS CONVERTIDOS PARA FLOAT
-        # Fundos DI (baixo risco com subtipo = 'di')
-        saldo_fundo_di = float(db.query(
-            func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-        ).join(
-            InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-        ).filter(
-            PosicaoFundo.cliente_id == cliente_id,
-            InfoFundo.risco == RiscoEnum.baixo,
-            InfoFundo.subtipo_risco == SubtipoRiscoEnum.di
-        ).scalar() or 0.0)
-        
-        # Fundos RFx (baixo risco com subtipo = 'rfx' ou NULL)
-        saldo_baixo = float(db.query(
-            func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-        ).join(
-            InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-        ).filter(
-            PosicaoFundo.cliente_id == cliente_id,
-            InfoFundo.risco == RiscoEnum.baixo,
-            (InfoFundo.subtipo_risco == SubtipoRiscoEnum.rfx) | (InfoFundo.subtipo_risco == None)
-        ).scalar() or 0.0)
-
-        saldo_moderado = float(db.query(
-            func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-        ).join(
-            InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-        ).filter(
-            PosicaoFundo.cliente_id == cliente_id,
-            InfoFundo.risco == RiscoEnum.moderado
-        ).scalar() or 0.0)
-
-        saldo_alto = float(db.query(
-            func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-        ).join(
-            InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-        ).filter(
-            PosicaoFundo.cliente_id == cliente_id,
-            InfoFundo.risco == RiscoEnum.alto
-        ).scalar() or 0.0)
-
-        
-
-        print(f"DEBUG: Found {len(posicoes)} positions")
-        print(f"DEBUG: Saldos por risco - DI: {saldo_fundo_di}, RFx: {saldo_baixo}, Moderado: {saldo_moderado}, Alto: {saldo_alto}")
 
         if not cliente:
             print('Cliente não encontrado.')
             return redirect(url_for('dashboard.cliente_dashboard'))
 
-        return render_template('posicoes/listar_posicao.html', 
-                             cliente=cliente, 
-                             montante_cliente=montante_cliente, 
+        posicoes = db.query(PosicaoFundo).filter(PosicaoFundo.cliente_id == cliente_id).all()
+
+       
+        montante_cliente = PosicaoService.calcular_montante_total(cliente_id, db)
+        totais = PosicaoService.calcular_totais_por_classe(cliente_id, db)
+
+        saldo_fundo_di = totais['baixo_di']
+        saldo_baixo    = totais['baixo_rfx']
+        saldo_moderado = totais['moderado']
+        saldo_alto     = totais['alto']
+
+        print(f"DEBUG: Found {len(posicoes)} positions")
+        print(f"DEBUG: Saldos por risco - DI: {saldo_fundo_di}, RFx: {saldo_baixo}, Moderado: {saldo_moderado}, Alto: {saldo_alto}")
+
+        return render_template('posicoes/listar_posicao.html',
+                             cliente=cliente,
+                             montante_cliente=montante_cliente,
                              posicoes=posicoes,
                              saldo_fundo_di=saldo_fundo_di,
                              saldo_baixo=saldo_baixo,
@@ -115,9 +83,7 @@ def add_posicao(cliente_id):
                 print('Cliente não encontrado.')
                 return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
 
-            # Buscar todos os fundos disponíveis para o dropdown
             fundos = global_service.listar_classe(InfoFundo)
-
             return render_template('posicoes/add_posicao.html', cliente=cliente, fundos=fundos)
 
         except Exception as e:
@@ -131,12 +97,10 @@ def add_posicao(cliente_id):
             db = create_session()
             global_service = GlobalServices(db)
 
-            # Obter dados do formulário
             fundo_id = int(request.form['fundo_id'])
             cotas = float(request.form['quantidade_cotas'])
             data_atualizacao = datetime.now()
 
-            # Criar nova posicao
             nova_posicao = global_service.create_classe(
                 PosicaoFundo,
                 fundo_id=fundo_id,
@@ -165,54 +129,50 @@ def edit_posicao(posicao_id):
         try:
             db = create_session()
             global_service = GlobalServices(db)
-            
+
             posicao = global_service.get_by_id(PosicaoFundo, posicao_id)
             if not posicao:
                 flash('Posição não encontrada.')
                 return redirect(url_for('dashboard.cliente_dashboard'))
-            
-            # Descomente quando tiver o template
+
             return render_template('posicoes/edit_posicao.html', posicao=posicao)
-            
+
         except Exception as e:
             flash(f'Erro ao buscar posição: {str(e)}')
             return redirect(url_for('dashboard.cliente_dashboard'))
         finally:
             db.close()
-    
+
     elif request.method == 'POST':
         try:
             db = create_session()
             global_service = GlobalServices(db)
-            
-            # Buscar a posição
+
             posicao = global_service.get_by_id(PosicaoFundo, posicao_id)
             if not posicao:
                 flash('Posição não encontrada.')
                 return redirect(url_for('dashboard.cliente_dashboard'))
-            
+
             cliente_id = posicao.cliente_id
-            
-            # Obter dados do formulário
+
             cotas = float(request.form['quantidade_cotas'])
             data_atualizacao = datetime.now()
-            
-            # Atualizar posição
+
             posicao.cotas = cotas
             posicao.data_atualizacao = data_atualizacao
             db.commit()
-            
+
             print(f'Posição atualizada com sucesso!')
             flash("Posição atualizada com sucesso!", "success")
             return redirect(url_for('posicao.listar_posicao', cliente_id=cliente_id))
-            
+
         except ValueError as e:
             flash(f'Erro de validação: {str(e)}')
         except Exception as e:
             flash(f'Erro ao atualizar posição: {str(e)}')
         finally:
             db.close()
-        
+
         return redirect(url_for('posicao.edit_posicao', posicao_id=posicao_id))
 
 
@@ -223,7 +183,6 @@ def delete_posicao(posicao_id):
         db = create_session()
         global_service = GlobalServices(db)
 
-        # Obter a posição para recuperar o cliente_id
         posicao = global_service.get_by_id(PosicaoFundo, posicao_id)
         if not posicao:
             flash('Posição não encontrada.')
@@ -231,7 +190,6 @@ def delete_posicao(posicao_id):
 
         cliente_id = posicao.cliente_id
 
-        # Deletar a posição
         if global_service.delete(PosicaoFundo, posicao_id):
             flash('Posição deletada com sucesso!')
         else:
@@ -249,33 +207,25 @@ def delete_posicao(posicao_id):
 @posicao_bp.route('/posicao/<int:cliente_id>/delete_multiple', methods=['POST'])
 @login_required
 def delete_multiple_posicoes(cliente_id):
-    """
-    Deleta múltiplas posições de uma vez
-    Recebe lista de IDs via formulário
-    """
     try:
         db = create_session()
         global_service = GlobalServices(db)
-        
-        # Obter lista de IDs das posições selecionadas
+
         posicao_ids = request.form.getlist('posicao_ids')
-        
+
         if not posicao_ids:
             flash('Nenhuma posição foi selecionada.', 'warning')
             return redirect(url_for('posicao.listar_posicao', cliente_id=cliente_id))
-        
-        # Converter para inteiros
+
         posicao_ids = [int(pid) for pid in posicao_ids]
-        
-        # Deletar cada posição
+
         deleted_count = 0
         failed_count = 0
-        
+
         for posicao_id in posicao_ids:
             try:
-                # Verificar se a posição pertence ao cliente correto (segurança)
                 posicao = global_service.get_by_id(PosicaoFundo, posicao_id)
-                
+
                 if posicao and posicao.cliente_id == cliente_id:
                     if global_service.delete(PosicaoFundo, posicao_id):
                         deleted_count += 1
@@ -283,20 +233,19 @@ def delete_multiple_posicoes(cliente_id):
                         failed_count += 1
                 else:
                     failed_count += 1
-                    
+
             except Exception as e:
                 print(f"[ERRO] Erro ao deletar posição {posicao_id}: {str(e)}")
                 failed_count += 1
-        
-        # Mensagem de feedback
+
         if deleted_count > 0:
             flash(f'{deleted_count} posição(ões) deletada(s) com sucesso!', 'success')
-        
+
         if failed_count > 0:
             flash(f'{failed_count} posição(ões) não puderam ser deletadas.', 'error')
-        
+
         return redirect(url_for('posicao.listar_posicao', cliente_id=cliente_id))
-        
+
     except Exception as e:
         flash(f'Erro ao deletar posições: {str(e)}', 'error')
         return redirect(url_for('posicao.listar_posicao', cliente_id=cliente_id))
@@ -328,16 +277,13 @@ def upload_cotas(cliente_id):
             cliente = db.query(Cliente).filter_by(id=cliente_id).first()
             global_services = GlobalServices(db)
 
-            # ===== PROCESSAR UPLOAD - INLINE =====
             UPLOAD_FOLDER = 'uploads'
             ALLOWED_EXTENSIONS = {'xlsx', 'xls'}
             MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
 
-            # Criar pasta de uploads se não existir
             if not os.path.exists(UPLOAD_FOLDER):
                 os.makedirs(UPLOAD_FOLDER)
 
-            # Verificar se há arquivo
             if 'arquivo' not in request.files:
                 flash("Nenhum arquivo foi selecionado", "error")
                 return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
@@ -348,12 +294,10 @@ def upload_cotas(cliente_id):
                 flash("Nenhum arquivo foi selecionado", "error")
                 return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
 
-            # Verificar extensão
             if not ('.' in file.filename and file.filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS):
                 flash(f"Tipo de arquivo não permitido. Use: {', '.join(ALLOWED_EXTENSIONS)}", "error")
                 return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
 
-            # Verificar tamanho
             file.seek(0, os.SEEK_END)
             file_size = file.tell()
             file.seek(0)
@@ -362,7 +306,6 @@ def upload_cotas(cliente_id):
                 flash(f"Arquivo muito grande. Máximo: {MAX_FILE_SIZE // (1024*1024)}MB", "error")
                 return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
 
-            # Salvar arquivo
             filename = secure_filename(file.filename)
             timestamp = str(int(time.time() * 1000))
             filename = f"{timestamp}_{filename}"
@@ -371,16 +314,14 @@ def upload_cotas(cliente_id):
 
             print(f"[INFO] Arquivo salvo: {file_path}")
 
-            # ===== PROCESSAMENTO BTG =====
             try:
                 print("[INFO] Iniciando processamento completo do arquivo BTG...")
                 btg_service = ExtractBTGService(db, global_services)
                 posicoes, log = btg_service.processar_arquivo_btg_completo(file_path, cliente_id)
-                
-                # Log detalhado
+
                 total = log['fundos'] + log['previdencia_individual'] + log['previdencia_externa'] + log['renda_fixa'] + log['renda_variavel']
                 flash(f"Processadas {total} posições: {log['fundos']} fundos, {log['previdencia_individual']} prev.ind, {log['previdencia_externa']} prev.ext, {log['renda_fixa']} RF, {log['renda_variavel']} RV", "info")
-                
+
                 banco_custodia = 'BTG'
 
             except Exception as e:
@@ -392,23 +333,18 @@ def upload_cotas(cliente_id):
                 flash("Nenhuma posição válida foi extraída do arquivo.")
                 return redirect(url_for('posicao.upload_cotas', cliente_id=cliente_id))
 
-            # ===== CADASTRAR FUNDOS AUTOMATICAMENTE =====
             print("[INFO] Cadastrando novos fundos automaticamente...")
             registration_service = FundoRegistrationService(db)
             existing_funds = registration_service.cadastrar_fundos_automaticamente(posicoes)
 
-            # ===== DELETAR POSIÇÕES ANTIGAS DO BANCO =====
             print(f"[INFO] Deletando posições anteriores do {banco_custodia} para cliente {cliente_id}")
-            
             posicoes_deletadas = db.query(PosicaoFundo).filter(
                 PosicaoFundo.cliente_id == cliente_id,
                 PosicaoFundo.banco_custodia == banco_custodia
             ).delete()
-            
             db.commit()
             print(f"[INFO] {posicoes_deletadas} posições antigas do {banco_custodia} deletadas")
 
-            # ===== REGISTRAR POSIÇÕES NO BANCO =====
             registros_salvos = 0
             registros_atualizados = 0
             registros_falhas = 0
@@ -453,13 +389,11 @@ def upload_cotas(cliente_id):
                 finally:
                     session.close()
 
-            # Remover arquivo após processamento
             try:
                 os.remove(file_path)
             except:
                 pass
 
-            # Mensagem para o usuário
             if registros_salvos > 0 or registros_atualizados > 0:
                 msg = f"{registros_salvos} novas posições e {registros_atualizados} atualizações registradas com sucesso!"
                 if registros_falhas > 0:
