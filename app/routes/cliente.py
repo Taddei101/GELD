@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from app.services.global_services import GlobalServices,login_required
 from app.services.balance_service import BalanceamentoService
+from app.services.posicao_service import PosicaoService
 from app.models.geld_models import (
     create_session, RiscoEnum, SubtipoRiscoEnum, BancoEnum, Cliente, StatusEnum, 
     PosicaoFundo, InfoFundo, Objetivo, DistribuicaoObjetivo, IndicadoresEconomicos
@@ -185,54 +186,14 @@ def area_cliente(cliente_id):
         
 
         if has_positions:
-            # Montante total
-            montante_cliente = float(db.query(
-                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-            ).join(
-                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-            ).filter(
-                PosicaoFundo.cliente_id == cliente_id
-            ).scalar() or 0.0)
-
-            # Fundos DI (baixo risco com subtipo = 'di')
-            saldo_fundo_di = float(db.query(
-                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-            ).join(
-                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-            ).filter(
-                PosicaoFundo.cliente_id == cliente_id,
-                InfoFundo.risco == RiscoEnum.baixo,
-                InfoFundo.subtipo_risco == SubtipoRiscoEnum.di
-            ).scalar() or 0.0)
-
-            # Fundos RFx (baixo risco com subtipo = 'rfx' ou NULL)
-            saldo_baixo = float(db.query(
-                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-            ).join(
-                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-            ).filter(
-                PosicaoFundo.cliente_id == cliente_id,
-                InfoFundo.risco == RiscoEnum.baixo,
-                (InfoFundo.subtipo_risco == SubtipoRiscoEnum.rfx) | (InfoFundo.subtipo_risco == None)
-            ).scalar() or 0.0)
-
-            saldo_moderado = float(db.query(
-                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-            ).join(
-                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-            ).filter(
-                PosicaoFundo.cliente_id == cliente_id,
-                InfoFundo.risco == RiscoEnum.moderado
-            ).scalar() or 0.0)
-
-            saldo_alto = float(db.query(
-                func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
-            ).join(
-                InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
-            ).filter(
-                PosicaoFundo.cliente_id == cliente_id,
-                InfoFundo.risco == RiscoEnum.alto
-            ).scalar() or 0.0)
+            # ANTES: 5 queries SQL inline
+            # AGORA: PosicaoService (fonte única de verdade)
+            montante_cliente   = PosicaoService.calcular_montante_total(cliente_id, db)
+            totais_pos         = PosicaoService.calcular_totais_por_classe(cliente_id, db)
+            saldo_fundo_di     = totais_pos['baixo_di']
+            saldo_baixo        = totais_pos['baixo_rfx']
+            saldo_moderado     = totais_pos['moderado']
+            saldo_alto         = totais_pos['alto']
 
         # ========== DADOS PARA TABELAS DE BALANCEAMENTO ==========
         objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
@@ -286,6 +247,16 @@ def area_cliente(cliente_id):
                 vp_ideal_por_objetivo[objetivo.id] = vp_ideal
             
         
+        # Calcular capital órfão (não alocado em nenhum objetivo)
+        capital_alocado = {
+            c: sum(v[c] for v in valores_por_objetivo.values())
+            for c in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']
+        }
+        tem_capital_orfao = any(
+            totais_atuais[c] - capital_alocado[c] > 1.0
+            for c in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']
+        )
+
         return render_template('cliente/area_cliente.html', 
                               cliente=cliente, 
                               montante_cliente=montante_cliente,
@@ -301,7 +272,8 @@ def area_cliente(cliente_id):
                               valores_por_objetivo=valores_por_objetivo,
                               percentuais_salvos=percentuais_salvos,
                               matrizes_risco=matrizes_risco,
-                              vp_ideal_por_objetivo=vp_ideal_por_objetivo)
+                              vp_ideal_por_objetivo=vp_ideal_por_objetivo,
+                              tem_capital_orfao=tem_capital_orfao)
 
     except Exception as e:
         print(f'Erro ao acessar área do cliente: {str(e)}', "error")

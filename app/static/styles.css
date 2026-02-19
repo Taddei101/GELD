@@ -525,3 +525,19 @@ img {
     to { opacity: 1; transform: translateY(0); }
 }
 
+/* Botão órfão — oscila entre branco e amarelo */
+@keyframes orfao-pulse {
+    0%   { background-color: #ffffff; color: #333; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    50%  { background-color: #ffc107; color: #212529; box-shadow: 0 0 14px rgba(255, 193, 7, 0.8); }
+    100% { background-color: #ffffff; color: #333; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+}
+
+.btn-orfao {
+    animation: orfao-pulse 1s ease-in-out infinite;
+}
+
+.btn-orfao:hover {
+    animation: none;
+    background-color: cornflowerblue !important;
+    color: white !important;
+}
