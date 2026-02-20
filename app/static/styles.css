@@ -425,6 +425,7 @@ img {
     justify-content: center;
     align-items: flex-start;
     border-radius: 4px;
+    max-height: 100px;
   }
     
   .percentage-text {

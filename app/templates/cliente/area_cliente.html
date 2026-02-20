@@ -48,8 +48,6 @@
     </table>
 </div>
 
-{% else %}
-<h2 style="color: rgb(29, 56, 209); font-size: 1.5em">Sem capital alocado</h2>
 {% endif %}
 
 <p></p>
@@ -328,8 +326,6 @@
     </div>
 </div>
 
-{% else %}
-<h2 style="color:rgb(29, 56, 209);font-size: 1.5em">Sem Objetivos Cadastrados </h2>
 {% endif %}
 
 <p></p>
@@ -341,11 +337,17 @@
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('cliente.info_cliente',cliente_id=cliente.id) }}`">
     <img src="{{ url_for('static', filename='icons/profile.png') }}" class="btn-icon">Informações Pessoais</button>
     
-    <button class="bigBtn" onclick="window.location.href=`{{ url_for('objetivo.listar_objetivos',cliente_id=cliente.id) }}`">
-    <img src="{{ url_for('static', filename='icons/objetivo.png') }}" class="btn-icon">Objetivos Financeiros</button>
+    <!-- Objetivos Financeiros -->
+    <button class="bigBtn {% if not objetivos %}btn-orfao{% endif %}"
+        title="{% if not objetivos %}Nenhum objetivo cadastrado. Clique para adicionar.{% endif %}"
+        onclick="window.location.href=`{{ url_for('objetivo.listar_objetivos',cliente_id=cliente.id) }}`">
+        <img src="{{ url_for('static', filename='icons/objetivo.png') }}" class="btn-icon">Objetivos Financeiros</button>
        
-    <button class="bigBtn" onclick="window.location.href=`{{ url_for('posicao.listar_posicao',cliente_id=cliente.id) }}`">
-    <img src="{{ url_for('static', filename='icons/posicao.png') }}" class="btn-icon">Posição Financeira</button>
+    <!-- Posição Financeira -->
+    <button class="bigBtn {% if not has_positions %}btn-orfao{% endif %}"
+        title="{% if not has_positions %}Nenhuma posição cadastrada. Clique para adicionar.{% endif %}"
+        onclick="window.location.href=`{{ url_for('posicao.listar_posicao',cliente_id=cliente.id) }}`">
+        <img src="{{ url_for('static', filename='icons/posicao.png') }}" class="btn-icon">Posição Financeira</button>
 
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}`">
         <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte</button>

@@ -84,7 +84,7 @@
                     <div class="progress-bar-container">
                       <div class="progress-bar-vertical">
                         {% if objetivo.valor_final > 0 %}
-                          {# ✅ USAR VALOR ATUAL CALCULADO PARA A BARRA DE PROGRESSO #}
+                          {#  USAR VALOR ATUAL CALCULADO PARA A BARRA DE PROGRESSO #}
                           {% if valores_por_objetivo and objetivo.id in valores_por_objetivo %}
                               {% set valor_dict = valores_por_objetivo[objetivo.id] %}
                               {% set valor_atual_obj = valor_dict.get('total', 0) if valor_dict is mapping else valor_dict %}
@@ -94,7 +94,7 @@
                           
                           {% set valor_futuro_obj = objetivo.valor_final|float * ((1+ipca_mes/100)**((objetivo.data_final.year - objetivo.data_inicial.year) * 12 + (objetivo.data_final.month - objetivo.data_inicial.month))) %}
                           {% set percentage = ((valor_atual_obj / valor_futuro_obj) * 100)|round(0)|int %}
-                          {% if percentage > 100 %}{% set percentage = 100 %}{% endif %}
+                          {# {% if percentage > 100 %}{% set percentage = 100 %}{% endif %} #}
                                                    
                           <div class="progress-fill" style="height: {{ percentage }}%"></div>
                           <span class="percentage-text">{{ percentage }}%</span>
@@ -108,13 +108,13 @@
             </tr>
             {% endfor %}
             
-            {% if mostrar_calculo is defined and mostrar_calculo %}
+            <!-- {% if mostrar_calculo is defined and mostrar_calculo %}
             <tr class="total-row" style="font-weight: bold; background-color: #f0f0f0;">
                 <td colspan="7" style="text-align: right;">Aporte Mensal Calculado:</td>
                 <td>R$ {{ '{:,.2f}'.format(calculo_aportes.aporte_total_mensal).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
                 <td colspan="2"></td>
             </tr>
-            {% endif %}
+            {% endif %} -->
         </tbody>
     </table>
 

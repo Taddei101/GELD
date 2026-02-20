@@ -210,7 +210,7 @@
                 <td>{% if posicao.banco_custodia == "BTG" %}
                 <img src="{{ url_for('static', filename='icons/BTG.png') }}" class="sml-btn-icon">
                 {% elif posicao.banco_custodia== "ADVISOR" %}
-                <img src="{{ url_for('static', filename='icons/advisor.jpg') }}" class="sml-btn-icon">
+                <img src="{{ url_for('static', filename='icons/sb.png') }}" class="sml-btn-icon">
                 {% else %}
                 <img src="{{ url_for('static', filename='icons/error.png') }}" class="sml-btn-icon">
                 {% endif %}
@@ -272,7 +272,7 @@
 
 
     <button title="upload_advisor" class="bigBtn" onclick="window.location.href=`{{ url_for('posicao_advisor.upload_advisor', cliente_id=cliente.id) }}` ">
-    <img src="{{ url_for('static', filename='icons/advisor.jpg') }}" class="btn-icon"> Upload Portfolio Advisor
+    <img src="{{ url_for('static', filename='icons/sb.png') }}" class="btn-icon"> Upload Portfolio Advisor
     </button>
     
     <button title="balancear_aporte" class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}` ">
