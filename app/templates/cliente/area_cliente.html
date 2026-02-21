@@ -6,145 +6,160 @@
 
 {% block content %}
 
-<!-- SEÇÃO: Resumo por Classe de Risco (Detalhado) -->
-{% if has_positions %}
-<div class="client_area">
-    <h3>Resumo por Classe de Risco</h3>
-    <table class="table">
-    <thead>
-        <tr>
-            <th>Classe de Risco</th>
-            <th>Saldo Atual</th>
-            <th>% do Portfolio</th>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>Baixo DI</td>
-            <td>R$ {{ '{:,.2f}'.format(saldo_fundo_di if saldo_fundo_di is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-            <td>{{ '{:.1f}%'.format((saldo_fundo_di / montante_cliente * 100) if montante_cliente > 0 and saldo_fundo_di is defined else 0).replace('.', ',') }}</td>
-        </tr>
-        <tr>
-            <td>Baixo RFx</td>
-            <td>R$ {{ '{:,.2f}'.format(saldo_baixo if saldo_baixo is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-            <td>{{ '{:.1f}%'.format((saldo_baixo / montante_cliente * 100) if montante_cliente > 0 and saldo_baixo is defined else 0).replace('.', ',') }}</td>
-        </tr>
-        <tr>
-            <td>Moderado</td>
-            <td>R$ {{ '{:,.2f}'.format(saldo_moderado if saldo_moderado is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-            <td>{{ '{:.1f}%'.format((saldo_moderado / montante_cliente * 100) if montante_cliente > 0 and saldo_moderado is defined else 0).replace('.', ',') }}</td>
-        </tr>
-        <tr>
-            <td>Alto</td>
-            <td>R$ {{ '{:,.2f}'.format(saldo_alto if saldo_alto is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-            <td>{{ '{:.1f}%'.format((saldo_alto / montante_cliente * 100) if montante_cliente > 0 and saldo_alto is defined else 0).replace('.', ',') }}</td>
-        </tr>
-        <tr class="total-row" style="font-weight: bold; border-top: 2px solid #333;">
-            <td>TOTAL GERAL</td>
-            <td>R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-            <td>100,0%</td>
-        </tr>
-    </tbody>
-    </table>
-</div>
+<!-- CONTAINER: Resumo por Classe de Risco + Fatias lado a lado -->
+{% if has_positions or objetivos %}
+<div style="display: flex; flex-wrap: nowrap; gap: 20px; align-items: stretch; overflow-x: auto;">
 
+    <!-- SEÇÃO: Resumo por Classe de Risco (Detalhado) -->
+    {% if has_positions %}
+    <div class="client_area" style="flex: 0 0 auto;">
+        <h3>Resumo por Classe de Risco</h3>
+        <table class="table" >
+        <thead>
+            <tr>
+                <th style="min-width: 120px;white-space: nowrap;">Classe de Risco</th>
+                <th style="min-width: 160px; white-space: nowrap;">Saldo Atual</th>
+                <th style="min-width: 100px; white-space: nowrap;">% do Portfolio</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Baixo DI</td>
+                <td>R$ {{ '{:,.2f}'.format(saldo_fundo_di if saldo_fundo_di is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                <td>{{ '{:.1f}%'.format((saldo_fundo_di / montante_cliente * 100) if montante_cliente > 0 and saldo_fundo_di is defined else 0).replace('.', ',') }}</td>
+            </tr>
+            <tr>
+                <td>Baixo RFx</td>
+                <td>R$ {{ '{:,.2f}'.format(saldo_baixo if saldo_baixo is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                <td>{{ '{:.1f}%'.format((saldo_baixo / montante_cliente * 100) if montante_cliente > 0 and saldo_baixo is defined else 0).replace('.', ',') }}</td>
+            </tr>
+            <tr>
+                <td>Moderado</td>
+                <td>R$ {{ '{:,.2f}'.format(saldo_moderado if saldo_moderado is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                <td>{{ '{:.1f}%'.format((saldo_moderado / montante_cliente * 100) if montante_cliente > 0 and saldo_moderado is defined else 0).replace('.', ',') }}</td>
+            </tr>
+            <tr>
+                <td>Alto</td>
+                <td>R$ {{ '{:,.2f}'.format(saldo_alto if saldo_alto is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                <td>{{ '{:.1f}%'.format((saldo_alto / montante_cliente * 100) if montante_cliente > 0 and saldo_alto is defined else 0).replace('.', ',') }}</td>
+            </tr>
+            <tr class="total-row">
+                <td>Total</td>
+                <td>R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                <td>100,0%</td>
+            </tr>
+        </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- TABELA: Fatias Alocadas por Objetivo -->
+    {% if objetivos %}
+    <div class="client_area" style="flex: 0 0 auto;">
+        <h3>Fatias Alocadas por Objetivo</h3>
+        <div style="overflow-x: auto; margin-bottom: 30px;">
+            <table class="table">
+                <thead style="background-color: #f8f9fa;">
+                    <tr>
+                        <th style="min-width: 120px; white-space: nowrap;">Classe de Risco</th>
+                        {% for objetivo in objetivos %}
+                        <th class="text-center" style="white-space: nowrap;">{{ objetivo.nome_objetivo }}</th>
+                        {% endfor %}
+                        <th class="text-center" style="background-color: #e9ecef; white-space: nowrap;"><strong>Total</strong></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {#Linha valor desejado#}
+                    <tr>
+                        <td><strong>Valor Desejado</strong></td>
+                        {% for objetivo in objetivos %}
+                            <td class="text-center" style="white-space: nowrap;">
+                                R$ {{ '{:,.0f}'.format(objetivo.valor_final | float).replace(',', '.') }}
+                            </td>
+                        {% endfor %}
+                        <td><img src="{{ url_for('static', filename='icons/pie.png') }}" class="sml-btn-icon"></td>
+                    </tr>
+                    {# Linha: Baixo DI #}
+                    <tr>
+                        <td style="background-color: #d4edda;"><strong>Baixo DI</strong></td>
+                        {% for objetivo in objetivos %}
+                            {% set perc = percentuais_salvos[objetivo.id].baixo_di %}
+                            <td class="text-center" style="background-color: #d4edda;">
+                                {% if perc > 0 %}
+                                    {{ '{:.1f}'.format(perc) }}%
+                                {% else %}
+                                    <span style="color: #999;">-</span>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
+                    </tr>
+
+                    {# Linha: Baixo RFx #}
+                    <tr>
+                        <td style="background-color: #d4edda;"><strong>Baixo RFx</strong></td>
+                        {% for objetivo in objetivos %}
+                            {% set perc = percentuais_salvos[objetivo.id].baixo_rfx %}
+                            <td class="text-center" style="background-color: #d4edda;">
+                                {% if perc > 0 %}
+                                    {{ '{:.1f}'.format(perc) }}%
+                                {% else %}
+                                    <span style="color: #999;">-</span>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
+                    </tr>
+
+                    {# Linha: Moderado #}
+                    <tr>
+                        <td style="background-color: #fff3cd;"><strong>Moderado</strong></td>
+                        {% for objetivo in objetivos %}
+                            {% set perc = percentuais_salvos[objetivo.id].moderado %}
+                            <td class="text-center" style="background-color: #fff3cd;">
+                                {% if perc > 0 %}
+                                    {{ '{:.1f}'.format(perc) }}%
+                                {% else %}
+                                    <span style="color: #999;">-</span>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        <td class="text-center" style="background-color: #ffeaa7;"><strong>100%</strong></td>
+                    </tr>
+
+                    {# Linha: Alto #}
+                    <tr>
+                        <td style="background-color: #f8d7da;"><strong>Alto</strong></td>
+                        {% for objetivo in objetivos %}
+                            {% set perc = percentuais_salvos[objetivo.id].alto %}
+                            <td class="text-center" style="background-color: #f8d7da;">
+                                {% if perc > 0 %}
+                                    {{ '{:.1f}'.format(perc) }}%
+                                {% else %}
+                                    <span style="color: #999;">-</span>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        <td class="text-center" style="background-color: #f5c6cb;"><strong>100%</strong></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>{# fecha container flex #}
 {% endif %}
 
 <p></p>
 
-<!-- TABELA: Fatias Alocadas por Objetivo -->
+<!-- TABELA: Alocação por Objetivo -->
 {% if objetivos %}
 <div class="client_area">
-    <h3> Fatias Alocadas por Objetivo</h3>
-        
-    <div style="overflow-x: auto; margin-bottom: 30px;">
-        <table class="table table-bordered table-sm" style="font-size: 0.85em; max-width: 800px;">
-            <thead style="background-color: #f8f9fa;">
-                <tr>
-                    <th style="min-width: 120px;">Classe de Risco</th>
-                    {% for objetivo in objetivos %}
-                    <th class="text-center">{{ objetivo.nome_objetivo }}</th>
-                    {% endfor %}
-                    <th class="text-center" style="background-color: #e9ecef;"><strong>Total</strong></th>
-                </tr>
-            </thead>
-            <tbody>
-                {# Linha: Baixo DI #}
-                <tr>
-                    <td style="background-color: #d4edda;"><strong>Baixo DI</strong></td>
-                    {% for objetivo in objetivos %}
-                        {% set perc = percentuais_salvos[objetivo.id].baixo_di %}
-                        <td class="text-center" style="background-color: #d4edda;">
-                            {% if perc > 0 %}
-                                {{ '{:.1f}'.format(perc) }}%
-                            {% else %}
-                                <span style="color: #999;">-</span>
-                            {% endif %}
-                        </td>
-                    {% endfor %}
-                    <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
-                </tr>
-                
-                {# Linha: Baixo RFx #}
-                <tr>
-                    <td style="background-color: #d4edda;"><strong>Baixo RFx</strong></td>
-                    {% for objetivo in objetivos %}
-                        {% set perc = percentuais_salvos[objetivo.id].baixo_rfx %}
-                        <td class="text-center" style="background-color: #d4edda;">
-                            {% if perc > 0 %}
-                                {{ '{:.1f}'.format(perc) }}%
-                            {% else %}
-                                <span style="color: #999;">-</span>
-                            {% endif %}
-                        </td>
-                    {% endfor %}
-                    <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
-                </tr>
-                
-                {# Linha: Moderado #}
-                <tr>
-                    <td style="background-color: #fff3cd;"><strong>Moderado</strong></td>
-                    {% for objetivo in objetivos %}
-                        {% set perc = percentuais_salvos[objetivo.id].moderado %}
-                        <td class="text-center" style="background-color: #fff3cd;">
-                            {% if perc > 0 %}
-                                {{ '{:.1f}'.format(perc) }}%
-                            {% else %}
-                                <span style="color: #999;">-</span>
-                            {% endif %}
-                        </td>
-                    {% endfor %}
-                    <td class="text-center" style="background-color: #ffeaa7;"><strong>100%</strong></td>
-                </tr>
-                
-                {# Linha: Alto #}
-                <tr>
-                    <td style="background-color: #f8d7da;"><strong>Alto</strong></td>
-                    {% for objetivo in objetivos %}
-                        {% set perc = percentuais_salvos[objetivo.id].alto %}
-                        <td class="text-center" style="background-color: #f8d7da;">
-                            {% if perc > 0 %}
-                                {{ '{:.1f}'.format(perc) }}%
-                            {% else %}
-                                <span style="color: #999;">-</span>
-                            {% endif %}
-                        </td>
-                    {% endfor %}
-                    <td class="text-center" style="background-color: #f5c6cb;"><strong>100%</strong></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<p></p>
-
-<!-- TABELA: Alocação por Objetivo -->
-<div class="client_area">
-    <h3 style="margin-bottom: 15px;"> Alocação por Objetivo</h3>
+    <h3> Alocação por Objetivo</h3>
     
     <div style="overflow-x: auto;">
-    <table class="table" ;>
+    <table class="table">
         <thead>
             <tr>
                 <th rowspan="2" style="vertical-align: middle; min-width: 120px;">Classe de Risco</th>
@@ -325,13 +340,9 @@
     </table>
     </div>
 </div>
-
 {% endif %}
 
 <p></p>
-
-
-
 
 <div class="client_area">
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('cliente.info_cliente',cliente_id=cliente.id) }}`">
