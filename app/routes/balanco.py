@@ -76,7 +76,7 @@ def iniciar(cliente_id):
             vp_ideal_por_objetivo[objetivo.id] = vp_ideal
         
         
-        # ✅ NOVO: Calcular capital órfão
+        # NOVO: Calcular capital órfão
         capital_alocado = {
             'baixo_di': 0.0, 'baixo_rfx': 0.0, 'moderado': 0.0, 'alto': 0.0
         }

@@ -98,7 +98,7 @@
 
 
     <h3> Alocação por Objetivo </h3>
-    <h4>-caso insira um ou mais aportes, esses serão balanceados juntamente-</h4>
+    
     <form method="POST" action="{{ url_for('balanco.calcular', cliente_id=cliente.id) }}">
                         
         <div style="overflow-x: auto;">
@@ -280,6 +280,21 @@
                         <td></td>
                     {% endfor %}
                 </tr>
+
+                <!-- Linha: VP Ideal -->
+                <tr>
+                    <td><strong>VP IDEAL</strong></td>
+                    {% for objetivo in objetivos %}
+                        {% set vp = vp_ideal_por_objetivo[objetivo.id] %}
+                        {% set total_atual = valores_por_objetivo[objetivo.id].total %}
+                        
+                        <td colspan="4" class="text-right" >
+                            <strong >R$ {{ '{:,.0f}'.format(vp).replace(',', '.') }}</strong>
+                        </td>
+                        <td></td>
+                    {% endfor %}
+                </tr>
+
                 <tr class="table-primary">
                     <td><strong>APORTE (R$)</strong></td>
                     {% for objetivo in objetivos %}
@@ -346,115 +361,6 @@
 {% endif %}
 
 
-        <!-- RESUMO AGREGADO - Somatoria dos deltas de compra e venda em cada risco VOU TIRAR porque so confunde-->
-        <!-- <div style="margin-top: 30px;">
-            <h3> Ações Necessárias</h3>
-            
-            {# Calcular totais agregados #}
-            {% set ns = namespace(
-                target_di=0, atual_di=0,
-                target_rfx=0, atual_rfx=0,
-                target_moderado=0, atual_moderado=0,
-                target_alto=0, atual_alto=0
-            ) %}
-            
-            {% for objetivo in objetivos %}
-                {% set valores = valores_por_objetivo[objetivo.id] %}
-                {% set matriz = matrizes_risco[objetivo.id] %}
-                {% set total_atual = valores.total %}
-                
-                {% set target_di_pct = (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100 %}
-                {% set target_rfx_pct = (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100 %}
-                {% set target_moderado_pct = matriz.perc_moderado %}
-                {% set target_alto_pct = matriz.perc_alto %}
-                
-                {% set ns.target_di = ns.target_di + (total_atual * target_di_pct / 100) %}
-                {% set ns.atual_di = ns.atual_di + valores.baixo_di %}
-                
-                {% set ns.target_rfx = ns.target_rfx + (total_atual * target_rfx_pct / 100) %}
-                {% set ns.atual_rfx = ns.atual_rfx + valores.baixo_rfx %}
-                
-                {% set ns.target_moderado = ns.target_moderado + (total_atual * target_moderado_pct / 100) %}
-                {% set ns.atual_moderado = ns.atual_moderado + valores.moderado %}
-                
-                {% set ns.target_alto = ns.target_alto + (total_atual * target_alto_pct / 100) %}
-                {% set ns.atual_alto = ns.atual_alto + valores.alto %}
-            {% endfor %}
-            
-            {% set gap_di = ns.target_di - ns.atual_di %}
-            {% set gap_rfx = ns.target_rfx - ns.atual_rfx %}
-            {% set gap_moderado = ns.target_moderado - ns.atual_moderado %}
-            {% set gap_alto = ns.target_alto - ns.atual_alto %}
-            
-            <table class="table table-bordered" style="max-width: 500px;">
-                <thead class="thead-dark">
-                    <tr>
-                        <th>Classe de Risco</th>
-                        <th class="text-right">Ação Necessária (R$)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong> Baixo DI</strong></td>
-                        <td class="text-right" style="background-color: {% if gap_di > 0 %}#d4edda{% elif gap_di < 0 %}#f8d7da{% else %}#f8f9fa{% endif %};">
-                            <strong>
-                            {% if gap_di > 0 %}
-                                +R$ {{ '{:,.0f}'.format(gap_di).replace(',', '.') }} <span style="color: green;">(COMPRAR)</span>
-                            {% elif gap_di < 0 %}
-                                -R$ {{ '{:,.0f}'.format(-gap_di).replace(',', '.') }} <span style="color: red;">(VENDER)</span>
-                            {% else %}
-                                R$ 0 <span style="color: gray;">(OK)</span>
-                            {% endif %}
-                            </strong>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong> Baixo RFx</strong></td>
-                        <td class="text-right" style="background-color: {% if gap_rfx > 0 %}#d4edda{% elif gap_rfx < 0 %}#f8d7da{% else %}#f8f9fa{% endif %};">
-                            <strong>
-                            {% if gap_rfx > 0 %}
-                                +R$ {{ '{:,.0f}'.format(gap_rfx).replace(',', '.') }} <span style="color: green;">(COMPRAR)</span>
-                            {% elif gap_rfx < 0 %}
-                                -R$ {{ '{:,.0f}'.format(-gap_rfx).replace(',', '.') }} <span style="color: red;">(VENDER)</span>
-                            {% else %}
-                                R$ 0 <span style="color: gray;">(OK)</span>
-                            {% endif %}
-                            </strong>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong> Moderado</strong></td>
-                        <td class="text-right" style="background-color: {% if gap_moderado > 0 %}#d4edda{% elif gap_moderado < 0 %}#f8d7da{% else %}#f8f9fa{% endif %};">
-                            <strong>
-                            {% if gap_moderado > 0 %}
-                                +R$ {{ '{:,.0f}'.format(gap_moderado).replace(',', '.') }} <span style="color: green;">(COMPRAR)</span>
-                            {% elif gap_moderado < 0 %}
-                                -R$ {{ '{:,.0f}'.format(-gap_moderado).replace(',', '.') }} <span style="color: red;">(VENDER)</span>
-                            {% else %}
-                                R$ 0 <span style="color: gray;">(OK)</span>
-                            {% endif %}
-                            </strong>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong> Alto</strong></td>
-                        <td class="text-right" style="background-color: {% if gap_alto > 0 %}#d4edda{% elif gap_alto < 0 %}#f8d7da{% else %}#f8f9fa{% endif %};">
-                            <strong>
-                            {% if gap_alto > 0 %}
-                                +R$ {{ '{:,.0f}'.format(gap_alto).replace(',', '.') }} <span style="color: green;">(COMPRAR)</span>
-                            {% elif gap_alto < 0 %}
-                                -R$ {{ '{:,.0f}'.format(-gap_alto).replace(',', '.') }} <span style="color: red;">(VENDER)</span>
-                            {% else %}
-                                R$ 0 <span style="color: gray;">(OK)</span>
-                            {% endif %}
-                            </strong>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            
-        </div> -->
         
 <!-- Botões -->
     <div style="margin-top: 30px;">
@@ -471,18 +377,4 @@
 
 </div>
 
-<!-- <style>
-.table {
-    font-size: 0.8em;
-}
-.table th, .table td {
-    padding: 5px;
-    white-space: nowrap;
-}
-.table thead th {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-</style> -->
 {% endblock %}

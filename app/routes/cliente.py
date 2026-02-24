@@ -186,8 +186,7 @@ def area_cliente(cliente_id):
         
 
         if has_positions:
-            # ANTES: 5 queries SQL inline
-            # AGORA: PosicaoService (fonte única de verdade)
+                        
             montante_cliente   = PosicaoService.calcular_montante_total(cliente_id, db)
             totais_pos         = PosicaoService.calcular_totais_por_classe(cliente_id, db)
             saldo_fundo_di     = totais_pos['baixo_di']

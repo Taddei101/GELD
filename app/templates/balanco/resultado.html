@@ -39,21 +39,22 @@
                     {% set target_pct = obj.percentuais_alvo.baixo_di %}
                     {% set novo_total = obj.novos_valores.total %}
                     {% set target_reais = novo_total * target_pct / 100 %}
-                    {% set novo_reais = obj.novos_valores.baixo_di %}
-                    {% set gap = target_reais - novo_reais %}
+                    {% set atual_reais = obj.valores_atuais.baixo_di %}
+                    {% set atual_total = obj.valores_atuais.total %}
+                    {% set gap = target_reais - atual_reais %}
                     
-                    {% if novo_total > 0 %}
-                        {% set novo_pct = (novo_reais / novo_total) * 100 %}
+                    {% if atual_total > 0 %}
+                        {% set atual_pct = (atual_reais / atual_total) * 100 %}
                     {% else %}
-                        {% set novo_pct = 0 %}
+                        {% set atual_pct = 0 %}
                     {% endif %}
                     
                     <td class="text-center" style="background-color: #d4edda;">{{ '{:.1f}'.format(target_pct) }}%</td>
                     <td class="text-right" style="background-color: #d4edda;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
-                    <td class="text-center" style="background-color: {% if novo_pct < target_pct %}#fff3cd{% elif novo_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
-                        {{ '{:.1f}'.format(novo_pct) }}%
+                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
+                        {{ '{:.1f}'.format(atual_pct) }}%
                     </td>
-                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(novo_reais).replace(',', '.') }}</td>
+                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
                     <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
                         {% if gap > 0 %}
                             <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
@@ -73,21 +74,22 @@
                     {% set target_pct = obj.percentuais_alvo.baixo_rfx %}
                     {% set novo_total = obj.novos_valores.total %}
                     {% set target_reais = novo_total * target_pct / 100 %}
-                    {% set novo_reais = obj.novos_valores.baixo_rfx %}
-                    {% set gap = target_reais - novo_reais %}
+                    {% set atual_reais = obj.valores_atuais.baixo_rfx %}
+                    {% set atual_total = obj.valores_atuais.total %}
+                    {% set gap = target_reais - atual_reais %}
                     
-                    {% if novo_total > 0 %}
-                        {% set novo_pct = (novo_reais / novo_total) * 100 %}
+                    {% if atual_total > 0 %}
+                        {% set atual_pct = (atual_reais / atual_total) * 100 %}
                     {% else %}
-                        {% set novo_pct = 0 %}
+                        {% set atual_pct = 0 %}
                     {% endif %}
                     
                     <td class="text-center" style="background-color: #d4edda;">{{ '{:.1f}'.format(target_pct) }}%</td>
                     <td class="text-right" style="background-color: #d4edda;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
-                    <td class="text-center" style="background-color: {% if novo_pct < target_pct %}#fff3cd{% elif novo_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
-                        {{ '{:.1f}'.format(novo_pct) }}%
+                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
+                        {{ '{:.1f}'.format(atual_pct) }}%
                     </td>
-                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(novo_reais).replace(',', '.') }}</td>
+                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
                     <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
                         {% if gap > 0 %}
                             <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
@@ -107,21 +109,22 @@
                     {% set target_pct = obj.percentuais_alvo.moderado %}
                     {% set novo_total = obj.novos_valores.total %}
                     {% set target_reais = novo_total * target_pct / 100 %}
-                    {% set novo_reais = obj.novos_valores.moderado %}
-                    {% set gap = target_reais - novo_reais %}
+                    {% set atual_reais = obj.valores_atuais.moderado %}
+                    {% set atual_total = obj.valores_atuais.total %}
+                    {% set gap = target_reais - atual_reais %}
                     
-                    {% if novo_total > 0 %}
-                        {% set novo_pct = (novo_reais / novo_total) * 100 %}
+                    {% if atual_total > 0 %}
+                        {% set atual_pct = (atual_reais / atual_total) * 100 %}
                     {% else %}
-                        {% set novo_pct = 0 %}
+                        {% set atual_pct = 0 %}
                     {% endif %}
                     
                     <td class="text-center" style="background-color: #fff3cd;">{{ '{:.1f}'.format(target_pct) }}%</td>
                     <td class="text-right" style="background-color: #fff3cd;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
-                    <td class="text-center" style="background-color: {% if novo_pct < target_pct %}#fff3cd{% elif novo_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
-                        {{ '{:.1f}'.format(novo_pct) }}%
+                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
+                        {{ '{:.1f}'.format(atual_pct) }}%
                     </td>
-                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(novo_reais).replace(',', '.') }}</td>
+                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
                     <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
                         {% if gap > 0 %}
                             <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
@@ -141,21 +144,22 @@
                     {% set target_pct = obj.percentuais_alvo.alto %}
                     {% set novo_total = obj.novos_valores.total %}
                     {% set target_reais = novo_total * target_pct / 100 %}
-                    {% set novo_reais = obj.novos_valores.alto %}
-                    {% set gap = target_reais - novo_reais %}
+                    {% set atual_reais = obj.valores_atuais.alto %}
+                    {% set atual_total = obj.valores_atuais.total %}
+                    {% set gap = target_reais - atual_reais %}
                     
-                    {% if novo_total > 0 %}
-                        {% set novo_pct = (novo_reais / novo_total) * 100 %}
+                    {% if atual_total > 0 %}
+                        {% set atual_pct = (atual_reais / atual_total) * 100 %}
                     {% else %}
-                        {% set novo_pct = 0 %}
+                        {% set atual_pct = 0 %}
                     {% endif %}
                     
                     <td class="text-center" style="background-color: #f8d7da;">{{ '{:.1f}'.format(target_pct) }}%</td>
                     <td class="text-right" style="background-color: #f8d7da;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
-                    <td class="text-center" style="background-color: {% if novo_pct < target_pct %}#fff3cd{% elif novo_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
-                        {{ '{:.1f}'.format(novo_pct) }}%
+                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
+                        {{ '{:.1f}'.format(atual_pct) }}%
                     </td>
-                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(novo_reais).replace(',', '.') }}</td>
+                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
                     <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
                         {% if gap > 0 %}
                             <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
@@ -301,11 +305,11 @@
                         <td class="text-center" style="background-color: {% if op.tipo == 'NEUTRO' %}#e3f2fd{% elif op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
                             <strong>
                             {% if op.tipo == 'NEUTRO' %}
-                                ✅ SEM OPERAÇÃO
+                                SEM OPERAÇÃO
                             {% elif op.tipo == 'COMPRAR' %}
-                                🟢 COMPRAR
+                                COMPRAR
                             {% else %}
-                                🔴 VENDER
+                                VENDER
                             {% endif %}
                             </strong>
                         </td>
@@ -345,13 +349,4 @@
 
 </div>
 
-<!-- <style>
-.table {
-    font-size: 0.8em;
-}
-.table th, .table td {
-    padding: 5px;
-    white-space: nowrap;
-}
-</style> -->
 {% endblock %}

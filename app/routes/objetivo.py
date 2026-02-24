@@ -177,6 +177,11 @@ def listar_objetivos(cliente_id):
             cliente_id, totais_atuais, db
         )
         
+        # ✅ CALCULAR VP IDEAL POR OBJETIVO (mesma lógica de area_cliente)
+        vp_ideal_por_objetivo = {}
+        for objetivo in objetivos:
+            vp_ideal_por_objetivo[objetivo.id] = BalanceamentoService.calcular_vp_ideal(objetivo)
+        
         ipca_mes = db.query(IndicadoresEconomicos.ipca_mes).order_by(
             IndicadoresEconomicos.data_atualizacao.desc()
         ).scalar() or 0
@@ -202,6 +207,7 @@ def listar_objetivos(cliente_id):
                               cliente=cliente, 
                               valores_por_objetivo=valores_por_objetivo,  
                               ipca_mes=ipca_mes,
+                              vp_ideal_por_objetivo=vp_ideal_por_objetivo,
                               calculo_aportes=calculo_aportes,
                               mostrar_calculo=calcular_aporte)
 

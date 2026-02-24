@@ -102,17 +102,18 @@ class BalanceamentoService:
     # ========== VALOR PRESENTE IDEAL ==========
 
     @staticmethod
-    def calcular_vp_ideal(objetivo: Objetivo, ipca_anual: float) -> float:
+    def calcular_vp_ideal(objetivo: Objetivo, ipca_anual: float = None) -> float:
         """
         Calcula Valor Presente Ideal.
-        VP Ideal = valor necessário hoje para atingir objetivo sem aportes adicionais.
-        """
-        ipca_mensal      = ((1 + ipca_anual / 100) ** (1/12)) - 1
-        taxa_real_mensal = ((1 + (ipca_anual + BalanceamentoService.TAXA_REAL_ANUAL) / 100) ** (1/12)) - 1
-        duracao          = objetivo.duracao_meses
-        valor_futuro     = float(objetivo.valor_final) * ((1 + ipca_mensal) ** duracao)
+        VP Ideal = valor necessário hoje para atingir objetivo sem aportes adicionais,
+        rendendo IPCA + 3,5% ao ano em termos reais.
 
-        return valor_futuro / ((1 + taxa_real_mensal) ** duracao)
+        O IPCA cancela algebricamente entre valor_futuro e o desconto,
+        simplificando para: VP = valor_final / (1 + taxa_real_anual)^(n/12)
+        """
+        taxa_real_mensal = (1 + BalanceamentoService.TAXA_REAL_ANUAL / 100) ** (1/12) - 1
+        duracao          = objetivo.duracao_meses
+        return float(objetivo.valor_final) / ((1 + taxa_real_mensal) ** duracao)
 
     # ========== GESTÃO DE FATIAS ==========
 

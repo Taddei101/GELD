@@ -71,12 +71,12 @@
                 <tbody>
                     {#Linha valor desejado#}
                     <tr>
-                        <td><strong>Valor Desejado</strong></td>
-                        {% for objetivo in objetivos %}
-                            <td class="text-center" style="white-space: nowrap;">
-                                R$ {{ '{:,.0f}'.format(objetivo.valor_final | float).replace(',', '.') }}
-                            </td>
-                        {% endfor %}
+                        <td><strong>Valor Alvo</strong></td>
+                            {% for objetivo in objetivos %}
+                               <td class="text-center" style="white-space: nowrap;">
+                                R$ {{ '{:,.0f}'.format(vp_ideal_por_objetivo[objetivo.id] | float).replace(',', '.') }}
+                                </td>
+                            {% endfor %}
                         <td><img src="{{ url_for('static', filename='icons/pie.png') }}" class="sml-btn-icon"></td>
                     </tr>
                     {# Linha: Baixo DI #}
