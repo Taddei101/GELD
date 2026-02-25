@@ -206,7 +206,7 @@ class BalanceamentoService:
 
         Quando há APORTE:     novos_percentuais = novos_valores  / totais_pos_aporte
         Quando NÃO há aporte: novos_percentuais = estado_alvo    / totais_pos_redistribuicao
-        Isso garante que após executar as operações recomendadas o gap zera.
+        Quando aporte é negativo: verifica o limite e faz a retirada dentro do objetivo
         """
         # 1. Buscar IPCA
         ipca = session.query(IndicadoresEconomicos).order_by(
@@ -229,9 +229,15 @@ class BalanceamentoService:
 
         for objetivo in todos_objetivos:
             valor_aporte = aportes_dict.get(objetivo.id, 0.0)
+            valor_atual_obj = valores_por_objetivo.get(objetivo.id, {}).get('total', 0.0)
+            if valor_aporte < 0 and abs(valor_aporte) > valor_atual_obj:
+                raise ValueError(
+                    f"Saque de R$ {abs(valor_aporte):,.0f} excede o saldo do objetivo "
+                    f"'{objetivo.nome_objetivo}' (R$ {valor_atual_obj:,.0f})"
+                 )
             matriz       = BalanceamentoService.buscar_matriz_alvo(objetivo, session)
 
-            if valor_aporte > 0:
+            if valor_aporte != 0:
                 distribuicao_aporte = BalanceamentoService.distribuir_aporte_por_matriz(valor_aporte, matriz)
             else:
                 distribuicao_aporte = {'baixo_di': 0.0, 'baixo_rfx': 0.0, 'moderado': 0.0, 'alto': 0.0}
@@ -310,6 +316,7 @@ class BalanceamentoService:
         # 6. Recalcular percentuais (fatias)
         # Todos os objetivos usam estado_alvo / totais_pos_redistribuicao
         # porque esse é o estado real após executar as operações líquidas
+
         for resultado in resultados_objetivos:
             resultado['novos_percentuais'] = {
                 c: (resultado['estado_alvo'][c] / totais_pos_redistribuicao[c] * 100)

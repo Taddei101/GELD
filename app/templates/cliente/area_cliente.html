@@ -65,13 +65,13 @@
                         {% for objetivo in objetivos %}
                         <th class="text-center" style="white-space: nowrap;">{{ objetivo.nome_objetivo }}</th>
                         {% endfor %}
-                        <th class="text-center" style="background-color: #e9ecef; white-space: nowrap;"><strong>Total</strong></th>
+                        <th class="text-center" ><strong>Total</strong></th>
                     </tr>
                 </thead>
                 <tbody>
                     {#Linha valor desejado#}
                     <tr>
-                        <td><strong>Valor Alvo</strong></td>
+                        <td>Valor Alvo</td>
                             {% for objetivo in objetivos %}
                                <td class="text-center" style="white-space: nowrap;">
                                 R$ {{ '{:,.0f}'.format(vp_ideal_por_objetivo[objetivo.id] | float).replace(',', '.') }}
@@ -81,7 +81,7 @@
                     </tr>
                     {# Linha: Baixo DI #}
                     <tr>
-                        <td style="background-color: #d4edda;"><strong>Baixo DI</strong></td>
+                        <td style="background-color: #d4edda;">Baixo DI</td>
                         {% for objetivo in objetivos %}
                             {% set perc = percentuais_salvos[objetivo.id].baixo_di %}
                             <td class="text-center" style="background-color: #d4edda;">
@@ -92,12 +92,12 @@
                                 {% endif %}
                             </td>
                         {% endfor %}
-                        <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
+                        <td class="text-center" style="background-color: #c3e6cb;">100%</td>
                     </tr>
 
                     {# Linha: Baixo RFx #}
                     <tr>
-                        <td style="background-color: #d4edda;"><strong>Baixo RFx</strong></td>
+                        <td style="background-color: #d4edda;">Baixo RFx</td>
                         {% for objetivo in objetivos %}
                             {% set perc = percentuais_salvos[objetivo.id].baixo_rfx %}
                             <td class="text-center" style="background-color: #d4edda;">
@@ -108,12 +108,12 @@
                                 {% endif %}
                             </td>
                         {% endfor %}
-                        <td class="text-center" style="background-color: #c3e6cb;"><strong>100%</strong></td>
+                        <td class="text-center" style="background-color: #c3e6cb;">100%</td>
                     </tr>
 
                     {# Linha: Moderado #}
                     <tr>
-                        <td style="background-color: #fff3cd;"><strong>Moderado</strong></td>
+                        <td style="background-color: #fff3cd;">Moderado</td>
                         {% for objetivo in objetivos %}
                             {% set perc = percentuais_salvos[objetivo.id].moderado %}
                             <td class="text-center" style="background-color: #fff3cd;">
@@ -124,12 +124,12 @@
                                 {% endif %}
                             </td>
                         {% endfor %}
-                        <td class="text-center" style="background-color: #ffeaa7;"><strong>100%</strong></td>
+                        <td class="text-center" style="background-color: #ffeaa7;">100%</td>
                     </tr>
 
                     {# Linha: Alto #}
                     <tr>
-                        <td style="background-color: #f8d7da;"><strong>Alto</strong></td>
+                        <td style="background-color: #f8d7da;">Alto</td>
                         {% for objetivo in objetivos %}
                             {% set perc = percentuais_salvos[objetivo.id].alto %}
                             <td class="text-center" style="background-color: #f8d7da;">
@@ -140,7 +140,7 @@
                                 {% endif %}
                             </td>
                         {% endfor %}
-                        <td class="text-center" style="background-color: #f5c6cb;"><strong>100%</strong></td>
+                        <td class="text-center" style="background-color: #f5c6cb;">100%</td>
                     </tr>
                 </tbody>
             </table>
