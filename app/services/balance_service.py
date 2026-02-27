@@ -1,7 +1,7 @@
 """
 Serviço de balanceamento de carteiras por percentuais de participação.
 
-Responsabilidade: algoritmos de balanceamento, matriz de risco, VP ideal,
+Responsabilidade: algoritmos de balanceamento, matriz de risco pessoal, VP ideal,
 distribuição de aportes e gestão de fatias entre objetivos.
 
 Depende de PosicaoService para cálculos de saldo por classe de risco.
@@ -123,11 +123,7 @@ class BalanceamentoService:
         Redistribui as fatias do objetivo deletado proporcionalmente entre os sobreviventes.
         DEVE ser chamado ANTES de deletar o objetivo.
 
-        Exemplo para baixo_di:
-            Obj1: 60%, Obj2: 30%, Obj3 (deletado): 10%
-            Sobreviventes somam 90%
-            Obj1 recebe (60/90) * 10% = 6.67% → fica com 66.67%
-            Obj2 recebe (30/90) * 10% = 3.33% → fica com 33.33%
+   
         """
         dist_deletado = session.query(DistribuicaoObjetivo).filter_by(
             objetivo_id=objetivo_id
@@ -279,7 +275,7 @@ class BalanceamentoService:
                 'prazo_meses':     objetivo.duracao_meses,
                 'valor_desejado':  float(objetivo.valor_final),
                 'vp_ideal':        vp_ideal,
-                'gap':             vp_ideal - valores_atuais['total'],
+                'gap_vp':          vp_ideal - novos_valores['total'],
                 'valor_aporte':    valor_aporte,
                 'valores_atuais':  valores_atuais,
                 'distribuicao_aporte': distribuicao_aporte,
@@ -373,6 +369,121 @@ class BalanceamentoService:
             'operacoes_liquidas':      operacoes_liquidas,
             'resultados_por_objetivo': resultados_objetivos
         }
+
+    # ========== CASCATA DE EXCEDENTES ==========
+
+    @staticmethod
+    def executar_cascata_e_rebalancear(
+        cliente_id: int,
+        aportes_por_objetivo: List[Dict],
+        session: Session
+    ) -> Dict:
+        """
+        Executa balanceamento com cascata de excedentes.
+
+        Quando um objetivo teria montante pós-aporte > VP Ideal, o excedente é
+        redirecionado como aporte para objetivos com déficit, priorizando menor prazo.
+
+        A cascata modifica os APORTES (não as fatias %).
+
+        
+        Itera até (n_objetivos - 1) vezes ou até convergir.
+        Commit só ocorre em aplicar_balanceamento().
+        """
+        TOLERANCIA_VP = 100.0
+
+        todos_objetivos = session.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        max_iter        = max(len(todos_objetivos) - 1, 1)
+
+        # Aportes mutáveis — a cascata redistribui modificando esses valores
+        aportes_dict = {a['objetivo_id']: a['valor_aporte'] for a in aportes_por_objetivo}
+        # Garante entrada para todos os objetivos, mesmo os sem aporte explícito
+        for obj in todos_objetivos:
+            if obj.id not in aportes_dict:
+                aportes_dict[obj.id] = 0.0
+
+        historico_cascata = []
+        
+        #loop principal
+        for i in range(max_iter):
+            aportes_lista = [
+                {'objetivo_id': obj_id, 'valor_aporte': valor}
+                for obj_id, valor in aportes_dict.items()
+            ]
+
+            resultado = BalanceamentoService.processar_balanceamento(
+                cliente_id, aportes_lista, session
+            )
+
+            doadores = [
+                r for r in resultado['resultados_por_objetivo']
+                if r['novos_valores']['total'] > r['vp_ideal'] + TOLERANCIA_VP
+            ]
+
+            if not doadores:
+                break
+
+            receptores = sorted(
+                [
+                    r for r in resultado['resultados_por_objetivo']
+                    if r['vp_ideal'] - r['novos_valores']['total'] > TOLERANCIA_VP
+                ],
+                key=lambda x: x['prazo_meses']
+            )
+
+            if not receptores:
+                break
+
+            movimentacoes_iter = []
+
+            for doador in doadores:
+                excedente = doador['novos_valores']['total'] - doador['vp_ideal']
+
+                for receptor in receptores:
+                    if excedente <= TOLERANCIA_VP:
+                        break
+
+                    deficit = receptor['vp_ideal'] - receptor['novos_valores']['total']
+                    if deficit <= TOLERANCIA_VP:
+                        continue
+
+                    valor_transferir = min(excedente, deficit)
+
+                    # Redireciona o aporte: reduz no doador, aumenta no receptor
+                    # notar que aqui o sistema introduz o excedente como aporte para o obj
+                    aportes_dict[doador['objetivo_id']]   -= valor_transferir
+                    aportes_dict[receptor['objetivo_id']] += valor_transferir
+
+                    movimentacoes_iter.append({
+                        'origem_nome':  doador['objetivo_nome'],
+                        'destino_nome': receptor['objetivo_nome'],
+                        'valor':        valor_transferir,
+                    })
+
+                    excedente                          -= valor_transferir
+                    receptor['novos_valores']['total'] += valor_transferir
+                    doador['novos_valores']['total']   -= valor_transferir
+
+            if not movimentacoes_iter:
+                break
+
+            historico_cascata.append({
+                'iteracao':      i + 1,
+                'movimentacoes': movimentacoes_iter,
+            })
+
+        # Rodada final com os aportes redistribuídos pela cascata
+        aportes_finais = [
+            {'objetivo_id': obj_id, 'valor_aporte': valor}
+            for obj_id, valor in aportes_dict.items()
+        ]
+        resultado = BalanceamentoService.processar_balanceamento(
+            cliente_id, aportes_finais, session
+        )
+
+        resultado['historico_cascata'] = historico_cascata
+        resultado['tem_cascata']       = len(historico_cascata) > 0
+        return resultado
 
     @staticmethod
     def aplicar_balanceamento(resultado: Dict, session: Session):

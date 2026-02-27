@@ -276,7 +276,7 @@
                     <td><strong>TOTAL ATUAL</strong></td>
                     {% for objetivo in objetivos %}
                         {% set valores = valores_por_objetivo[objetivo.id] %}
-                        <td colspan="4" class="text-right"><strong>R$ {{ '{:,.2f}'.format(valores.total).replace(',', '.') }}</strong></td>
+                        <td colspan="4" class="text-right"><strong>R$ {{ '{:,.2f}'.format(valores.total).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong></td>
                         <td class="text-center"><input type="checkbox" title="Sacar tudo" onchange="document.getElementById('aporte_{{ objetivo.id }}').value = this.checked ? -({{ valores.total }}) : 0">
                         </td>
                     {% endfor %}
@@ -290,7 +290,7 @@
                         {% set total_atual = valores_por_objetivo[objetivo.id].total %}
                         
                         <td colspan="4" class="text-right" >
-                            <strong >R$ {{ '{:,.0f}'.format(vp).replace(',', '.') }}</strong>
+                            <strong >R$ {{ '{:,.2f}'.format(vp).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
                         </td>
                         <td></td>
                     {% endfor %}

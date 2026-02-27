@@ -144,8 +144,8 @@ def calcular(cliente_id):
                 })
                       
         
-        # Processar balanceamento
-        resultado = BalanceamentoService.processar_balanceamento(
+        # Processar balanceamento com cascata de excedentes
+        resultado = BalanceamentoService.executar_cascata_e_rebalancear(
             cliente_id, aportes_por_objetivo, db
         )
         

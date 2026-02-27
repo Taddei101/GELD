@@ -333,7 +333,7 @@
                 <td><strong>TOTAL ATUAL</strong></td>
                 {% for objetivo in objetivos %}
                     {% set valores = valores_por_objetivo[objetivo.id] %}
-                    <td colspan="5" class="text-right"><strong>R$ {{ '{:,.0f}'.format(valores.total).replace(',', '.') }}</strong></td>
+                    <td colspan="5" class="text-right"><strong>R$ {{ '{:,.2f}'.format(valores.total).replace(',', '.') }}</strong></td>
                 {% endfor %}
             </tr>
         </tbody>

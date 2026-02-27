@@ -327,6 +327,43 @@
     </div>
 
 </div>
+    {% if resultado.tem_cascata %}
+    <hr style="margin: 30px 0;">
+    <h3>Redistribuição de Excedentes</h3>
+    <p style="color: #666; font-size: 0.9em;">
+        Objetivos que superaram o VP Ideal tiveram seu excedente redistribuído automaticamente
+        para objetivos com déficit, priorizando os de menor prazo.
+    </p>
+
+    <div style="max-width: 600px;">
+        {% for iteracao in resultado.historico_cascata %}
+            {% if resultado.historico_cascata | length > 1 %}
+            <p style="font-size: 0.85em; color: #888; margin-bottom: 5px;">Rodada {{ iteracao.iteracao }}</p>
+            {% endif %}
+            <table class="table table-bordered table-sm" style="font-size: 0.85em;">
+                <thead style="background-color: #e9ecef;">
+                    <tr>
+                        <th>Origem (excedente)</th>
+                        <th>Destino (déficit)</th>
+                        <th class="text-right">Valor transferido</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for mov in iteracao.movimentacoes %}
+                    <tr>
+                        <td>{{ mov.origem_nome }}</td>
+                        <td>→ {{ mov.destino_nome }}</td>
+                        <td class="text-right">
+                            <strong>R$ {{ '{:,.0f}'.format(mov.valor).replace(',', '.') }}</strong>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     <p></p>
     <!-- Botões de Ação -->
     <div>
