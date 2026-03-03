@@ -105,7 +105,137 @@ class ExtractServices:
         print("❌ Não foi possível baixar dados da CVM")
         return pd.DataFrame()
 
-    # NOVA FUNÇÃO INFO DOS FUNDOS CVM - SUBSTITUIR A ANTIGA
+    def baixar_inf_diario_mes(self, ano, mes):
+        """
+        Baixa o inf_diario_fi de um mês específico.
+        
+        Args:
+            ano: int
+            mes: int
+            
+        Returns:
+            DataFrame com CNPJ_NORM já calculado, ou DataFrame vazio se falhar
+        """
+        ano_str = str(ano)
+        mes_str = f"{mes:02d}"
+        nome_arquivo = f"inf_diario_fi_{ano_str}{mes_str}"
+        url = f"https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS/{nome_arquivo}.zip"
+        
+        temp_dir = os.path.join(os.path.dirname(__file__), 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        zip_path = os.path.join(temp_dir, f"{nome_arquivo}.zip")
+        
+        try:
+            print(f"[CVM] Baixando FI {mes_str}/{ano_str}...")
+            response = requests.get(url, timeout=60)
+            
+            if response.status_code == 404:
+                print(f"[CVM] {mes_str}/{ano_str} não disponível (404)")
+                return pd.DataFrame()
+            
+            if response.status_code != 200:
+                print(f"[CVM] Erro HTTP {response.status_code}")
+                return pd.DataFrame()
+            
+            with open(zip_path, "wb") as f:
+                f.write(response.content)
+            
+            with zipfile.ZipFile(zip_path) as zf:
+                df = pd.read_csv(zf.open(zf.namelist()[0]), sep=";", encoding='ISO-8859-1')
+            
+            # Normalizar CNPJ uma única vez aqui
+            df['CNPJ_NORM'] = (df['CNPJ_FUNDO_CLASSE']
+                               .str.replace('.', '', regex=False)
+                               .str.replace('/', '', regex=False)
+                               .str.replace('-', '', regex=False))
+            
+            print(f"[CVM] {len(df)} registros — FI {mes_str}/{ano_str}")
+            return df
+            
+        except Exception as e:
+            print(f"[CVM] Erro ao baixar {tipo.upper()} {mes_str}/{ano_str}: {str(e)}")
+            return pd.DataFrame()
+        finally:
+            try:
+                if os.path.exists(zip_path):
+                    os.remove(zip_path)
+            except:
+                pass
+
+    def baixar_inf_mensal_fii(self, ano):
+        """
+        Baixa o informe mensal de FIIs de um ano específico.
+        Extrai o CSV 'complemento' que contém Valor_Patrimonial_Cotas.
+
+        Args:
+            ano: int
+
+        Returns:
+            DataFrame com CNPJ_NORM e Valor_Patrimonial_Cotas, ou DataFrame vazio
+        """
+        ano_str = str(ano)
+        nome_arquivo = f"inf_mensal_fii_{ano_str}"
+        url = f"https://dados.cvm.gov.br/dados/FII/DOC/INF_MENSAL/DADOS/{nome_arquivo}.zip"
+
+        temp_dir = os.path.join(os.path.dirname(__file__), 'temp')
+        os.makedirs(temp_dir, exist_ok=True)
+        zip_path = os.path.join(temp_dir, f"{nome_arquivo}.zip")
+
+        try:
+            print(f"[CVM] Baixando informe mensal FII {ano_str}...")
+            response = requests.get(url, timeout=60)
+
+            if response.status_code == 404:
+                print(f"[CVM] Informe mensal FII {ano_str} não disponível (404)")
+                return pd.DataFrame()
+
+            if response.status_code != 200:
+                print(f"[CVM] Erro HTTP {response.status_code}")
+                return pd.DataFrame()
+
+            with open(zip_path, "wb") as f:
+                f.write(response.content)
+
+            # Dentro do zip, queremos o CSV 'complemento'
+            with zipfile.ZipFile(zip_path) as zf:
+                csv_target = next(
+                    (name for name in zf.namelist() if 'complemento' in name.lower()),
+                    None
+                )
+                if not csv_target:
+                    print(f"[CVM] CSV complemento não encontrado no zip. Arquivos: {zf.namelist()}")
+                    return pd.DataFrame()
+
+                df = pd.read_csv(
+                    zf.open(csv_target),
+                    sep=';',
+                    encoding='latin1',
+                    usecols=['CNPJ_Fundo_Classe', 'Data_Referencia', 'Valor_Patrimonial_Cotas']
+                )
+
+            # Normalizar CNPJ
+            df['CNPJ_NORM'] = (df['CNPJ_Fundo_Classe']
+                               .str.replace('.', '', regex=False)
+                               .str.replace('/', '', regex=False)
+                               .str.replace('-', '', regex=False))
+
+            # Garantir que valor é float
+            df['Valor_Patrimonial_Cotas'] = pd.to_numeric(df['Valor_Patrimonial_Cotas'], errors='coerce')
+
+            print(f"[CVM] {len(df)} registros FII — informe mensal {ano_str}")
+            return df
+
+        except Exception as e:
+            print(f"[CVM] Erro ao baixar informe mensal FII {ano_str}: {str(e)}")
+            return pd.DataFrame()
+        finally:
+            try:
+                if os.path.exists(zip_path):
+                    os.remove(zip_path)
+            except:
+                pass
+
+    # FUNÇÃO INFO DOS FUNDOS CVM
     def extracao_cvm_info(self, cnpj, max_meses_anteriores=3):
         """
         Busca informações do fundo por CNPJ de forma inteligente.

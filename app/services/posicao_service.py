@@ -51,7 +51,7 @@ class PosicaoService:
             ]),
             'baixo_rfx': _query_soma([
                 InfoFundo.risco == RiscoEnum.baixo,
-                (InfoFundo.subtipo_risco == SubtipoRiscoEnum.rfx) | (InfoFundo.subtipo_risco == None)
+                (InfoFundo.subtipo_risco == SubtipoRiscoEnum.rfx) | (InfoFundo.subtipo_risco.is_(None))
             ]),
             'moderado': _query_soma([
                 InfoFundo.risco == RiscoEnum.moderado

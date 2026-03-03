@@ -215,121 +215,38 @@ def edit_fundo(fundo_id):
     return redirect(url_for('fundos.listar_fundos'))
 
 
-# ATUALIZAR
+# ATUALIZAR COTAS
 @fundos_bp.route('/atualizar_cotas_fundos', methods=['POST'])
 @login_required
 def atualizar_cotas_fundos():
+    from app.services.cota_update_service import CotaUpdateService
     db = None
-
-    def atualizar_fundos_inteligente(extract_service, max_meses=2):
-        """
-        Atualiza cotas dos fundos cadastrados usando dados da CVM
-        """
-        from datetime import datetime
-        
-        fundos = db.query(InfoFundo).all()
-        print(f"=== Atualizando {len(fundos)} fundos ===")
-        
-        fundos_atualizados = 0
-        fundos_detalhes = []
-        
-        # Baixar dados da CVM (1 chamada única)
-        df_cvm = extract_service.extracao_cvm()
-        
-        if df_cvm.empty:
-            print("❌ Não foi possível baixar dados da CVM")
-            return 0, []
-        
-        # Normalizar CNPJs no DataFrame uma única vez
-        df_cvm['CNPJ_NORM'] = df_cvm['CNPJ_FUNDO_CLASSE'].str.replace('.', '').str.replace('/', '').str.replace('-', '')
-        
-        print(f"\n=== Processando {len(fundos)} fundos ===")
-        
-        # Processar cada fundo
-        for fundo in fundos:
-            # Validação: pular fundos sem CNPJ
-            if not fundo.cnpj or fundo.cnpj.strip() == '':
-                print(f"⚠️ {fundo.nome_fundo[:35]}: Sem CNPJ (pulado)")
-                fundos_detalhes.append({
-                    'nome': fundo.nome_fundo,
-                    'status': 'sem_cnpj'
-                })
-                continue
-            
-            # Normalizar CNPJ do fundo
-            cnpj_normalizado = fundo.cnpj.replace('.', '').replace('/', '').replace('-', '')
-            
-            # Buscar no DataFrame
-            df_fundo = df_cvm[df_cvm['CNPJ_NORM'] == cnpj_normalizado]
-            
-            if not df_fundo.empty:
-                # Pegar registro mais recente (por data)
-                df_recente = df_fundo.sort_values('DT_COMPTC', ascending=False).iloc[0]
-                
-                # Converter valor da cota (formato brasileiro: vírgula decimal)
-                valor_novo = float(df_recente['VL_QUOTA'])
-                valor_antigo = float(fundo.valor_cota) if fundo.valor_cota else 0
-                
-                print(f"✅ {fundo.nome_fundo[:35]}: {valor_antigo:.6f} -> {valor_novo:.6f}")
-                
-                # Atualizar no banco
-                fundo.valor_cota = valor_novo
-                fundo.data_atualizacao = datetime.now()
-                
-                fundos_atualizados += 1
-                fundos_detalhes.append({
-                    'nome': fundo.nome_fundo,
-                    'valor_antigo': valor_antigo,
-                    'valor_novo': valor_novo
-                })
-            else:
-                print(f"❌ {fundo.nome_fundo[:35]}: Não encontrado na CVM")
-        
-        return fundos_atualizados, fundos_detalhes
-
     try:
         db = create_session()
-        extract_service = ExtractServices(db)
+        service = CotaUpdateService(db)
+        resultado = service.atualizar_todas_cotas()
 
-        # Usar a nova lógica inteligente (apenas 2 meses)
-        fundos_atualizados, detalhes = atualizar_fundos_inteligente(extract_service, max_meses=2)
+        total_atualizados = resultado['fi_atualizados'] + resultado['fii_atualizados']
 
-        if fundos_atualizados > 0:
+        if total_atualizados > 0:
             db.commit()
-            print(f"\\n✅ Commit realizado: {fundos_atualizados} fundos atualizados")
-
-            # Criar mensagem detalhada
-            total_fundos = len(db.query(InfoFundo).all())
-            mensagem = f"Atualizados {fundos_atualizados} de {total_fundos} fundos:\\n"
-
-            for detalhe in detalhes[:3]:  # Mostrar primeiros 3
-                if 'valor_novo' in detalhe:
-                    mensagem += f"• {detalhe['nome'][:25]}: {detalhe['valor_antigo']:.3f} → {detalhe['valor_novo']:.3f}\\n"
-
-            if len(detalhes) > 3:
-                mensagem += f"... e mais {len(detalhes) - 3} fundos"
-
+            mensagem = (f"✅ {total_atualizados} de {resultado['total']} fundos atualizados "
+                        f"(FI: {resultado['fi_atualizados']} | FII: {resultado['fii_atualizados']})")
+            if resultado['nao_encontrados']:
+                mensagem += f" — {len(resultado['nao_encontrados'])} não encontrados na CVM"
             flash(mensagem, 'success')
         else:
-            print("❌ Nenhum fundo foi atualizado")
-            flash('Nenhum fundo foi encontrado nos dados da CVM dos últimos 2 meses.', 'warning')
-
-        db.close()
-        return redirect(url_for('fundos.listar_fundos'))
+            flash('Nenhum fundo foi encontrado nos dados da CVM. Tente novamente mais tarde.', 'warning')
 
     except Exception as e:
-        print(f"❌ Erro geral: {e}")
         import traceback
         traceback.print_exc()
-
         if db:
-            try:
-                db.rollback()
-                db.close()
-            except:
-                pass
-
+            db.rollback()
         flash(f'Erro ao atualizar cotas: {str(e)}', 'error')
+    finally:
+        if db:
+            db.close()
 
     return redirect(url_for('fundos.listar_fundos'))
 

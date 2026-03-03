@@ -95,7 +95,7 @@
                 <td>{{ " ".join(fundo.classe_anbima.split()[:3]) }}</td>
                 <td>{{ fundo.cnpj if fundo.cnpj else 'N/A' }}</td>
                 
-                 <td>{{ fundo.data_atualizacao.strftime('%d/%m/%Y') }} </td>
+                 <td>{{ fundo.data_atualizacao.strftime('%d/%m/%Y') if fundo.data_atualizacao else 'N/A' }}</td>
                 
                 <td>{{'R$ {:.2f}'.format(fundo.valor_cota).replace('.', ',') if fundo.valor_cota else 'N/A'}}</td>
                 <td>
