@@ -4,7 +4,8 @@ from app.services.balance_service import BalanceamentoService
 from app.services.posicao_service import PosicaoService
 from app.models.geld_models import (
     create_session, RiscoEnum, SubtipoRiscoEnum, BancoEnum, Cliente, StatusEnum, 
-    PosicaoFundo, InfoFundo, Objetivo, DistribuicaoObjetivo, IndicadoresEconomicos
+    PosicaoFundo, InfoFundo, Objetivo, DistribuicaoObjetivo, IndicadoresEconomicos,
+    TODAS_CLASSES
 )
 from datetime import datetime
 from functools import wraps
@@ -198,11 +199,12 @@ def area_cliente(cliente_id):
         objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
         
         # Inicializar variáveis
-        totais_atuais = {'baixo_di': 0.0, 'baixo_rfx': 0.0, 'moderado': 0.0, 'alto': 0.0}
+        totais_atuais = {c: 0.0 for c in TODAS_CLASSES}
         valores_por_objetivo = {}
         percentuais_salvos = {}
         matrizes_risco = {}
         vp_ideal_por_objetivo = {}
+        percentuais_alvo_por_objetivo = {}
         
         if objetivos:
             # Calcular totais por classe
@@ -218,18 +220,10 @@ def area_cliente(cliente_id):
                 dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo.id).first()
                 if dist:
                     percentuais_salvos[objetivo.id] = {
-                        'baixo_di': dist.perc_baixo_di,
-                        'baixo_rfx': dist.perc_baixo_rfx,
-                        'moderado': dist.perc_moderado,
-                        'alto': dist.perc_alto
+                        c: getattr(dist, f'perc_{c}') for c in TODAS_CLASSES
                     }
                 else:
-                    percentuais_salvos[objetivo.id] = {
-                        'baixo_di': 0.0,
-                        'baixo_rfx': 0.0,
-                        'moderado': 0.0,
-                        'alto': 0.0
-                    }
+                    percentuais_salvos[objetivo.id] = {c: 0.0 for c in TODAS_CLASSES}
             
             # Buscar matrizes de risco
             ipca = db.query(IndicadoresEconomicos).order_by(
@@ -240,6 +234,7 @@ def area_cliente(cliente_id):
             for objetivo in objetivos:
                 matriz = BalanceamentoService.buscar_matriz_alvo(objetivo, db)
                 matrizes_risco[objetivo.id] = matriz
+                percentuais_alvo_por_objetivo[objetivo.id] = BalanceamentoService._percentuais_da_matriz(matriz)
                 
                 # Calcular VP Ideal
                 vp_ideal = BalanceamentoService.calcular_vp_ideal(objetivo, ipca_anual)
@@ -249,11 +244,11 @@ def area_cliente(cliente_id):
         # Calcular capital órfão (não alocado em nenhum objetivo)
         capital_alocado = {
             c: sum(v[c] for v in valores_por_objetivo.values())
-            for c in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']
+            for c in TODAS_CLASSES
         }
         tem_capital_orfao = any(
             totais_atuais[c] - capital_alocado[c] > 1.0
-            for c in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']
+            for c in TODAS_CLASSES
         )
 
         return render_template('cliente/area_cliente.html', 
@@ -272,6 +267,7 @@ def area_cliente(cliente_id):
                               percentuais_salvos=percentuais_salvos,
                               matrizes_risco=matrizes_risco,
                               vp_ideal_por_objetivo=vp_ideal_por_objetivo,
+                              percentuais_alvo_por_objetivo=percentuais_alvo_por_objetivo,
                               tem_capital_orfao=tem_capital_orfao)
 
     except Exception as e:

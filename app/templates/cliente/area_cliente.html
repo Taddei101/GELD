@@ -1,51 +1,42 @@
 {% extends "base.html" %}
 
 {% block title %} Profile - Geld's Finance {% endblock %}
-
 {% block header %} {{cliente.nome}} {% endblock %}
 
 {% block content %}
+
+{% set todas_classes = ['baixo_di', 'baixo_rfx', 'moderado', 'alto', 'ouro', 'dolar', 'cripto', 'internacional', 'fii'] %}
 
 <!-- CONTAINER: Resumo por Classe de Risco + Fatias lado a lado -->
 {% if has_positions or objetivos %}
 <div style="display: flex; flex-wrap: nowrap; gap: 20px; align-items: stretch; overflow-x: auto;">
 
-    <!-- SEÇÃO: Resumo por Classe de Risco (Detalhado) -->
+    <!-- SEÇÃO: Resumo por Classe de Risco -->
     {% if has_positions %}
     <div class="client_area" style="flex: 0 0 auto;">
         <h3>Resumo por Classe de Risco</h3>
-        <table class="table" >
+        <table class="table">
         <thead>
             <tr>
-                <th style="min-width: 120px;white-space: nowrap;">Classe de Risco</th>
+                <th style="min-width: 120px; white-space: nowrap;">Classe de Risco</th>
                 <th style="min-width: 160px; white-space: nowrap;">Saldo Atual</th>
                 <th style="min-width: 100px; white-space: nowrap;">% do Portfolio</th>
             </tr>
         </thead>
         <tbody>
+            {% for classe in todas_classes %}
+            {% set saldo = totais_atuais[classe] %}
+            {% if saldo > 0 %}
             <tr>
-                <td>Baixo DI</td>
-                <td>R$ {{ '{:,.2f}'.format(saldo_fundo_di if saldo_fundo_di is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>{{ '{:.1f}%'.format((saldo_fundo_di / montante_cliente * 100) if montante_cliente > 0 and saldo_fundo_di is defined else 0).replace('.', ',') }}</td>
+                <td>{{ classe | replace('_', ' ') | title }}</td>
+                <td>R$ {{ '{:,.2f}'.format(saldo).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                <td>{{ '{:.1f}'.format((saldo / montante_cliente * 100) if montante_cliente > 0 else 0).replace('.', ',') }}%</td>
             </tr>
-            <tr>
-                <td>Baixo RFx</td>
-                <td>R$ {{ '{:,.2f}'.format(saldo_baixo if saldo_baixo is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>{{ '{:.1f}%'.format((saldo_baixo / montante_cliente * 100) if montante_cliente > 0 and saldo_baixo is defined else 0).replace('.', ',') }}</td>
-            </tr>
-            <tr>
-                <td>Moderado</td>
-                <td>R$ {{ '{:,.2f}'.format(saldo_moderado if saldo_moderado is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>{{ '{:.1f}%'.format((saldo_moderado / montante_cliente * 100) if montante_cliente > 0 and saldo_moderado is defined else 0).replace('.', ',') }}</td>
-            </tr>
-            <tr>
-                <td>Alto</td>
-                <td>R$ {{ '{:,.2f}'.format(saldo_alto if saldo_alto is defined else 0).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
-                <td>{{ '{:.1f}%'.format((saldo_alto / montante_cliente * 100) if montante_cliente > 0 and saldo_alto is defined else 0).replace('.', ',') }}</td>
-            </tr>
+            {% endif %}
+            {% endfor %}
             <tr class="total-row">
                 <td>Total</td>
-                <td>R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', ' ').replace('.', ',').replace(' ', '.') }}</td>
+                <td>R$ {{ '{:,.2f}'.format(montante_cliente).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
                 <td>100,0%</td>
             </tr>
         </tbody>
@@ -65,83 +56,34 @@
                         {% for objetivo in objetivos %}
                         <th class="text-center" style="white-space: nowrap;">{{ objetivo.nome_objetivo }}</th>
                         {% endfor %}
-                        <th class="text-center" ><strong>Total</strong></th>
+                        <th class="text-center"><strong>Total</strong></th>
                     </tr>
                 </thead>
                 <tbody>
-                    {#Linha valor desejado#}
+                    {# Linha valor alvo #}
                     <tr>
                         <td>Valor Alvo</td>
-                            {% for objetivo in objetivos %}
-                               <td class="text-center" style="white-space: nowrap;">
-                                R$ {{ '{:,.0f}'.format(vp_ideal_por_objetivo[objetivo.id] | float).replace(',', '.') }}
-                                </td>
-                            {% endfor %}
+                        {% for objetivo in objetivos %}
+                            <td class="text-center" style="white-space: nowrap;">
+                                R$ {{ '{:,.0f}'.format(vp_ideal_por_objetivo[objetivo.id] | float).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                            </td>
+                        {% endfor %}
                         <td><img src="{{ url_for('static', filename='icons/pie.png') }}" class="sml-btn-icon"></td>
                     </tr>
-                    {# Linha: Baixo DI #}
+                    {# Linhas por classe #}
+                    {% for classe in todas_classes %}
                     <tr>
-                        <td style="background-color: #d4edda;">Baixo DI</td>
+                        <td>{{ classe | replace('_', ' ') | title }}</td>
                         {% for objetivo in objetivos %}
-                            {% set perc = percentuais_salvos[objetivo.id].baixo_di %}
-                            <td class="text-center" style="background-color: #d4edda;">
-                                {% if perc > 0 %}
-                                    {{ '{:.1f}'.format(perc) }}%
-                                {% else %}
-                                    <span style="color: #999;">-</span>
-                                {% endif %}
+                            {% set perc = percentuais_salvos[objetivo.id][classe] %}
+                            <td class="text-center">
+                                {% if perc > 0 %}{{ '{:.1f}'.format(perc) }}%
+                                {% else %}<span style="color: #999;">-</span>{% endif %}
                             </td>
                         {% endfor %}
-                        <td class="text-center" style="background-color: #c3e6cb;">100%</td>
+                        <td class="text-center">100%</td>
                     </tr>
-
-                    {# Linha: Baixo RFx #}
-                    <tr>
-                        <td style="background-color: #d4edda;">Baixo RFx</td>
-                        {% for objetivo in objetivos %}
-                            {% set perc = percentuais_salvos[objetivo.id].baixo_rfx %}
-                            <td class="text-center" style="background-color: #d4edda;">
-                                {% if perc > 0 %}
-                                    {{ '{:.1f}'.format(perc) }}%
-                                {% else %}
-                                    <span style="color: #999;">-</span>
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                        <td class="text-center" style="background-color: #c3e6cb;">100%</td>
-                    </tr>
-
-                    {# Linha: Moderado #}
-                    <tr>
-                        <td style="background-color: #fff3cd;">Moderado</td>
-                        {% for objetivo in objetivos %}
-                            {% set perc = percentuais_salvos[objetivo.id].moderado %}
-                            <td class="text-center" style="background-color: #fff3cd;">
-                                {% if perc > 0 %}
-                                    {{ '{:.1f}'.format(perc) }}%
-                                {% else %}
-                                    <span style="color: #999;">-</span>
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                        <td class="text-center" style="background-color: #ffeaa7;">100%</td>
-                    </tr>
-
-                    {# Linha: Alto #}
-                    <tr>
-                        <td style="background-color: #f8d7da;">Alto</td>
-                        {% for objetivo in objetivos %}
-                            {% set perc = percentuais_salvos[objetivo.id].alto %}
-                            <td class="text-center" style="background-color: #f8d7da;">
-                                {% if perc > 0 %}
-                                    {{ '{:.1f}'.format(perc) }}%
-                                {% else %}
-                                    <span style="color: #999;">-</span>
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                        <td class="text-center" style="background-color: #f5c6cb;">100%</td>
-                    </tr>
+                    {% endfor %}
                 </tbody>
             </table>
         </div>
@@ -156,8 +98,7 @@
 <!-- TABELA: Alocação por Objetivo -->
 {% if objetivos %}
 <div class="client_area">
-    <h3> Alocação por Objetivo</h3>
-    
+    <h3>Alocação por Objetivo</h3>
     <div style="overflow-x: auto;">
     <table class="table">
         <thead>
@@ -180,160 +121,41 @@
             </tr>
         </thead>
         <tbody>
-            <!-- Linha: Baixo DI -->
+            {% for classe in todas_classes %}
             <tr>
-                <td style="background-color: #d4edda;"><strong> Baixo DI</strong></td>
+                <td><strong>{{ classe | replace('_', ' ') | title }}</strong></td>
                 {% for objetivo in objetivos %}
                     {% set valores = valores_por_objetivo[objetivo.id] %}
-                    {% set matriz = matrizes_risco[objetivo.id] %}
                     {% set total_atual = valores.total %}
-                    
-                    {% set target_pct = (matriz.perc_baixo * matriz.perc_di_dentro_baixo) / 100 %}
+                    {% set target_pct = percentuais_alvo_por_objetivo[objetivo.id][classe] %}
                     {% set target_reais = total_atual * target_pct / 100 %}
-                    {% set atual_reais = valores.baixo_di %}
+                    {% set atual_reais = valores[classe] %}
                     {% set gap = target_reais - atual_reais %}
-                    
-                    {% if total_atual > 0 %}
-                        {% set atual_pct = (atual_reais / total_atual) * 100 %}
-                    {% else %}
-                        {% set atual_pct = 0 %}
-                    {% endif %}
-                    
-                    <td class="text-center" style="background-color: #d4edda;">{{ '{:.1f}'.format(target_pct) }}%</td>
-                    <td class="text-right" style="background-color: #d4edda;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
+                    {% set atual_pct = (atual_reais / total_atual * 100) if total_atual > 0 else 0 %}
+
+                    <td class="text-center">{{ '{:.1f}'.format(target_pct) }}%</td>
+                    <td class="text-right">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
                     <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
                         {{ '{:.1f}'.format(atual_pct) }}%
                     </td>
-                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
-                    <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
-                        {% if gap > 0 %}
-                            <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
-                        {% elif gap < 0 %}
-                            <span style="color: red;">{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
-                        {% else %}
-                            0
-                        {% endif %}
+                    <td class="text-right">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
+                    <td class="text-right" style="font-weight: bold;">
+                        {% if gap > 0 %}<span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
+                        {% elif gap < 0 %}<span style="color: red;">{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
+                        {% else %}0{% endif %}
                     </td>
                 {% endfor %}
             </tr>
-            
-            <!-- Linha: Baixo RFx -->
-            <tr>
-                <td style="background-color: #d4edda;"><strong> Baixo RFx</strong></td>
-                {% for objetivo in objetivos %}
-                    {% set valores = valores_por_objetivo[objetivo.id] %}
-                    {% set matriz = matrizes_risco[objetivo.id] %}
-                    {% set total_atual = valores.total %}
-                    
-                    {% set target_pct = (matriz.perc_baixo * matriz.perc_rfx_dentro_baixo) / 100 %}
-                    {% set target_reais = total_atual * target_pct / 100 %}
-                    {% set atual_reais = valores.baixo_rfx %}
-                    {% set gap = target_reais - atual_reais %}
-                    
-                    {% if total_atual > 0 %}
-                        {% set atual_pct = (atual_reais / total_atual) * 100 %}
-                    {% else %}
-                        {% set atual_pct = 0 %}
-                    {% endif %}
-                    
-                    <td class="text-center" style="background-color: #d4edda;">{{ '{:.1f}'.format(target_pct) }}%</td>
-                    <td class="text-right" style="background-color: #d4edda;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
-                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
-                        {{ '{:.1f}'.format(atual_pct) }}%
-                    </td>
-                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
-                    <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
-                        {% if gap > 0 %}
-                            <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
-                        {% elif gap < 0 %}
-                            <span style="color: red;">{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
-                        {% else %}
-                            0
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
-            
-            <!-- Linha: Moderado -->
-            <tr>
-                <td style="background-color: #fff3cd;"><strong> Moderado</strong></td>
-                {% for objetivo in objetivos %}
-                    {% set valores = valores_por_objetivo[objetivo.id] %}
-                    {% set matriz = matrizes_risco[objetivo.id] %}
-                    {% set total_atual = valores.total %}
-                    
-                    {% set target_pct = matriz.perc_moderado %}
-                    {% set target_reais = total_atual * target_pct / 100 %}
-                    {% set atual_reais = valores.moderado %}
-                    {% set gap = target_reais - atual_reais %}
-                    
-                    {% if total_atual > 0 %}
-                        {% set atual_pct = (atual_reais / total_atual) * 100 %}
-                    {% else %}
-                        {% set atual_pct = 0 %}
-                    {% endif %}
-                    
-                    <td class="text-center" style="background-color: #fff3cd;">{{ '{:.1f}'.format(target_pct) }}%</td>
-                    <td class="text-right" style="background-color: #fff3cd;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
-                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
-                        {{ '{:.1f}'.format(atual_pct) }}%
-                    </td>
-                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
-                    <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
-                        {% if gap > 0 %}
-                            <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
-                        {% elif gap < 0 %}
-                            <span style="color: red;">{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
-                        {% else %}
-                            0
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
-            
-            <!-- Linha: Alto -->
-            <tr>
-                <td style="background-color: #f8d7da;"><strong> Alto</strong></td>
-                {% for objetivo in objetivos %}
-                    {% set valores = valores_por_objetivo[objetivo.id] %}
-                    {% set matriz = matrizes_risco[objetivo.id] %}
-                    {% set total_atual = valores.total %}
-                    
-                    {% set target_pct = matriz.perc_alto %}
-                    {% set target_reais = total_atual * target_pct / 100 %}
-                    {% set atual_reais = valores.alto %}
-                    {% set gap = target_reais - atual_reais %}
-                    
-                    {% if total_atual > 0 %}
-                        {% set atual_pct = (atual_reais / total_atual) * 100 %}
-                    {% else %}
-                        {% set atual_pct = 0 %}
-                    {% endif %}
-                    
-                    <td class="text-center" style="background-color: #f8d7da;">{{ '{:.1f}'.format(target_pct) }}%</td>
-                    <td class="text-right" style="background-color: #f8d7da;">{{ '{:,.0f}'.format(target_reais).replace(',', '.') }}</td>
-                    <td class="text-center" style="background-color: {% if atual_pct < target_pct %}#fff3cd{% elif atual_pct > target_pct %}#f8d7da{% else %}#d4edda{% endif %};">
-                        {{ '{:.1f}'.format(atual_pct) }}%
-                    </td>
-                    <td class="text-right" style="background-color: #f8f9fa;">{{ '{:,.0f}'.format(atual_reais).replace(',', '.') }}</td>
-                    <td class="text-right" style="background-color: {% if gap > 0 %}#d4edda{% elif gap < 0 %}#f8d7da{% else %}#f8f9fa{% endif %}; font-weight: bold;">
-                        {% if gap > 0 %}
-                            <span style="color: green;">+{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
-                        {% elif gap < 0 %}
-                            <span style="color: red;">{{ '{:,.0f}'.format(gap).replace(',', '.') }}</span>
-                        {% else %}
-                            0
-                        {% endif %}
-                    </td>
-                {% endfor %}
-            </tr>
-            
+            {% endfor %}
+
             <!-- Linha: Total Atual -->
             <tr class="table-active">
                 <td><strong>TOTAL ATUAL</strong></td>
                 {% for objetivo in objetivos %}
                     {% set valores = valores_por_objetivo[objetivo.id] %}
-                    <td colspan="5" class="text-right"><strong>R$ {{ '{:,.2f}'.format(valores.total).replace(',', '.') }}</strong></td>
+                    <td colspan="5" class="text-right">
+                        <strong>R$ {{ '{:,.2f}'.format(valores.total).replace(',', 'X').replace('.', ',').replace('X', '.') }}</strong>
+                    </td>
                 {% endfor %}
             </tr>
         </tbody>
@@ -345,35 +167,40 @@
 <p></p>
 
 <div class="client_area">
-    <button class="bigBtn" onclick="window.location.href=`{{ url_for('cliente.info_cliente',cliente_id=cliente.id) }}`">
-    <img src="{{ url_for('static', filename='icons/profile.png') }}" class="btn-icon">Informações Pessoais</button>
-    
-    <!-- Objetivos Financeiros -->
+    <button class="bigBtn" onclick="window.location.href=`{{ url_for('cliente.info_cliente', cliente_id=cliente.id) }}`">
+        <img src="{{ url_for('static', filename='icons/profile.png') }}" class="btn-icon">Informações Pessoais
+    </button>
+
     <button class="bigBtn {% if not objetivos %}btn-orfao{% endif %}"
         title="{% if not objetivos %}Nenhum objetivo cadastrado. Clique para adicionar.{% endif %}"
-        onclick="window.location.href=`{{ url_for('objetivo.listar_objetivos',cliente_id=cliente.id) }}`">
-        <img src="{{ url_for('static', filename='icons/objetivo.png') }}" class="btn-icon">Objetivos Financeiros</button>
-       
-    <!-- Posição Financeira -->
+        onclick="window.location.href=`{{ url_for('objetivo.listar_objetivos', cliente_id=cliente.id) }}`">
+        <img src="{{ url_for('static', filename='icons/objetivo.png') }}" class="btn-icon">Objetivos Financeiros
+    </button>
+
     <button class="bigBtn {% if not has_positions %}btn-orfao{% endif %}"
         title="{% if not has_positions %}Nenhuma posição cadastrada. Clique para adicionar.{% endif %}"
-        onclick="window.location.href=`{{ url_for('posicao.listar_posicao',cliente_id=cliente.id) }}`">
-        <img src="{{ url_for('static', filename='icons/posicao.png') }}" class="btn-icon">Posição Financeira</button>
+        onclick="window.location.href=`{{ url_for('posicao.listar_posicao', cliente_id=cliente.id) }}`">
+        <img src="{{ url_for('static', filename='icons/posicao.png') }}" class="btn-icon">Posição Financeira
+    </button>
 
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}`">
-        <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte</button>
+        <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte
+    </button>
 
     {% if tem_capital_orfao %}
     <button class="bigBtn btn-orfao" onclick="window.location.href=`{{ url_for('balanco.editar_fatias', cliente_id=cliente.id) }}`"
         title="Há capital não alocado em objetivos. Clique para definir as fatias.">
-        <img src="{{ url_for('static', filename='icons/pie.png') }}" class="btn-icon"> Editar Fatias</button>
+        <img src="{{ url_for('static', filename='icons/pie.png') }}" class="btn-icon">Editar Fatias
+    </button>
     {% else %}
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.editar_fatias', cliente_id=cliente.id) }}`">
-        <img src="{{ url_for('static', filename='icons/pie.png') }}" class="btn-icon">Editar Fatias</button>
+        <img src="{{ url_for('static', filename='icons/pie.png') }}" class="btn-icon">Editar Fatias
+    </button>
     {% endif %}
-    
+
     <form method="POST" action="{{ url_for('balanco.resetar_distribuicao', cliente_id=cliente.id) }}" style="display: inline;">
-        <button type="submit" class="bigBtn" style="background-color: #6c757d;" onclick="return confirm('Resetar TODOS os percentuais de distribuição?')">
+        <button type="submit" class="bigBtn" style="background-color: #6c757d;"
+            onclick="return confirm('Resetar TODOS os percentuais de distribuição?')">
             <img src="{{ url_for('static', filename='icons/trash.png') }}" class="btn-icon" style="filter: brightness(0) invert(1);">Resetar Distribuição
         </button>
     </form>
@@ -381,6 +208,7 @@
 
 <p></p>
 <button title="Voltar" class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.listar_clientes') }}`">
-    <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
-    
+    <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
+</button>
+
 {% endblock %}

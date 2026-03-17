@@ -3,7 +3,7 @@ Rotas para balanceamento de carteiras
 """
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session as flask_session
-from app.models.geld_models import Cliente, Objetivo, create_session
+from app.models.geld_models import Cliente, Objetivo, create_session, TODAS_CLASSES
 from app.services.balance_service import BalanceamentoService
 from app.services.global_services import login_required
 
@@ -43,22 +43,15 @@ def iniciar(cliente_id):
             dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo.id).first()
             if dist:
                 percentuais_salvos[objetivo.id] = {
-                    'baixo_di': dist.perc_baixo_di,
-                    'baixo_rfx': dist.perc_baixo_rfx,
-                    'moderado': dist.perc_moderado,
-                    'alto': dist.perc_alto
+                    c: getattr(dist, f'perc_{c}') for c in TODAS_CLASSES
                 }
             else:
-                percentuais_salvos[objetivo.id] = {
-                    'baixo_di': 0.0,
-                    'baixo_rfx': 0.0,
-                    'moderado': 0.0,
-                    'alto': 0.0
-                }
+                percentuais_salvos[objetivo.id] = {c: 0.0 for c in TODAS_CLASSES}
         
         # Buscar matrizes de risco para cada objetivo
         matrizes_risco = {}
         vp_ideal_por_objetivo = {}
+        percentuais_alvo_por_objetivo = {}
         
         # Pegar IPCA para calcular VP Ideal
         from app.models.geld_models import IndicadoresEconomicos
@@ -70,6 +63,7 @@ def iniciar(cliente_id):
         for objetivo in objetivos:
             matriz = BalanceamentoService.buscar_matriz_alvo(objetivo, db)
             matrizes_risco[objetivo.id] = matriz
+            percentuais_alvo_por_objetivo[objetivo.id] = BalanceamentoService._percentuais_da_matriz(matriz)
             
             # Calcular VP Ideal
             vp_ideal = BalanceamentoService.calcular_vp_ideal(objetivo, ipca_anual)
@@ -77,17 +71,15 @@ def iniciar(cliente_id):
         
         
         # NOVO: Calcular capital órfão
-        capital_alocado = {
-            'baixo_di': 0.0, 'baixo_rfx': 0.0, 'moderado': 0.0, 'alto': 0.0
-        }
+        capital_alocado = {c: 0.0 for c in TODAS_CLASSES}
 
         for obj_id, valores in valores_por_objetivo.items():
-            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
+            for classe in TODAS_CLASSES:
                 capital_alocado[classe] += valores[classe]
 
         capital_orfao = {
-            classe: totais_atuais[classe] - capital_alocado[classe]
-            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']
+            c: totais_atuais[c] - capital_alocado[c]
+            for c in TODAS_CLASSES
         }
 
         total_orfao = sum(capital_orfao.values())
@@ -105,8 +97,8 @@ def iniciar(cliente_id):
             matrizes_risco=matrizes_risco,
             vp_ideal_por_objetivo=vp_ideal_por_objetivo,
             capital_orfao=capital_orfao,  
-            total_orfao=total_orfao
-            
+            total_orfao=total_orfao,
+            percentuais_alvo_por_objetivo=percentuais_alvo_por_objetivo
         )
     
     except Exception as e:
@@ -273,19 +265,10 @@ def editar_fatias(cliente_id):
             dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo.id).first()
             if dist:
                 percentuais_salvos[objetivo.id] = {
-                    'baixo_di': dist.perc_baixo_di,
-                    'baixo_rfx': dist.perc_baixo_rfx,
-                    'moderado': dist.perc_moderado,
-                    'alto': dist.perc_alto
+                    c: getattr(dist, f'perc_{c}') for c in TODAS_CLASSES
                 }
             else:
-                # Se não existe distribuição, inicializa com zeros
-                percentuais_salvos[objetivo.id] = {
-                    'baixo_di': 0.0,
-                    'baixo_rfx': 0.0,
-                    'moderado': 0.0,
-                    'alto': 0.0
-                }
+                percentuais_salvos[objetivo.id] = {c: 0.0 for c in TODAS_CLASSES}
         
         return render_template(
             'balanco/editar_fatias.html',
@@ -322,30 +305,20 @@ def salvar_fatias(cliente_id):
         dados_objetivos = {}
         for objetivo in objetivos:
             dados_objetivos[objetivo.id] = {
-                'baixo_di': float(request.form.get(f'baixo_di_{objetivo.id}', 0)),
-                'baixo_rfx': float(request.form.get(f'baixo_rfx_{objetivo.id}', 0)),
-                'moderado': float(request.form.get(f'moderado_{objetivo.id}', 0)),
-                'alto': float(request.form.get(f'alto_{objetivo.id}', 0))
+                c: float(request.form.get(f'{c}_{objetivo.id}', 0))
+                for c in TODAS_CLASSES
             }
         
-        # Validação: Soma por classe de risco deve ser 100%
-        totais_por_classe = {
-            'baixo_di': 0.0,
-            'baixo_rfx': 0.0,
-            'moderado': 0.0,
-            'alto': 0.0
-        }
+        # Validação: soma por classe deve ser 100%
+        totais_por_classe = {c: 0.0 for c in TODAS_CLASSES}
+        for percentuais in dados_objetivos.values():
+            for c in TODAS_CLASSES:
+                totais_por_classe[c] += percentuais[c]
         
-        for objetivo_id, percentuais in dados_objetivos.items():
-            for classe in ['baixo_di', 'baixo_rfx', 'moderado', 'alto']:
-                totais_por_classe[classe] += percentuais[classe]
-        
-        # Verificar se cada classe soma 100% (tolerância de 0.01 para arredondamento)
         erros = []
-        for classe, total in totais_por_classe.items():
+        for c, total in totais_por_classe.items():
             if abs(total - 100.0) > 0.01:
-                nome_classe = classe.replace('_', ' ').title()
-                erros.append(f'{nome_classe}: {total:.2f}%')
+                erros.append(f'{c.replace("_", " ").title()}: {total:.2f}%')
         
         if erros:
             flash(f'Erro: As fatias devem somar 100% por classe. Totais incorretos: {", ".join(erros)}', 'error')
@@ -355,22 +328,12 @@ def salvar_fatias(cliente_id):
         for objetivo_id, percentuais in dados_objetivos.items():
             dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo_id).first()
             
-            if dist:
-                # Atualizar existente
-                dist.perc_baixo_di = percentuais['baixo_di']
-                dist.perc_baixo_rfx = percentuais['baixo_rfx']
-                dist.perc_moderado = percentuais['moderado']
-                dist.perc_alto = percentuais['alto']
-            else:
-                # Criar novo
-                nova_dist = DistribuicaoObjetivo(
-                    objetivo_id=objetivo_id,
-                    perc_baixo_di=percentuais['baixo_di'],
-                    perc_baixo_rfx=percentuais['baixo_rfx'],
-                    perc_moderado=percentuais['moderado'],
-                    perc_alto=percentuais['alto']
-                )
-                db.add(nova_dist)
+            if not dist:
+                dist = DistribuicaoObjetivo(objetivo_id=objetivo_id)
+                db.add(dist)
+            
+            for c in TODAS_CLASSES:
+                setattr(dist, f'perc_{c}', percentuais[c])
         
         db.commit()
         flash('Fatias atualizadas com sucesso!', 'success')

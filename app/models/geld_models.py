@@ -7,6 +7,39 @@ import enum
 
 Base = declarative_base()
 
+# ========== CONSTANTES CENTRAIS ==========
+
+TODAS_CLASSES = [
+    'baixo_di', 'baixo_rfx', 'moderado', 'alto',
+    'ouro', 'dolar', 'cripto', 'internacional', 'fii'
+]
+
+CLASSES_DISPLAY = {
+    'baixo_di':      'Baixo DI',
+    'baixo_rfx':     'Baixo RFx',
+    'moderado':      'Moderado',
+    'alto':          'Alto',
+    'ouro':          'Ouro',
+    'dolar':         'Dólar',
+    'cripto':        'Cripto',
+    'internacional': 'Internacional',
+    'fii':           'FII'
+}
+
+CLASSES_CORES = {
+    'baixo_di':      '#d4edda',
+    'baixo_rfx':     '#d4edda',
+    'moderado':      '#fff3cd',
+    'alto':          '#f8d7da',
+    'ouro':          '#fff8e1',
+    'dolar':         '#e3f2fd',
+    'cripto':        '#f3e5f5',
+    'internacional': '#e8eaf6',
+    'fii':           '#fce4ec'
+}
+
+# ========== ENUMS ==========
+
 class PerfilEnum(enum.Enum):
     arrojado = 'arrojado'
     moderado = 'moderado'
@@ -25,6 +58,11 @@ class RiscoEnum(enum.Enum):
     alto = 'alto'
     moderado = 'moderado'
     baixo = 'baixo'
+    ouro = 'ouro'
+    dolar = 'dolar'
+    cripto = 'cripto'
+    internacional = 'internacional'
+    fii = 'fii'
 
 class SubtipoRiscoEnum(enum.Enum):
     rfx = 'rfx'
@@ -41,6 +79,8 @@ class StatusFundoEnum(enum.Enum):
 class TipoOperacaoEnum(enum.Enum):
     resgate = 'resgate'
     aporte = 'aporte'
+
+# ========== MODELOS ==========
     
 class Cliente(Base):
     __tablename__ = 'clientes'
@@ -87,18 +127,27 @@ class Objetivo(Base):
 
 class DistribuicaoObjetivo(Base):
     """
-    Armazena a participação percentual de cada objetivo nas classes de risco
+    Armazena a participação percentual de cada objetivo nas classes de risco.
+    Cada coluna perc_* representa a fatia (%) que este objetivo detém daquela classe.
     """
     __tablename__ = 'distribuicao_objetivos'
     
     id = Column(Integer, primary_key=True)
     objetivo_id = Column(Integer, ForeignKey('objetivos.id'), nullable=False, unique=True)
     data_atualizacao = Column(DateTime, default=datetime.now, onupdate=datetime.now)
-         
+    
+    # Classes originais
     perc_baixo_di = Column(Float, default=0, nullable=False)   
     perc_baixo_rfx = Column(Float, default=0, nullable=False)  
     perc_moderado = Column(Float, default=0, nullable=False)   
-    perc_alto = Column(Float, default=0, nullable=False)       
+    perc_alto = Column(Float, default=0, nullable=False)
+    
+    # Classes de hedge (novas)
+    perc_ouro = Column(Float, default=0, nullable=False)
+    perc_dolar = Column(Float, default=0, nullable=False)
+    perc_cripto = Column(Float, default=0, nullable=False)
+    perc_internacional = Column(Float, default=0, nullable=False)
+    perc_fii = Column(Float, default=0, nullable=False)
     
     # Relacionamento
     objetivo = relationship("Objetivo", back_populates="distribuicao")
@@ -152,13 +201,22 @@ class MatrizRisco(Base):
     id = Column(Integer, primary_key=True)
     tipo_objetivo = Column(Enum(TipoObjetivoEnum), nullable=False)
     duracao_meses = Column(Integer, nullable=False)
-        
+    
+    # Classes principais (existentes)
     perc_baixo = Column(Float, nullable=False)
     perc_moderado = Column(Float, nullable=False) 
     perc_alto = Column(Float, nullable=False)
-        
+    
+    # Subdivisão dentro de baixo (existentes)
     perc_di_dentro_baixo = Column(Float, nullable=False)
     perc_rfx_dentro_baixo = Column(Float, nullable=False)
+    
+    # Classes de hedge (novas)
+    perc_ouro = Column(Float, nullable=False, default=0)
+    perc_dolar = Column(Float, nullable=False, default=0)
+    perc_cripto = Column(Float, nullable=False, default=0)
+    perc_internacional = Column(Float, nullable=False, default=0)
+    perc_fii = Column(Float, nullable=False, default=0)
         
     __table_args__ = (
         Index('ix_matriz_tipo_duracao', 'tipo_objetivo', 'duracao_meses', unique=True),
@@ -204,7 +262,12 @@ def _popular_matriz_inicial():
                 perc_moderado=linha['perc_moderado'],
                 perc_alto=linha['perc_alto'],
                 perc_di_dentro_baixo=linha['perc_di_dentro_baixo'],
-                perc_rfx_dentro_baixo=linha['perc_rfx_dentro_baixo']
+                perc_rfx_dentro_baixo=linha['perc_rfx_dentro_baixo'],
+                perc_ouro=linha['perc_ouro'],
+                perc_dolar=linha['perc_dolar'],
+                perc_cripto=linha['perc_cripto'],
+                perc_internacional=linha['perc_internacional'],
+                perc_fii=linha['perc_fii']
             )
             session.add(matriz)
         
@@ -217,7 +280,12 @@ def _popular_matriz_inicial():
                 perc_moderado=linha['perc_moderado'],
                 perc_alto=linha['perc_alto'],
                 perc_di_dentro_baixo=linha['perc_di_dentro_baixo'],
-                perc_rfx_dentro_baixo=linha['perc_rfx_dentro_baixo']
+                perc_rfx_dentro_baixo=linha['perc_rfx_dentro_baixo'],
+                perc_ouro=linha['perc_ouro'],
+                perc_dolar=linha['perc_dolar'],
+                perc_cripto=linha['perc_cripto'],
+                perc_internacional=linha['perc_internacional'],
+                perc_fii=linha['perc_fii']
             )
             session.add(matriz)
         
