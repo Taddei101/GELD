@@ -225,6 +225,9 @@ class AdvisorExtractService:
             'fundos multimercado': 'Multimercado',
             'cambial': 'Cambial',
             'fundos cambiais': 'Cambial',
+            'fundos imobiliários': 'Fundos Imobiliários',
+            'fundos imobiliarios': 'Fundos Imobiliários',
+            'fii': 'Fundos Imobiliários',
         }
         
         return mapeamento.get(classe, classe_raw.strip())
@@ -250,6 +253,10 @@ class AdvisorExtractService:
         # Ações → Alto
         if 'ações' in classe_lower or 'acoes' in classe_lower or 'acao' in classe_lower:
             return RiscoEnum.alto, None
+        
+        # Fundos Imobiliários → FII
+        if 'imobiliário' in classe_lower or 'imobiliario' in classe_lower or 'fii' in classe_lower:
+            return RiscoEnum.fii, None
         
         # Multimercado e resto → Moderado
         return RiscoEnum.moderado, None
