@@ -51,6 +51,8 @@ def add_fundo():
         else:
             subtipo_risco =  None
 
+        is_previdencia = 'is_previdencia' in request.form
+
         #cadastrar novo fundo
         novo_fundo = global_service.create_classe(
             InfoFundo,
@@ -61,6 +63,7 @@ def add_fundo():
             permanencia_min=permanencia_min,
             risco=risco,
             subtipo_risco=subtipo_risco,
+            is_previdencia=is_previdencia,
             status_fundo=status_fundo,
             valor_cota = 1,
             data_atualizacao = data_atualizacao
@@ -172,15 +175,14 @@ def edit_fundo(fundo_id):
             data_atualizacao = datetime.strptime(data_atualizacao_str, '%Y-%m-%d') if data_atualizacao_str else None
 
             dados_atualizados = {
-
                 'nome_fundo': request.form['nome_fundo'],
                 'cnpj': request.form['cnpj'],
                 'classe_anbima': request.form['classe_anbima'],
                 'mov_min': mov_min,
                 'permanencia_min': permanencia_min,
-                'valor_cota' : request.form['valor_cota'],
-                'data_atualizacao' : data_atualizacao
-
+                'valor_cota': request.form['valor_cota'],
+                'data_atualizacao': data_atualizacao,
+                'is_previdencia': 'is_previdencia' in request.form,
             }
 
             if 'risco' in request.form and request.form['risco']:

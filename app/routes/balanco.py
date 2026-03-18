@@ -28,12 +28,13 @@ def iniciar(cliente_id):
             flash('Cliente não possui objetivos. Cadastre objetivos primeiro.', 'warning')
             return redirect(url_for('objetivo.listar_objetivos', cliente_id=cliente_id))
         
-        # Calcular totais atuais por classe (do Advisor)
-        totais_atuais = BalanceamentoService.calcular_totais_por_classe(cliente_id, db)
-        
-        # Calcular valores atuais por objetivo (aplicando % salvos)
+        # Totais separados por domínio de fundo
+        totais_regular = BalanceamentoService.calcular_totais_por_classe(cliente_id, db, excluir_previdencia=True)
+        totais_atuais  = BalanceamentoService.calcular_totais_por_classe(cliente_id, db)
+
+        # Calcular valores atuais por objetivo (pool correto por tipo)
         valores_por_objetivo = BalanceamentoService.calcular_valores_atuais_objetivos(
-            cliente_id, totais_atuais, db
+            cliente_id, totais_regular, db, totais_atuais
         )
         
         # Buscar percentuais salvos (fatias)

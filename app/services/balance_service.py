@@ -59,28 +59,52 @@ class BalanceamentoService:
     TAXA_REAL_ANUAL = 3.5
 
     @staticmethod
-    def calcular_totais_por_classe(cliente_id: int, session: Session) -> Dict[str, float]:
-        return PosicaoService.calcular_totais_por_classe(cliente_id, session)
+    def calcular_totais_por_classe(
+        cliente_id: int, session: Session, excluir_previdencia: bool = False
+    ) -> Dict[str, float]:
+        return PosicaoService.calcular_totais_por_classe(cliente_id, session, excluir_previdencia)
 
     @staticmethod
     def calcular_valores_atuais_objetivos(
         cliente_id: int,
-        totais_classe: Dict[str, float],
-        session: Session
+        totais_regular: Dict[str, float],
+        session: Session,
+        totais_todos: Dict[str, float] = None,
     ) -> Dict[int, Dict[str, float]]:
+        """
+        Pool único: perc_* representa % do pool REGULAR para todos os objetivos.
+        Objetivos PREVIDÊNCIA recebem adicionalmente 100% dos fundos prev-only (PGBL/VGBL).
+        Objetivos GERAL nunca enxergam fundos prev-only.
+
+        totais_regular: pool de fundos normais (is_previdencia=False).
+        totais_todos:   pool completo. Padrão = totais_regular.
+        """
+        if totais_todos is None:
+            totais_todos = totais_regular
+
+        prev_only = {c: totais_todos.get(c, 0.0) - totais_regular.get(c, 0.0) for c in TODAS_CLASSES}
+
         objetivos = session.query(Objetivo).filter_by(cliente_id=cliente_id).all()
         valores_por_objetivo = {}
         for obj in objetivos:
             dist = session.query(DistribuicaoObjetivo).filter_by(objetivo_id=obj.id).first()
             if not dist:
                 valores = _zeros()
-                valores['total'] = 0.0
+                if obj.tipo_objetivo == TipoObjetivoEnum.previdencia:
+                    for c in TODAS_CLASSES:
+                        valores[c] = prev_only[c]
+                valores['total'] = sum(valores[c] for c in TODAS_CLASSES)
                 valores_por_objetivo[obj.id] = valores
             else:
+                # Base: % do pool regular (igual para todos os objetivos)
                 valores = {
-                    c: totais_classe.get(c, 0.0) * (getattr(dist, f'perc_{c}') / 100)
+                    c: totais_regular.get(c, 0.0) * (getattr(dist, f'perc_{c}') / 100)
                     for c in TODAS_CLASSES
                 }
+                # Bônus prev-only exclusivo para objetivos previdência
+                if obj.tipo_objetivo == TipoObjetivoEnum.previdencia:
+                    for c in TODAS_CLASSES:
+                        valores[c] += prev_only[c]
                 valores['total'] = sum(valores.values())
                 valores_por_objetivo[obj.id] = valores
         return valores_por_objetivo
@@ -166,12 +190,16 @@ class BalanceamentoService:
         ).first()
         ipca_anual = float(ipca.ipca) if ipca else 4.5
 
-        # 2. Totais atuais (9 classes)
-        totais_atuais = PosicaoService.calcular_totais_por_classe(cliente_id, session)
+        # 2. Totais separados por domínio de fundo
+        # totais_regular: fundos normais — pool compartilhado por TODOS os objetivos
+        # totais_todos:   inclui PGBL/VGBL — apenas para calcular o bônus prev-only
+        totais_regular = PosicaoService.calcular_totais_por_classe(cliente_id, session, excluir_previdencia=True)
+        totais_todos   = PosicaoService.calcular_totais_por_classe(cliente_id, session)
+        prev_only      = {c: totais_todos[c] - totais_regular[c] for c in TODAS_CLASSES}
 
         # 3. Valores atuais por objetivo
         valores_por_objetivo = BalanceamentoService.calcular_valores_atuais_objetivos(
-            cliente_id, totais_atuais, session
+            cliente_id, totais_regular, session, totais_todos
         )
 
         # 4. Processar cada objetivo
@@ -180,6 +208,8 @@ class BalanceamentoService:
         todos_objetivos      = session.query(Objetivo).filter_by(cliente_id=cliente_id).all()
 
         for objetivo in todos_objetivos:
+            eh_prev = objetivo.tipo_objetivo == TipoObjetivoEnum.previdencia
+
             valor_aporte    = aportes_dict.get(objetivo.id, 0.0)
             valor_atual_obj = valores_por_objetivo.get(objetivo.id, {}).get('total', 0.0)
 
@@ -204,6 +234,7 @@ class BalanceamentoService:
             resultados_objetivos.append({
                 'objetivo_id':         objetivo.id,
                 'objetivo_nome':       objetivo.nome_objetivo,
+                'tipo_objetivo':       objetivo.tipo_objetivo.value,
                 'prazo_meses':         objetivo.duracao_meses,
                 'valor_desejado':      float(objetivo.valor_final),
                 'vp_ideal':            vp_ideal,
@@ -222,14 +253,27 @@ class BalanceamentoService:
         total_aporte      = sum(r['valor_aporte'] for r in resultados_objetivos)
         aportes_agregados = {c: sum(r['distribuicao_aporte'][c] for r in resultados_objetivos) for c in TODAS_CLASSES}
         acoes_necessarias = {c: sum(r['gap_individual'][c] for r in resultados_objetivos) for c in TODAS_CLASSES}
-        totais_pos_aporte = {c: totais_atuais[c] + aportes_agregados[c] for c in TODAS_CLASSES}
+        totais_pos_aporte = {c: totais_todos[c] + aportes_agregados[c] for c in TODAS_CLASSES}
         totais_pos_redistribuicao = {c: totais_pos_aporte[c] + acoes_necessarias[c] for c in TODAS_CLASSES}
 
         # 6. Recalcular percentuais (fatias)
+        # Denominador = soma dos targets no pool regular (garante que sempre somam 100%).
+        # Objetivos prev descontam o bônus prev-only antes de entrar no pool regular.
+        def _target_regular(r: Dict) -> Dict[str, float]:
+            if r['tipo_objetivo'] == 'previdencia':
+                return {c: max(0.0, r['estado_alvo'][c] - prev_only[c]) for c in TODAS_CLASSES}
+            return {c: r['estado_alvo'][c] for c in TODAS_CLASSES}
+
+        soma_targets_regular = {
+            c: sum(_target_regular(r)[c] for r in resultados_objetivos)
+            for c in TODAS_CLASSES
+        }
+
         for resultado in resultados_objetivos:
+            targets = _target_regular(resultado)
             resultado['novos_percentuais'] = {
-                c: (resultado['estado_alvo'][c] / totais_pos_redistribuicao[c] * 100)
-                   if totais_pos_redistribuicao[c] > 0 else 0.0
+                c: (targets[c] / soma_targets_regular[c] * 100)
+                   if soma_targets_regular[c] > 0 else 0.0
                 for c in TODAS_CLASSES
             }
 
@@ -271,7 +315,8 @@ class BalanceamentoService:
             'data_calculo':            datetime.now().isoformat(),
             'ipca_usado':              ipca_anual,
             'total_aporte':            total_aporte,
-            'totais_atuais':           totais_atuais,
+            'totais_atuais':           totais_todos,
+            'totais_regular':          totais_regular,
             'totais_novos':            totais_pos_aporte,
             'aportes_agregados':       aportes_agregados,
             'acoes_necessarias':       acoes_necessarias,

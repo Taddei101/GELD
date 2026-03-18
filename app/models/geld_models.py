@@ -1,5 +1,5 @@
 from app.config import DATABASE_URL
-from sqlalchemy import Enum, Column, Integer, Numeric, String, ForeignKey, DateTime,Float, create_engine, Index
+from sqlalchemy import Enum, Column, Integer, Numeric, String, ForeignKey, DateTime, Float, Boolean, create_engine, Index
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 from datetime import datetime
 import enum
@@ -169,9 +169,8 @@ class InfoFundo(Base):
     mov_min = Column(Numeric(15,2))
     permanencia_min = Column(Numeric(15,2))
     risco = Column(Enum(RiscoEnum), nullable = False)
-    
-    subtipo_risco = Column(Enum(SubtipoRiscoEnum),nullable=True)
-    
+    subtipo_risco = Column(Enum(SubtipoRiscoEnum), nullable=True)
+    is_previdencia = Column(Boolean, default=False, nullable=False)
     status_fundo = Column(Enum(StatusFundoEnum), nullable = False)
     valor_cota = Column(Numeric(15,6), nullable=False)
     data_atualizacao = Column(DateTime, nullable=True)

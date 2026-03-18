@@ -20,9 +20,14 @@ from typing import Dict
 class PosicaoService:
 
     @staticmethod
-    def calcular_totais_por_classe(cliente_id: int, session: Session) -> Dict[str, float]:
+    def calcular_totais_por_classe(
+        cliente_id: int, session: Session, excluir_previdencia: bool = False
+    ) -> Dict[str, float]:
         """
         Calcula total investido por subclasse de risco usando SQL agregado.
+
+        excluir_previdencia=True → exclui fundos com is_previdencia=True (pool de fundos regulares).
+        excluir_previdencia=False → todos os fundos (padrão).
 
         Retorna dict com todas as 9 classes:
             {
@@ -39,13 +44,18 @@ class PosicaoService:
         """
 
         def _soma(*filtros):
+            filtros_base = [
+                PosicaoFundo.cliente_id == cliente_id,
+            ]
+            if excluir_previdencia:
+                filtros_base.append(InfoFundo.is_previdencia == False)
             return float(
                 session.query(
                     func.sum(PosicaoFundo.cotas * InfoFundo.valor_cota)
                 ).join(
                     InfoFundo, PosicaoFundo.fundo_id == InfoFundo.id
                 ).filter(
-                    PosicaoFundo.cliente_id == cliente_id,
+                    *filtros_base,
                     *filtros
                 ).scalar() or 0.0
             )
