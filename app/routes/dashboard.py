@@ -123,7 +123,7 @@ def atualizar_indicadores():
             
             # ATUALIZA
             indicadores.ipca_mes = ipca_mes_calculado
-            indicadores.data_atualizacao = datetime.now()
+            indicadores.data_atualizacao = data_ref
             
             # Salva as alterações
             db.commit()
