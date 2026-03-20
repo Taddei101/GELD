@@ -22,7 +22,7 @@ def iniciar(cliente_id):
             flash('Cliente não encontrado', 'error')
             return redirect(url_for('dashboard.index'))
         
-        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final).all()
         
         if not objetivos:
             flash('Cliente não possui objetivos. Cadastre objetivos primeiro.', 'warning')
@@ -217,7 +217,7 @@ def resetar_distribuicao(cliente_id):
     db = create_session()
     try:
         # Buscar objetivos do cliente
-        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final).all()
         objetivo_ids = [obj.id for obj in objetivos]
         
         # Deletar distribuições
@@ -254,7 +254,7 @@ def editar_fatias(cliente_id):
             flash('Cliente não encontrado', 'error')
             return redirect(url_for('dashboard.index'))
         
-        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final).all()
         
         if not objetivos:
             flash('Cliente não possui objetivos cadastrados.', 'warning')
@@ -300,7 +300,7 @@ def salvar_fatias(cliente_id):
             flash('Cliente não encontrado', 'error')
             return redirect(url_for('dashboard.index'))
         
-        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final).all()
         
         # Coletar dados do formulário
         dados_objetivos = {}

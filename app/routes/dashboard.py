@@ -83,7 +83,8 @@ def cliente_dashboard():
                           capital_administrado=capital_administrado,
                           clientes_inativos=clientes_inativos,
                           mes_anterior=mes_anterior,
-                          num_fundos=num_fundos)
+                          num_fundos=num_fundos,
+                          now=datetime.now().strftime('%Y-%m-%d'))
     
 
 @dashboard_bp.route('/atualizar_indicadores', methods=['POST'])
@@ -92,10 +93,15 @@ def atualizar_indicadores():
     try:
         db = create_session()
         extract_service = ExtractServices(db)
-        
-        # Buscar o IPCA 12 meses
-        data_fim = datetime.now().strftime('%d/%m/%Y')
-        data_inicio = (datetime.now() - timedelta(days=60)).strftime('%d/%m/%Y')
+
+        data_referencia_raw = request.form.get('data_referencia', '').strip()
+        if data_referencia_raw:
+            data_ref = datetime.strptime(data_referencia_raw, '%Y-%m-%d')
+        else:
+            data_ref = datetime.now()
+
+        data_fim = data_ref.strftime('%d/%m/%Y')
+        data_inicio = (data_ref - timedelta(days=60)).strftime('%d/%m/%Y')
         codigo_ipca = 13522  # Código do IPCA 12 meses
         
         df_ipca = extract_service.extracao_bcb(codigo_ipca, data_inicio, data_fim)

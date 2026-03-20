@@ -6,6 +6,30 @@ from functools import wraps
 from app.services.objetivo_services import ObjetivoServices
 from app.services.balance_service import BalanceamentoService
 
+
+def _aplicar_prioridade(db, objetivo, nova_prioridade):
+    """
+    Define a prioridade do objetivo. Se já existir outro com a mesma prioridade,
+    faz swap automaticamente e retorna mensagem informativa. Retorna None se ok sem swap.
+    """
+    if nova_prioridade is None:
+        objetivo.prioridade = None
+        return None
+
+    conflito = db.query(Objetivo).filter(
+        Objetivo.cliente_id == objetivo.cliente_id,
+        Objetivo.prioridade == nova_prioridade,
+        Objetivo.id != objetivo.id
+    ).first()
+
+    if conflito:
+        conflito.prioridade = objetivo.prioridade  # pode ser None
+        objetivo.prioridade = nova_prioridade
+        return f'Prioridade trocada com "{conflito.nome_objetivo}".'
+
+    objetivo.prioridade = nova_prioridade
+    return None
+
 objetivo_bp = Blueprint('objetivo', __name__)
 
 
@@ -39,9 +63,10 @@ def add_objetivo(cliente_id):
         
         data_inicial = datetime.strptime(request.form['data_inicial'], '%Y-%m-%d')
         data_final = datetime.strptime(request.form['data_final'], '%Y-%m-%d')
-        
-                        
-        
+
+        prioridade_raw = request.form.get('prioridade', '').strip()
+        prioridade = int(prioridade_raw) if prioridade_raw else None
+
         novo_objetivo = global_service.create_classe(
             Objetivo,
             cliente_id=cliente_id,
@@ -50,10 +75,16 @@ def add_objetivo(cliente_id):
             valor_final=float(request.form['valor_final']),
             valor_inicial=float(request.form['valor_inicial']),
             data_inicial=data_inicial,
-            data_final=data_final
+            data_final=data_final,
+            prioridade=None  # será definida logo abaixo via swap
         )
-        
-        flash(f'Objetivo "{novo_objetivo.nome_objetivo}" criado com sucesso!')
+
+        msg_swap = _aplicar_prioridade(db, novo_objetivo, prioridade)
+        db.commit()
+
+        if msg_swap:
+            flash(msg_swap, 'warning')
+        flash(f'Objetivo "{novo_objetivo.nome_objetivo}" criado com sucesso!', 'success')
         return redirect(url_for('objetivo.listar_objetivos', cliente_id=cliente_id))
         
     except ValueError as e:
@@ -91,20 +122,27 @@ def edit_objetivo(objetivo_id):
             
             # Atualizar objetivo
             print("Recebida solicitação POST para editar objetivo.")
+            prioridade_raw = request.form.get('prioridade', '').strip()
+            prioridade = int(prioridade_raw) if prioridade_raw else None
+
             dados_atualizados = {
                 'nome_objetivo': request.form['nome_objetivo'],
                 'tipo_objetivo': request.form['tipo_objetivo'],
                 'valor_final': float(request.form['valor_final']),
-                'data_final': datetime.strptime(request.form['data_final'], '%Y-%m-%d')
+                'data_final': datetime.strptime(request.form['data_final'], '%Y-%m-%d'),
             }
-            
+
             objetivo_atualizado = global_service.editar_classe(Objetivo, objetivo_id, **dados_atualizados)
-            
+
             if objetivo_atualizado:
-                flash('Objetivo atualizado com sucesso!')
+                msg_swap = _aplicar_prioridade(db, objetivo_atualizado, prioridade)
+                db.commit()
+                if msg_swap:
+                    flash(msg_swap, 'warning')
+                flash('Objetivo atualizado com sucesso!', 'success')
                 return redirect(url_for('objetivo.listar_objetivos', cliente_id=objetivo_atualizado.cliente_id))
             else:
-                flash('Objetivo não encontrado.')
+                flash('Objetivo não encontrado.', 'error')
                 return redirect(url_for('cliente.dashboard'))
     
     except Exception as e:
@@ -172,9 +210,10 @@ def listar_objetivos(cliente_id):
         # ✅ CALCULAR VALORES ATUAIS DINAMICAMENTE (mesma lógica do balanceamento)
         from app.services.balance_service import BalanceamentoService
         
-        totais_atuais = BalanceamentoService.calcular_totais_por_classe(cliente_id, db)
+        totais_regular = BalanceamentoService.calcular_totais_por_classe(cliente_id, db, excluir_previdencia=True)
+        totais_todos   = BalanceamentoService.calcular_totais_por_classe(cliente_id, db)
         valores_por_objetivo = BalanceamentoService.calcular_valores_atuais_objetivos(
-            cliente_id, totais_atuais, db
+            cliente_id, totais_regular, db, totais_todos
         )
         
         # ✅ CALCULAR VP IDEAL POR OBJETIVO (mesma lógica de area_cliente)

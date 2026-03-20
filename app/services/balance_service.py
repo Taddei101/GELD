@@ -236,6 +236,7 @@ class BalanceamentoService:
                 'objetivo_nome':       objetivo.nome_objetivo,
                 'tipo_objetivo':       objetivo.tipo_objetivo.value,
                 'prazo_meses':         objetivo.duracao_meses,
+                'prioridade':          objetivo.prioridade,
                 'valor_desejado':      float(objetivo.valor_final),
                 'vp_ideal':            vp_ideal,
                 'gap_vp':              vp_ideal - novos_valores['total'],
@@ -356,7 +357,7 @@ class BalanceamentoService:
             receptores = sorted(
                 [r for r in resultado['resultados_por_objetivo']
                  if r['vp_ideal'] - r['novos_valores']['total'] > TOLERANCIA_VP],
-                key=lambda x: x['prazo_meses']
+                key=lambda x: (x['prioridade'] is None, x['prioridade'] or x['prazo_meses'])
             )
             if not receptores:
                 break

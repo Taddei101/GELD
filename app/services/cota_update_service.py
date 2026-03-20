@@ -26,10 +26,13 @@ class CotaUpdateService:
     # MÉTODO PRINCIPAL
     # =========================================================================
 
-    def atualizar_todas_cotas(self):
+    def atualizar_todas_cotas(self, data_referencia: datetime = None):
         """
         Atualiza valor_cota de todos os InfoFundo do banco.
         NÃO faz commit — responsabilidade da rota.
+
+        data_referencia: se informada, usa esse mês como referência (e o anterior como fallback).
+                         Se None, usa o mês atual.
 
         Returns:
             dict: {
@@ -66,7 +69,7 @@ class CotaUpdateService:
             return resultado
 
         # Calcular meses a baixar
-        mes_atual, mes_anterior = self._calcular_meses()
+        mes_atual, mes_anterior = self._calcular_meses(data_referencia)
 
         print(f"\n[COTAS] Baixando dados FI...")
         df_atual    = self.extract.baixar_inf_diario_mes(*mes_atual)
@@ -121,21 +124,22 @@ class CotaUpdateService:
     # MÉTODOS AUXILIARES
     # =========================================================================
 
-    def _calcular_meses(self):
+    def _calcular_meses(self, data_referencia: datetime = None):
         """
-        Retorna tuplas (ano, mes) para mês atual e mês anterior.
+        Retorna tuplas (ano, mes) para mês de referência e o anterior.
+        Se data_referencia for None, usa o mês atual.
 
         Returns:
-            tuple: ((ano_atual, mes_atual), (ano_anterior, mes_anterior))
+            tuple: ((ano_ref, mes_ref), (ano_anterior, mes_anterior))
         """
-        hoje = datetime.now()
-        primeiro_dia = hoje.replace(day=1)
+        ref = data_referencia or datetime.now()
+        primeiro_dia = ref.replace(day=1)
         ultimo_dia_mes_anterior = primeiro_dia - timedelta(days=1)
 
-        mes_atual    = (hoje.year, hoje.month)
+        mes_ref      = (ref.year, ref.month)
         mes_anterior = (ultimo_dia_mes_anterior.year, ultimo_dia_mes_anterior.month)
 
-        return mes_atual, mes_anterior
+        return mes_ref, mes_anterior
 
     def _buscar_cota(self, cnpj_norm, df_atual, df_anterior):
         """

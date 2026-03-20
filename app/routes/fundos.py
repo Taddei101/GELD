@@ -20,7 +20,7 @@ def listar_fundos():
         fundos = global_service.listar_classe(InfoFundo)
 
 
-        return render_template('fundos/listar_fundos.html', fundos=fundos)
+        return render_template('fundos/listar_fundos.html', fundos=fundos, now=datetime.now().strftime('%Y-%m-%d'))
     except Exception as e:
         import traceback
         traceback.print_exc()
@@ -226,7 +226,9 @@ def atualizar_cotas_fundos():
     try:
         db = create_session()
         service = CotaUpdateService(db)
-        resultado = service.atualizar_todas_cotas()
+        data_ref_raw = request.form.get('data_referencia', '').strip()
+        data_ref = datetime.strptime(data_ref_raw, '%Y-%m-%d') if data_ref_raw else None
+        resultado = service.atualizar_todas_cotas(data_referencia=data_ref)
 
         total_atualizados = resultado['fi_atualizados'] + resultado['fii_atualizados']
 

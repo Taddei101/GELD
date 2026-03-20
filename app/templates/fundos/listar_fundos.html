@@ -140,7 +140,8 @@
         <button class="smlBtn" onclick="window.location.href=`{{ url_for('dashboard.cliente_dashboard') }}`">
             <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
 
-        <form class="form-btn" action="{{ url_for('fundos.atualizar_cotas_fundos') }}" method="post">
+        <form class="form-btn" action="{{ url_for('fundos.atualizar_cotas_fundos') }}" method="post" style="display:flex; align-items:center; gap:6px;">
+            <input type="date" name="data_referencia" max="{{ now }}" title="Mês de referência das cotas (vazio = mês atual)">
             <button title="Atualizar Valor da Cota" type="submit" class="smlBtn">
             <img src="{{ url_for('static', filename='icons/atualizar.png') }}" class="sml-btn-icon"></button>
         </form>

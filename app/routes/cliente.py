@@ -196,8 +196,8 @@ def area_cliente(cliente_id):
             saldo_alto         = totais_pos['alto']
 
         # ========== DADOS PARA TABELAS DE BALANCEAMENTO ==========
-        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).all()
-        
+        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final).all()
+
         # Inicializar variáveis
         totais_atuais = {c: 0.0 for c in TODAS_CLASSES}
         valores_por_objetivo = {}
@@ -208,11 +208,12 @@ def area_cliente(cliente_id):
         
         if objetivos:
             # Calcular totais por classe
-            totais_atuais = BalanceamentoService.calcular_totais_por_classe(cliente_id, db)
-            
+            totais_regular = BalanceamentoService.calcular_totais_por_classe(cliente_id, db, excluir_previdencia=True)
+            totais_todos   = BalanceamentoService.calcular_totais_por_classe(cliente_id, db)
+
             # Calcular valores atuais por objetivo
             valores_por_objetivo = BalanceamentoService.calcular_valores_atuais_objetivos(
-                cliente_id, totais_atuais, db
+                cliente_id, totais_regular, db, totais_todos
             )
             
             # Buscar percentuais salvos
