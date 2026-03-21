@@ -1,3 +1,4 @@
+import json
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from app.services.global_services import GlobalServices,login_required
 from app.services.balance_service import BalanceamentoService
@@ -187,7 +188,7 @@ def area_cliente(cliente_id):
         
 
         if has_positions:
-                        
+
             montante_cliente   = PosicaoService.calcular_montante_total(cliente_id, db)
             totais_pos         = PosicaoService.calcular_totais_por_classe(cliente_id, db)
             saldo_fundo_di     = totais_pos['baixo_di']
@@ -199,7 +200,7 @@ def area_cliente(cliente_id):
         objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final).all()
 
         # Inicializar variáveis
-        totais_atuais = {c: 0.0 for c in TODAS_CLASSES}
+        totais_atuais = totais_pos if has_positions else {c: 0.0 for c in TODAS_CLASSES}
         valores_por_objetivo = {}
         percentuais_salvos = {}
         matrizes_risco = {}
@@ -252,9 +253,12 @@ def area_cliente(cliente_id):
             for c in TODAS_CLASSES
         )
 
-        return render_template('cliente/area_cliente.html', 
-                              cliente=cliente, 
+        ultimo_balanceamento = json.loads(cliente.ultimo_balanceamento_json) if cliente.ultimo_balanceamento_json else None
+
+        return render_template('cliente/area_cliente.html',
+                              cliente=cliente,
                               montante_cliente=montante_cliente,
+                              ultimo_balanceamento=ultimo_balanceamento,
                               has_positions=has_positions,
                               n_objetivos=n_objetivos, 
                               n_fundos=n_fundos,

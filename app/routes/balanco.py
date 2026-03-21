@@ -2,6 +2,7 @@
 Rotas para balanceamento de carteiras
 """
 
+import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session as flask_session
 from app.models.geld_models import Cliente, Objetivo, create_session, TODAS_CLASSES
 from app.services.balance_service import BalanceamentoService
@@ -183,10 +184,15 @@ def aplicar(cliente_id):
         
         # Aplicar
         BalanceamentoService.aplicar_balanceamento(resultado, db)
-        
+
+        # Persistir operações no cliente
+        cliente = db.query(Cliente).get(cliente_id)
+        cliente.ultimo_balanceamento_json = json.dumps(resultado.get('operacoes_liquidas', {}))
+        db.commit()
+
         # Limpar sessão
         flask_session.pop('balanceamento_resultado', None)
-        
+
         flash('Balanceamento aplicado com sucesso!', 'success')
         return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
     

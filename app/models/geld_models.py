@@ -96,6 +96,7 @@ class Cliente(Base):
     telefone = Column(String, nullable = False)
     banco = Column(Enum(BancoEnum), nullable = False)
     status = Column(Enum(StatusEnum), nullable = False)
+    ultimo_balanceamento_json = Column(String, nullable=True)
 
     objetivos = relationship("Objetivo", back_populates = "cliente", cascade = "all, delete-orphan")
     posicoes_fundo = relationship("PosicaoFundo", back_populates="cliente", cascade="all, delete-orphan")

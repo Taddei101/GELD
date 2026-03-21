@@ -396,8 +396,6 @@ class ExtractBTGService:
             df = pd.read_excel(file_path, sheet_name="Renda Fixa", header=None)
             print(f"[INFO] Processando Renda Fixa - {len(df)} linhas")
             
-            contador_rf = 1
-            
             secao_inicio = None
             for i in range(len(df)):
                 cell_value = df.iloc[i, 1] if df.shape[1] > 1 else None
@@ -429,10 +427,8 @@ class ExtractBTGService:
                     if not codigo_ativo or quantidade == 0:
                         continue
                     
-                    cnpj_dummy = f"98.{contador_rf:03d}.001/0001-{contador_rf:02d}"
-                    contador_rf += 1
-                    
                     nome_fundo = f"{emissor} - {codigo_ativo}"
+                    cnpj_dummy = self._gerar_cnpj_dummy(nome_fundo)
                     
                     posicoes.append({
                         "nome_fundo": nome_fundo,
@@ -467,9 +463,6 @@ class ExtractBTGService:
             df = pd.read_excel(file_path, sheet_name="Renda Variavel", header=None)
             print(f"[INFO] Processando Renda Variável - {len(df)} linhas")
             
-            contador_acoes = 1
-            contador_fiis = 1
-            
             # ===== PROCESSAR AÇÕES =====
             secao_acoes = None
             for i in range(len(df)):
@@ -496,10 +489,8 @@ class ExtractBTGService:
                             continue
                         
                         codigo_limpo = str(codigo).replace("*", "").strip()
-                        cnpj_dummy = f"97.001.{contador_acoes:03d}/0001-{contador_acoes:02d}"
-                        contador_acoes += 1
-                        
                         nome_fundo = f"{codigo_limpo} - {nome_acao}"
+                        cnpj_dummy = self._gerar_cnpj_dummy(nome_fundo)
                         
                         posicoes.append({
                             "nome_fundo": nome_fundo,
@@ -545,10 +536,8 @@ class ExtractBTGService:
                             continue
                         
                         codigo_limpo = str(codigo).replace("*", "").strip()
-                        cnpj_dummy = f"97.002.{contador_fiis:03d}/0001-{contador_fiis:02d}"
-                        contador_fiis += 1
-                        
                         nome_fundo = f"{codigo_limpo} - {nome_fii}"
+                        cnpj_dummy = self._gerar_cnpj_dummy(nome_fundo)
                         
                         posicoes.append({
                             "nome_fundo": nome_fundo,
