@@ -6,39 +6,31 @@
 
 {% block content %}
 
-<style>
-.filtro-dropdown {
-    display: block;
-    margin-top: 5px;
-    padding: 4px 8px;
-    font-size: 12px;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    background-color: white;
-    cursor: pointer;
-    width: 100%;
-    max-width: 150px;
-}
-
-.filtro-dropdown:hover {
-    border-color: #999;
-}
-
-.filtro-dropdown:focus {
-    outline: none;
-    border-color: #4CAF50;
-}
-</style>
-
 
 {% if fundos %}
-<div style="margin-bottom: 10px;">
+<div class="inline-btn" style="margin-bottom: 10px;">
     <button onclick="deletarSelecionados()" class="bigBtn" style="background-color: #d9534f;" title="Deletar fundos selecionados">
         <img src="{{ url_for('static', filename='icons/trash.png') }}" class="btn-icon" style="filter: brightness(0) invert(1);"> Deletar Selecionados
     </button>
-    <span id="contador-selecionados" style="margin-left: 10px; font-weight: bold;">0 selecionados</span>
-        
+    <button class="smlBtn" onclick="window.location.href=`{{ url_for('dashboard.cliente_dashboard') }}`">
+            <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
+    </button>
+
+    <button class="smlBtn" onclick="document.querySelector('.center').scrollTo({top: document.querySelector('.center').scrollHeight, behavior: 'smooth'})"" title="Ir ao fim da página">
+        <img src="{{ url_for('static', filename='icons/scrow_bottom.png') }}" class="sml-btn-icon">
+    </button>
+
+    <form class="form-btn" action="{{ url_for('fundos.atualizar_cotas_fundos') }}" method="post" >
+                    <input type="date" name="data_referencia" max="{{ now }}" title="Mês de referência das cotas (vazio = mês atual)" style="height:40px; box-sizing:border-box;">
+                    <button title="Atualizar Valor da Cota" type="submit" class="smlBtn">
+                    <img src="{{ url_for('static', filename='icons/atualizar.png') }}" class="sml-btn-icon"></button>
+                </form>
+
 </div>
+
+<div><span id="contador-selecionados" style="margin-left: 10px; font-weight: bold;">0 selecionados</span>
+</div>
+
 {% endif %}
 
     <table class="table" id="tabela-fundos">
@@ -140,21 +132,19 @@
         <button class="smlBtn" onclick="window.location.href=`{{ url_for('dashboard.cliente_dashboard') }}`">
             <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
 
-        <form class="form-btn" action="{{ url_for('fundos.atualizar_cotas_fundos') }}" method="post" style="display:flex; align-items:center; gap:6px;">
-            <input type="date" name="data_referencia" max="{{ now }}" title="Mês de referência das cotas (vazio = mês atual)">
-            <button title="Atualizar Valor da Cota" type="submit" class="smlBtn">
-            <img src="{{ url_for('static', filename='icons/atualizar.png') }}" class="sml-btn-icon"></button>
-        </form>
-        
         <button title="Cadastrar Fundo Manualmente" class="smlBtn" onclick="window.location.href=`{{ url_for('fundos.add_fundo') }}`">
             <img src="{{ url_for('static', filename='icons/add.png') }}" class="sml-btn-icon"></button>
 
+        <button class="smlBtn" onclick="document.querySelector('.center').scrollTo({top: 0, behavior: 'smooth'})" title="Ir ao fim da página">
+            <img src="{{ url_for('static', filename='icons/scrow_up.png') }}" class="sml-btn-icon">
+        </button>
+
+        <form class="form-btn" action="{{ url_for('fundos.atualizar_cotas_fundos') }}" method="post" >
+                    <input type="date" name="data_referencia" max="{{ now }}" title="Mês de referência das cotas (vazio = mês atual)" style="height:40px; box-sizing:border-box;">
+                    <button title="Atualizar Valor da Cota" type="submit" class="smlBtn">
+                    <img src="{{ url_for('static', filename='icons/atualizar.png') }}" class="sml-btn-icon"></button>
+                </form>
        
-        
-        
-
-
-
     </div>
 
 <script>

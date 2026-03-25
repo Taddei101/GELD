@@ -348,16 +348,17 @@ select:focus {
 }
 
 .inline-btn {
-    display: flex ;
-    flex-direction: row t;
-    gap: 10px ;
+    display: flex;
+    flex-direction: row;
+    gap: 10px;
     margin-top: 20px;
-    
+    align-items: center;
 }
 .form-btn{
-    display: inline-block;
-    margin: 0;
-       
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 2%;
 }
 
 /* Animações*/
@@ -549,4 +550,27 @@ img {
     animation: none;
     background-color: cornflowerblue !important;
     color: white !important;
+}
+
+/* Filtro dropdown nas tabelas (listar_fundos) */
+.filtro-dropdown {
+    display: block;
+    margin-top: 5px;
+    padding: 4px 8px;
+    font-size: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    cursor: pointer;
+    width: 100%;
+    max-width: 150px;
+}
+
+.filtro-dropdown:hover {
+    border-color: #999;
+}
+
+.filtro-dropdown:focus {
+    outline: none;
+    border-color: #4CAF50;
 }
