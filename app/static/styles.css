@@ -200,6 +200,14 @@ select:focus {
 
 /*Botoes*/
 
+.large_checkbox{
+    width: 30px;
+    height: 30px;
+}
+.large_checkbox:checked {
+  background-color: #2196F3;
+  border-color: #2196F3;
+}
 
 .sideBtn {
     background-color: #ffffff;
