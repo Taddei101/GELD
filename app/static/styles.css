@@ -113,8 +113,10 @@
 
 .table td, .table th {
     padding: 8px 12px;
-    border: 1px solid #40b090;  
-    text-align: center;
+    border: 1px solid #40b090; 
+    text-align: center;      
+    vertical-align: middle;   
+    place-items: center;
     
 }
  

@@ -76,9 +76,6 @@ class StatusFundoEnum(enum.Enum):
     ativo = 'ativo'
     encerrado = 'encerrado'
 
-class TipoOperacaoEnum(enum.Enum):
-    resgate = 'resgate'
-    aporte = 'aporte'
 
 # ========== MODELOS ==========
     
