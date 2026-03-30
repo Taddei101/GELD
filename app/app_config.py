@@ -1,10 +1,12 @@
 from flask import Flask, redirect, url_for, session
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
-# Usar configuração mais segura
-app.secret_key = os.environ.get('SECRET_KEY', 'lkj12tu6')
+app.secret_key = os.environ.get('SECRET_KEY')
 app.config['DEBUG'] = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Imports dos blueprints

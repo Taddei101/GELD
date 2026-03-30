@@ -1,9 +1,10 @@
+import os
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 
 auth_bp = Blueprint('auth', __name__)
 
-USERNAME = "claudio"
-PASSWORD = "1234"
+USERNAME = os.environ.get('GELD_USERNAME', 'claudio')
+PASSWORD = os.environ.get('GELD_PASSWORD')
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():

@@ -11,5 +11,5 @@ else:
     DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'geld_database.db')}"
 
 # Configurações adicionais para produção
-SECRET_KEY = os.environ.get('SECRET_KEY', 'lkj12tu6')  # Use variável de ambiente
+SECRET_KEY = os.environ.get('SECRET_KEY')
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
