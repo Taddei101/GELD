@@ -8,7 +8,7 @@ except ImportError:
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
-app.secret_key = os.environ.get('SECRET_KEY')
+app.secret_key = os.environ.get('SECRET_KEY') or 'dev-local-secret-key'
 app.config['DEBUG'] = os.environ.get('DEBUG', 'False').lower() == 'true'
 
 # Imports dos blueprints

@@ -202,13 +202,48 @@ select:focus {
 
 /*Botoes*/
 
-.large_checkbox{
-    width: 30px;
-    height: 30px;
+.toggle-switch {
+    position: relative;
+    display: inline-block !important;
+    width: 30px !important;
+    height: 26px;
+    flex-shrink: 0;
+    vertical-align: middle;
 }
-.large_checkbox:checked {
-  background-color: #2196F3;
-  border-color: #2196F3;
+
+.toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle-slider {
+    position: absolute;
+    inset: 0;
+    background-color: #ccc;
+    border-radius: 26px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    left: 4px;
+    top: 4px;
+    background-color: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+    background-color: #2196F3;
+}
+
+.toggle-switch input:checked + .toggle-slider::before {
+    transform: translateX(22px);
 }
 
 .sideBtn {

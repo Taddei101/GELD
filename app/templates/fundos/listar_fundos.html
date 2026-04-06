@@ -281,6 +281,16 @@ function deletarSelecionados() {
 
 // Executar ao carregar a página
 document.addEventListener('DOMContentLoaded', function() {
+    // Ordenar tabela por nome do fundo (alfabético)
+    const tbody = document.querySelector('#tabela-fundos tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort((a, b) => {
+        const nA = (a.querySelector('td:nth-child(2)')?.textContent || '').trim().toLowerCase();
+        const nB = (b.querySelector('td:nth-child(2)')?.textContent || '').trim().toLowerCase();
+        return nA.localeCompare(nB, 'pt-BR');
+    });
+    rows.forEach(row => tbody.appendChild(row));
+
     popularFiltroClasse();
 });
 </script>

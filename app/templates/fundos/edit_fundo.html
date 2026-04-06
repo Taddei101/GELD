@@ -62,8 +62,11 @@
         
         <div class="label">
             <label for="is_previdencia">Produto de Previdência (PGBL/VGBL):</label>
-            <input class="large_checkbox" type="checkbox" id="is_previdencia" name="is_previdencia" value="1"
-                   {% if fundo.is_previdencia %}checked{% endif %}>
+            <label class="toggle-switch">
+                <input type="checkbox" id="is_previdencia" name="is_previdencia" value="1"
+                       {% if fundo.is_previdencia %}checked{% endif %}>
+                <span class="toggle-slider"></span>
+            </label>
         </div>
 
         <div class="label">

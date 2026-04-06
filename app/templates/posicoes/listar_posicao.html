@@ -379,6 +379,27 @@ function popularFiltroClasse() {
 
 // Executar ao carregar a página
 document.addEventListener('DOMContentLoaded', function() {
+    // Ordenar tabela por nome do fundo (alfabético)
+    const tbody = document.querySelector('#tabela-posicoes tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr[data-classe]'));
+    rows.sort((a, b) => {
+        const nA = (a.querySelector('td:nth-child(2)')?.textContent || '').trim().toLowerCase();
+        const nB = (b.querySelector('td:nth-child(2)')?.textContent || '').trim().toLowerCase();
+        return nA.localeCompare(nB, 'pt-BR');
+    });
+    // Re-aplicar lógica de extra-funds após ordenação
+    rows.forEach((row, i) => {
+        row.classList.remove('extra-funds');
+        if (i >= 4) {
+            row.classList.add('extra-funds');
+            row.style.display = 'none';
+        } else {
+            row.style.display = '';
+        }
+    });
+    const totalRow = tbody.querySelector('tr:not([data-classe])');
+    rows.forEach(row => tbody.insertBefore(row, totalRow));
+
     popularFiltroClasse();
 });
 

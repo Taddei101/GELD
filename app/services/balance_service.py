@@ -114,7 +114,7 @@ class BalanceamentoService:
         duracao = objetivo.duracao_meses
         tipo    = objetivo.tipo_objetivo
         prazos  = [12, 24, 36, 48, 60, 72, 84, 96, 108, 120, 132]
-        prazo_arredondado = min(prazos, key=lambda x: abs(x - duracao))
+        prazo_arredondado = next((p for p in prazos if p >= duracao), prazos[-1])
         matriz = session.query(MatrizRisco).filter(
             MatrizRisco.tipo_objetivo == tipo,
             MatrizRisco.duracao_meses == prazo_arredondado
