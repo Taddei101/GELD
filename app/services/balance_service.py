@@ -71,14 +71,6 @@ class BalanceamentoService:
         session: Session,
         totais_todos: Dict[str, float] = None,
     ) -> Dict[int, Dict[str, float]]:
-        """
-        Pool único: perc_* representa % do pool REGULAR para todos os objetivos.
-        Objetivos PREVIDÊNCIA recebem adicionalmente 100% dos fundos prev-only (PGBL/VGBL).
-        Objetivos GERAL nunca enxergam fundos prev-only.
-
-        totais_regular: pool de fundos normais (is_previdencia=False).
-        totais_todos:   pool completo. Padrão = totais_regular.
-        """
         if totais_todos is None:
             totais_todos = totais_regular
 
@@ -96,12 +88,10 @@ class BalanceamentoService:
                 valores['total'] = sum(valores[c] for c in TODAS_CLASSES)
                 valores_por_objetivo[obj.id] = valores
             else:
-                # Base: % do pool regular (igual para todos os objetivos)
                 valores = {
                     c: totais_regular.get(c, 0.0) * (getattr(dist, f'perc_{c}') / 100)
                     for c in TODAS_CLASSES
                 }
-                # Bônus prev-only exclusivo para objetivos previdência
                 if obj.tipo_objetivo == TipoObjetivoEnum.previdencia:
                     for c in TODAS_CLASSES:
                         valores[c] += prev_only[c]
@@ -190,9 +180,7 @@ class BalanceamentoService:
         ).first()
         ipca_anual = float(ipca.ipca) if ipca else 4.5
 
-        # 2. Totais separados por domínio de fundo
-        # totais_regular: fundos normais — pool compartilhado por TODOS os objetivos
-        # totais_todos:   inclui PGBL/VGBL — apenas para calcular o bônus prev-only
+        # 2. Totais
         totais_regular = PosicaoService.calcular_totais_por_classe(cliente_id, session, excluir_previdencia=True)
         totais_todos   = PosicaoService.calcular_totais_por_classe(cliente_id, session)
         prev_only      = {c: totais_todos[c] - totais_regular[c] for c in TODAS_CLASSES}
@@ -205,11 +193,11 @@ class BalanceamentoService:
         # 4. Processar cada objetivo
         resultados_objetivos = []
         aportes_dict         = {a['objetivo_id']: a['valor_aporte'] for a in aportes_por_objetivo}
-        todos_objetivos      = session.query(Objetivo).filter_by(cliente_id=cliente_id).all()
+        todos_objetivos      = session.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(
+            Objetivo.prioridade.asc().nulls_last(), Objetivo.data_final.asc()
+        ).all()
 
         for objetivo in todos_objetivos:
-            eh_prev = objetivo.tipo_objetivo == TipoObjetivoEnum.previdencia
-
             valor_aporte    = aportes_dict.get(objetivo.id, 0.0)
             valor_atual_obj = valores_por_objetivo.get(objetivo.id, {}).get('total', 0.0)
 
@@ -255,28 +243,81 @@ class BalanceamentoService:
         aportes_agregados = {c: sum(r['distribuicao_aporte'][c] for r in resultados_objetivos) for c in TODAS_CLASSES}
         acoes_necessarias = {c: sum(r['gap_individual'][c] for r in resultados_objetivos) for c in TODAS_CLASSES}
         totais_pos_aporte = {c: totais_todos[c] + aportes_agregados[c] for c in TODAS_CLASSES}
-        totais_pos_redistribuicao = {c: totais_pos_aporte[c] + acoes_necessarias[c] for c in TODAS_CLASSES}
 
-        # 6. Recalcular percentuais (fatias)
-        # Denominador = soma dos targets no pool regular (garante que sempre somam 100%).
-        # Objetivos prev descontam o bônus prev-only antes de entrar no pool regular.
-        def _target_regular(r: Dict) -> Dict[str, float]:
-            if r['tipo_objetivo'] == 'previdencia':
-                return {c: max(0.0, r['estado_alvo'][c] - prev_only[c]) for c in TODAS_CLASSES}
-            return {c: r['estado_alvo'][c] for c in TODAS_CLASSES}
+        # 6. Recalcular percentuais (fatias) respeitando prioridade e mix de risco
+        # Para cada objetivo em ordem de prioridade:
+        #   1. Tenta alocar pelo mix ideal da matriz (maior % primeiro)
+        #   2. Se faltar pool numa classe, completa com outras classes disponíveis
+        # Resultado: fatias somam 100% por classe, respeitando prioridade
 
-        soma_targets_regular = {
-            c: sum(_target_regular(r)[c] for r in resultados_objetivos)
-            for c in TODAS_CLASSES
-        }
+        # Ordenar por prioridade (mesma ordem da cascata)
+        resultados_ordenados = sorted(
+            resultados_objetivos,
+            key=lambda r: (r['prioridade'] is None, r['prioridade'] if r['prioridade'] is not None else 999, r['prazo_meses'])
+        )
 
+        # Pool disponível por classe (apenas regular — prev-only é exclusivo da previdência)
+        pool_disponivel = {c: totais_regular.get(c, 0.0) for c in TODAS_CLASSES}
+
+        # Alocado por objetivo por classe (em R$)
+        alocado_por_obj = {r['objetivo_id']: {c: 0.0 for c in TODAS_CLASSES} for r in resultados_objetivos}
+
+        for resultado in resultados_ordenados:
+            obj_id = resultado['objetivo_id']
+            eh_prev = resultado['tipo_objetivo'] == 'previdencia'
+
+            # Valor que esse objetivo deve receber (calculado pela cascata)
+            valor_necessario = resultado['novos_valores']['total']
+
+            if eh_prev:
+                
+                # (o calcular_valores_atuais_objetivos já soma prev_only automaticamente)
+                prev_total = sum(prev_only.get(c, 0.0) for c in TODAS_CLASSES)
+                valor_necessario = max(0.0, valor_necessario - prev_total)
+
+            # Ordenar classes por preferência da matriz (maior % primeiro)
+            classes_por_preferencia = sorted(
+                TODAS_CLASSES,
+                key=lambda c: resultado['percentuais_alvo'].get(c, 0.0),
+                reverse=True
+            )
+
+            restante = valor_necessario
+
+            # Primeira passagem: aloca pelo mix ideal
+            for classe in classes_por_preferencia:
+                if restante <= 0:
+                    break
+                quero = valor_necessario * resultado['percentuais_alvo'].get(classe, 0.0) / 100
+                aloco = min(quero, pool_disponivel[classe], restante)
+                alocado_por_obj[obj_id][classe] += aloco
+                pool_disponivel[classe] -= aloco
+                restante -= aloco
+
+            # Segunda passagem: se ainda falta, completa com qualquer classe disponível
+            if restante > 0.01:
+                for classe in classes_por_preferencia:
+                    if restante <= 0:
+                        break
+                    aloco = min(pool_disponivel[classe], restante)
+                    alocado_por_obj[obj_id][classe] += aloco
+                    pool_disponivel[classe] -= aloco
+                    restante -= aloco
+
+        # Converter R$ alocado em % do pool total por classe
         for resultado in resultados_objetivos:
-            targets = _target_regular(resultado)
-            resultado['novos_percentuais'] = {
-                c: (targets[c] / soma_targets_regular[c] * 100)
-                   if soma_targets_regular[c] > 0 else 0.0
-                for c in TODAS_CLASSES
-            }
+            obj_id = resultado['objetivo_id']
+            resultado['novos_percentuais'] = {}
+            for classe in TODAS_CLASSES:
+                pool_total_classe = totais_regular.get(classe, 0.0)
+                if pool_total_classe > 0:
+                    resultado['novos_percentuais'][classe] = (
+                        alocado_por_obj[obj_id][classe] / pool_total_classe * 100
+                    )
+                else:
+                    resultado['novos_percentuais'][classe] = 0.0
+
+        
 
         # 7. Consolidar ações por classe
         TOLERANCIA_GAP     = 100.0
@@ -299,7 +340,7 @@ class BalanceamentoService:
                     'descricao': f'Resgatar R$ {abs(gap_total):,.0f} desta classe'
                 }
 
-        # 8. Operações líquidas = aporte + rebalanceamento
+        # 8. Operações líquidas
         TOLERANCIA_OPERACAO = 100.0
         operacoes_liquidas  = {}
         for c in TODAS_CLASSES:
@@ -333,8 +374,10 @@ class BalanceamentoService:
         session: Session
     ) -> Dict:
         TOLERANCIA_VP   = 100.0
-        todos_objetivos = session.query(Objetivo).filter_by(cliente_id=cliente_id).all()
-        max_iter        = max(len(todos_objetivos) - 1, 1)
+        todos_objetivos = session.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(
+            Objetivo.prioridade.asc().nulls_last(), Objetivo.data_final.asc()
+        ).all()
+        max_iter = max(len(todos_objetivos) - 1, 1)
 
         aportes_dict = {a['objetivo_id']: a['valor_aporte'] for a in aportes_por_objetivo}
         for obj in todos_objetivos:
@@ -342,6 +385,8 @@ class BalanceamentoService:
                 aportes_dict[obj.id] = 0.0
 
         historico_cascata = []
+
+        
 
         for i in range(max_iter):
             aportes_lista = [{'objetivo_id': oid, 'valor_aporte': v} for oid, v in aportes_dict.items()]
@@ -351,16 +396,14 @@ class BalanceamentoService:
                 r for r in resultado['resultados_por_objetivo']
                 if r['novos_valores']['total'] > r['vp_ideal'] + TOLERANCIA_VP
             ]
-            if not doadores:
-                break
+            
 
             receptores = sorted(
                 [r for r in resultado['resultados_por_objetivo']
                  if r['vp_ideal'] - r['novos_valores']['total'] > TOLERANCIA_VP],
-                key=lambda x: (x['prioridade'] is None, x['prioridade'] or x['prazo_meses'])
+                key=lambda x: (x['prioridade'] is None, x['prioridade'] if x['prioridade'] is not None else x['prazo_meses'])
             )
-            if not receptores:
-                break
+            
 
             movimentacoes_iter = []
             for doador in doadores:

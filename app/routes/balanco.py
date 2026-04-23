@@ -60,7 +60,7 @@ def iniciar(cliente_id):
         ipca = db.query(IndicadoresEconomicos).order_by(
             IndicadoresEconomicos.data_atualizacao.desc()
         ).first()
-        ipca_anual = ipca.ipca if ipca else 4.5
+        ipca_anual = ipca.ipca if ipca else 4.5      #REVER ESTA ESQUISITO ISSO AQUI
         
         for objetivo in objetivos:
             matriz = BalanceamentoService.buscar_matriz_alvo(objetivo, db)
@@ -72,7 +72,7 @@ def iniciar(cliente_id):
             vp_ideal_por_objetivo[objetivo.id] = vp_ideal
         
         
-        # NOVO: Calcular capital órfão
+        # Calcular capital órfão
         capital_alocado = {c: 0.0 for c in TODAS_CLASSES}
 
         for obj_id, valores in valores_por_objetivo.items():
