@@ -185,28 +185,31 @@ function aplicarFiltros() {
     const filtroClasse = document.getElementById('filtro-classe').value.toLowerCase();
     const filtroRisco = document.getElementById('filtro-risco').value.toLowerCase();
     const filtroStatus = document.getElementById('filtro-status').value.toLowerCase();
-    
+
+    sessionStorage.setItem('geld_filtro_classe', filtroClasse);
+    sessionStorage.setItem('geld_filtro_risco', filtroRisco);
+    sessionStorage.setItem('geld_filtro_status', filtroStatus);
+
     const rows = document.querySelectorAll('#tabela-fundos tbody tr');
-    
+
     rows.forEach(row => {
         const classe = row.getAttribute('data-classe').toLowerCase();
         const risco = row.getAttribute('data-risco').toLowerCase();
         const status = row.getAttribute('data-status').toLowerCase();
-        
+
         const matchClasse = !filtroClasse || classe.includes(filtroClasse);
         const matchRisco = !filtroRisco || risco === filtroRisco;
         const matchStatus = !filtroStatus || status === filtroStatus;
-        
+
         if (matchClasse && matchRisco && matchStatus) {
             row.style.display = '';
         } else {
             row.style.display = 'none';
-            // Desmarcar checkbox de linhas ocultas
             const checkbox = row.querySelector('.fundo-checkbox');
             if (checkbox) checkbox.checked = false;
         }
     });
-    
+
     updateCounter();
 }
 
@@ -215,6 +218,9 @@ function limparFiltros() {
     document.getElementById('filtro-classe').value = '';
     document.getElementById('filtro-risco').value = '';
     document.getElementById('filtro-status').value = '';
+    sessionStorage.removeItem('geld_filtro_classe');
+    sessionStorage.removeItem('geld_filtro_risco');
+    sessionStorage.removeItem('geld_filtro_status');
     aplicarFiltros();
 }
 
@@ -292,6 +298,17 @@ document.addEventListener('DOMContentLoaded', function() {
     rows.forEach(row => tbody.appendChild(row));
 
     popularFiltroClasse();
+
+    // Restaurar filtros da sessão
+    const classe = sessionStorage.getItem('geld_filtro_classe') || '';
+    const risco  = sessionStorage.getItem('geld_filtro_risco')  || '';
+    const status = sessionStorage.getItem('geld_filtro_status') || '';
+    if (classe || risco || status) {
+        document.getElementById('filtro-classe').value = classe;
+        document.getElementById('filtro-risco').value  = risco;
+        document.getElementById('filtro-status').value = status;
+        aplicarFiltros();
+    }
 });
 </script>
 
