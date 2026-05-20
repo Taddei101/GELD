@@ -6,7 +6,9 @@
 
 {% block content %}
 
-    <table class="table">
+    <input type="text" id="busca-clientes" placeholder="Buscar..." class="input-busca">
+
+    <table class="table" id="tabela-clientes">
         <thead>
             <tr>
                 <th>Nome</th>
@@ -58,5 +60,19 @@
 <button class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.register_client') }}`">
         <img src="{{ url_for('static', filename='icons/add.png') }}" class="sml-btn-icon"></button>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const tbody = document.querySelector('#tabela-clientes tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort((a, b) => {
+        const nA = (a.querySelector('td:nth-child(1)')?.textContent || '').trim().toLowerCase();
+        const nB = (b.querySelector('td:nth-child(1)')?.textContent || '').trim().toLowerCase();
+        return nA.localeCompare(nB, 'pt-BR');
+    });
+    rows.forEach(row => tbody.appendChild(row));
+    initBusca('tabela-clientes', 'busca-clientes');
+});
+</script>
 
 {% endblock %}
