@@ -94,17 +94,25 @@
                 
                 <td>{{'R$ {:.2f}'.format(fundo.valor_cota).replace('.', ',') if fundo.valor_cota else 'N/A'}}</td>
                 <td>
-                    {% if fundo.risco.value == 'baixo' %}
-                        {% if fundo.subtipo_risco and fundo.subtipo_risco.value == 'di' %}
-                            Baixo (DI)
-                        {% else %}
-                            Baixo (RFx)
-                        {% endif %}
-                    {% elif fundo.risco.value == 'fii' %}
-                        FII
-                    {% else %}
-                        {{ fundo.risco.value.title() if fundo.risco else 'N/A' }}
-                    {% endif %}
+                    <form class="form-update-risco" action="{{ url_for('fundos.update_risco', fundo_id=fundo.id) }}" method="POST" style="display:inline;">
+                        <select name="risco" class="filtro-dropdown">
+                            <option value="baixo-di" {% if fundo.risco.value == 'baixo' and fundo.subtipo_risco and fundo.subtipo_risco.value == 'di' %}selected{% endif %}>DI</option>
+                            <option value="baixo-rfx" {% if fundo.risco.value == 'baixo' and (not fundo.subtipo_risco or fundo.subtipo_risco.value == 'rfx') %}selected{% endif %}>RFx</option>
+                            <option value="moderado" {% if fundo.risco.value == 'moderado' %}selected{% endif %}>Moderado</option>
+                            <option value="alto" {% if fundo.risco.value == 'alto' %}selected{% endif %}>Alto</option>
+                            <option value="ouro" {% if fundo.risco.value == 'ouro' %}selected{% endif %}>Ouro</option>
+                            <option value="dolar" {% if fundo.risco.value == 'dolar' %}selected{% endif %}>Dólar</option>
+                            <option value="cripto" {% if fundo.risco.value == 'cripto' %}selected{% endif %}>Cripto</option>
+                            <option value="internacional" {% if fundo.risco.value == 'internacional' %}selected{% endif %}>Internacional</option>
+                            <option value="fii" {% if fundo.risco.value == 'fii' %}selected{% endif %}>FII</option>
+                        </select>
+                    </form>
+                    <form class="form-toggle-prev" action="{{ url_for('fundos.toggle_previdencia', fundo_id=fundo.id) }}" method="POST" style="display:inline;">
+                        <button type="submit" class="smlBtn{% if fundo.is_previdencia %} prev-ativo{% endif %}" style="width:auto; {% if not fundo.is_previdencia %}color:#ccc;{% endif %}"
+                            title="{% if fundo.is_previdencia %}Remover previdência{% else %}Marcar como previdência{% endif %}">
+                            Prev
+                        </button>
+                    </form>
                 </td>
                 <td>{{ fundo.status_fundo.value if fundo.status_fundo else 'N/A' }}</td>
                 
@@ -278,6 +286,36 @@ function deletarSelecionados() {
     document.body.appendChild(form);
     form.submit();
 }
+
+// Helper compartilhado
+function ajaxPost(url, body, onSuccess) {
+    fetch(url, {method: 'POST', credentials: 'same-origin', body: body || new FormData()})
+        .then(function(res) { if (res.ok || res.redirected) onSuccess(); });
+}
+
+// Toggle previdência sem recarregar página
+document.querySelectorAll('.form-toggle-prev').forEach(function(form) {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        ajaxPost(form.action, null, function() {
+            const btn = form.querySelector('button');
+            btn.classList.toggle('prev-ativo');
+            btn.style.color = btn.classList.contains('prev-ativo') ? '' : '#ccc';
+            btn.title = btn.classList.contains('prev-ativo') ? 'Remover previdência' : 'Marcar como previdência';
+        });
+    });
+});
+
+// Atualizar risco sem recarregar página
+document.querySelectorAll('.form-update-risco').forEach(function(form) {
+    const select = form.querySelector('select');
+    select.addEventListener('change', function() {
+        const val = select.value;
+        ajaxPost(form.action, new FormData(form), function() {
+            form.closest('tr').setAttribute('data-risco', val);
+        });
+    });
+});
 
 // Executar ao carregar a página
 document.addEventListener('DOMContentLoaded', function() {

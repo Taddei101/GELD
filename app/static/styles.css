@@ -113,13 +113,56 @@
 
 .table td, .table th {
     padding: 8px 12px;
-    border: 1px solid #40b090; 
-    text-align: center;      
-    vertical-align: middle;   
+    border: 1px solid #40b090;
+    text-align: center;
+    vertical-align: middle;
     place-items: center;
-    
+
 }
- 
+
+#tabela-fundos {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#tabela-fundos th:nth-child(1),
+#tabela-fundos td:nth-child(1) { width: 35px; }       /* checkbox */
+
+#tabela-fundos th:nth-child(2),
+#tabela-fundos td:nth-child(2) { width: auto; }        /* nome — ocupa o restante */
+
+#tabela-fundos th:nth-child(3),
+#tabela-fundos td:nth-child(3) { width: 110px; }       /* classe anbima */
+
+#tabela-fundos th:nth-child(4),
+#tabela-fundos td:nth-child(4) { width: 130px; }       /* cnpj */
+
+#tabela-fundos th:nth-child(5),
+#tabela-fundos td:nth-child(5) { width: 90px; }        /* data */
+
+#tabela-fundos th:nth-child(6),
+#tabela-fundos td:nth-child(6) { width: 85px; }        /* valor cota */
+
+#tabela-fundos th:nth-child(7),
+#tabela-fundos td:nth-child(7) { width: 160px; }       /* risco + prev */
+
+#tabela-fundos th:nth-child(8),
+#tabela-fundos td:nth-child(8) { width: 80px; }        /* status */
+
+#tabela-fundos th:nth-child(9),
+#tabela-fundos td:nth-child(9) { width: 85px; }        /* ações */
+
+#tabela-fundos td:nth-child(2) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.prev-ativo {
+    background-color: cornflowerblue !important;
+    color: #fff !important;
+}
+
 
 .info-table{
     

@@ -80,6 +80,49 @@ def add_fundo():
         if 'db' in locals() and db:
             db.close()
 
+@fundos_bp.route('/fundos/<int:fundo_id>/update_risco', methods=['POST'])
+@login_required
+def update_risco(fundo_id):
+    try:
+        db = create_session()
+        fundo = db.query(InfoFundo).filter_by(id=fundo_id).first()
+        if fundo:
+            risco_val = request.form['risco']
+            if risco_val == 'baixo-di':
+                fundo.risco = RiscoEnum.baixo
+                fundo.subtipo_risco = SubtipoRiscoEnum.di
+            elif risco_val == 'baixo-rfx':
+                fundo.risco = RiscoEnum.baixo
+                fundo.subtipo_risco = SubtipoRiscoEnum.rfx
+            else:
+                fundo.risco = RiscoEnum[risco_val]
+                fundo.subtipo_risco = None
+            db.commit()
+        return redirect(url_for('fundos.listar_fundos'))
+    except Exception as e:
+        flash(f'Erro ao atualizar risco: {str(e)}')
+        return redirect(url_for('fundos.listar_fundos'))
+    finally:
+        db.close()
+
+
+@fundos_bp.route('/fundos/<int:fundo_id>/toggle_previdencia', methods=['POST'])
+@login_required
+def toggle_previdencia(fundo_id):
+    try:
+        db = create_session()
+        fundo = db.query(InfoFundo).filter_by(id=fundo_id).first()
+        if fundo:
+            fundo.is_previdencia = not fundo.is_previdencia
+            db.commit()
+        return redirect(url_for('fundos.listar_fundos'))
+    except Exception as e:
+        flash(f'Erro ao atualizar fundo: {str(e)}')
+        return redirect(url_for('fundos.listar_fundos'))
+    finally:
+        db.close()
+
+
 #DELETAR
 @fundos_bp.route('/fundos/<int:fundo_id>/delete', methods=['POST'])
 @login_required
