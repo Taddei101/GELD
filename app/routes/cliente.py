@@ -55,8 +55,7 @@ def register_client():
         
         flash(f'Não foi possível cadastrar. {str(e)}',"error")
     except Exception as e:
-        
-        print(f'Não foi possível cadastrar. {str(e)}', "error")
+        flash(f'Não foi possível cadastrar. {str(e)}', "error")
     finally:
         db.close()
     

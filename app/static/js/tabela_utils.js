@@ -1,3 +1,8 @@
+function ajaxPost(url, body, onSuccess) {
+    fetch(url, {method: 'POST', credentials: 'same-origin', body: body || new FormData()})
+        .then(function(res) { if (res.ok || res.redirected) onSuccess(); });
+}
+
 /**
  * Busca dinâmica genérica para tabelas do Geld.
  * Uso: initBusca('id-da-tabela', 'id-do-input')

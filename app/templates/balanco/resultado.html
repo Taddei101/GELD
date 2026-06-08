@@ -12,7 +12,7 @@
 
     {# TABELA PRINCIPAL: target vs atual vs gap por objetivo #}
     <div style="overflow-x: auto;">
-    <table class="table table-bordered" style="font-size: 0.8em;">
+    <table class="table table-bordered" style="font-size: 0.7em; --bs-table-cell-padding-y: 0.3rem;">
         <thead class="thead-dark">
             <tr>
                 <th rowspan="2" style="vertical-align: middle; min-width: 120px;">Classe de Risco</th>
@@ -121,12 +121,17 @@
 
     <hr style="margin: 30px 0;">
 
-    {# OPERAÇÕES A EXECUTAR NO ADVISOR #}
-    <h3>Operações a Executar no Advisor</h3>
-    <p style="color: #666; font-size: 0.9em;">Valores consolidados: aporte + rebalanceamento. Execute apenas estas operações.</p>
+    {# OPERAÇÕES SEM PREVIDÊNCIA — só exibe se houver objetivo de previdência #}
+    {% set tem_prev = resultado.resultados_por_objetivo | selectattr('tipo_objetivo', 'equalto', 'previdencia') | list %}
 
-    <div style="max-width: 600px;">
-        <table class="table table-bordered">
+    <div style="display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap;">
+
+    {# COLUNA 1: OPERAÇÕES A EXECUTAR NO ADVISOR #}
+    <div>
+    <h3>Operações a Executar no Advisor</h3>
+    <p style="color: #666; font-size: 0.7em;"></p>
+    <div style="min-width: 340px;">
+        <table class="table table-bordered" style="font-size: 0.7em;  --bs-table-cell-padding-y: 0.3rem;">
             <thead class="thead-dark">
                 <tr>
                     <th style="width: 40%;">Classe de Risco</th>
@@ -143,25 +148,88 @@
                         <td class="text-center" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
                             <strong>{{ op.tipo }}</strong>
                         </td>
-                        <td class="text-right" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        <td class="text-right" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %}; white-space: nowrap;">
                             <strong>R$ {{ '{:,.0f}'.format(op.valor).replace(',', '.') }}</strong>
                         </td>
                     </tr>
                     {% endif %}
                 {% endfor %}
-                {# Linha de fallback se tudo for neutro #}
                 {% set tem_operacao = resultado.operacoes_liquidas.values() | selectattr('tipo', '!=', 'NEUTRO') | list %}
                 {% if not tem_operacao %}
                 <tr>
-                    <td colspan="3" class="text-center" style="color: #666;">
-                        Nenhuma operação necessária
-                    </td>
+                    <td colspan="3" class="text-center" style="color: #666;">Nenhuma operação necessária</td>
                 </tr>
                 {% endif %}
             </tbody>
         </table>
     </div>
+    </div>
 
+    {# COLUNA 2: OPERAÇÕES SEM PREVIDÊNCIA #}
+    {% if tem_prev %}
+    <div>
+    <h3>Sem Previdência</h3>
+    <p style="color: #666; font-size: 0.85em;"></p>
+    <div style="min-width: 340px;">
+        <table class="table table-bordered" style="font-size: 0.7em;">
+            <thead class="thead-dark">
+                <tr>
+                    <th style="width: 40%;">Classe de Risco</th>
+                    <th class="text-center">Operação</th>
+                    <th class="text-right" style="width: 25%;">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set tem_op_sem_prev = [false] %}
+                {% for classe in todas_classes %}
+                    {% set op = resultado.operacoes_liquidas[classe] %}
+                    {# Somar gap_individual da previdência para esta classe #}
+                    {% set gap_prev = namespace(total=0.0) %}
+                    {% for obj in resultado.resultados_por_objetivo %}
+                        {% if obj.tipo_objetivo == 'previdencia' %}
+                            {% set gap_prev.total = gap_prev.total + obj.gap_individual[classe] %}
+                        {% endif %}
+                    {% endfor %}
+                    {# Valor líquido sem previdência: operação original menos o gap da prev #}
+                    {% if op.tipo == 'COMPRAR' %}
+                        {% set valor_sem_prev = op.valor - gap_prev.total %}
+                    {% elif op.tipo == 'VENDER' %}
+                        {% set valor_sem_prev = op.valor * -1 - gap_prev.total %}
+                    {% else %}
+                        {% set valor_sem_prev = gap_prev.total * -1 %}
+                    {% endif %}
+                    {% if valor_sem_prev > 100 %}
+                        {% set _ = tem_op_sem_prev.append(true) %}
+                        <tr>
+                            <td><strong>{{ classe | replace('_', ' ') | title }}</strong></td>
+                            <td class="text-center" style="background-color: #d4edda;"><strong>COMPRAR</strong></td>
+                            <td class="text-right" style="background-color: #d4edda; white-space: nowrap;">
+                                <strong>R$ {{ '{:,.0f}'.format(valor_sem_prev).replace(',', '.') }}</strong>
+                            </td>
+                        </tr>
+                    {% elif valor_sem_prev < -100 %}
+                        {% set _ = tem_op_sem_prev.append(true) %}
+                        <tr>
+                            <td><strong>{{ classe | replace('_', ' ') | title }}</strong></td>
+                            <td class="text-center" style="background-color: #f8d7da;"><strong>VENDER</strong></td>
+                            <td class="text-right" style="background-color: #f8d7da;">
+                                <strong>R$ {{ '{:,.0f}'.format(valor_sem_prev * -1).replace(',', '.') }}</strong>
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+                {% if tem_op_sem_prev | length <= 1 %}
+                <tr>
+                    <td colspan="3" class="text-center" style="color: #666;">Nenhuma operação necessária</td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+    </div>{# fim coluna 2 #}
+    {% endif %}{# fim tem_prev #}
+
+    </div>{# fim flex #}
 
 {% if resultado.tem_cascata %}
 <hr style="margin: 30px 0;">
