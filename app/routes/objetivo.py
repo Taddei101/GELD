@@ -8,27 +8,7 @@ from app.services.balance_service import BalanceamentoService
 
 
 def _aplicar_prioridade(db, objetivo, nova_prioridade):
-    """
-    Define a prioridade do objetivo. Se já existir outro com a mesma prioridade,
-    faz swap automaticamente e retorna mensagem informativa. Retorna None se ok sem swap.
-    """
-    if nova_prioridade is None:
-        objetivo.prioridade = None
-        return None
-
-    conflito = db.query(Objetivo).filter(
-        Objetivo.cliente_id == objetivo.cliente_id,
-        Objetivo.prioridade == nova_prioridade,
-        Objetivo.id != objetivo.id
-    ).first()
-
-    if conflito:
-        conflito.prioridade = objetivo.prioridade  # pode ser None
-        objetivo.prioridade = nova_prioridade
-        return f'Prioridade trocada com "{conflito.nome_objetivo}".'
-
     objetivo.prioridade = nova_prioridade
-    return None
 
 objetivo_bp = Blueprint('objetivo', __name__)
 
@@ -65,7 +45,7 @@ def add_objetivo(cliente_id):
         data_final = datetime.strptime(request.form['data_final'], '%Y-%m-%d')
 
         prioridade_raw = request.form.get('prioridade', '').strip()
-        prioridade = int(prioridade_raw) if prioridade_raw else None
+        prioridade = float(prioridade_raw) if prioridade_raw else None
 
         novo_objetivo = global_service.create_classe(
             Objetivo,
@@ -76,14 +56,12 @@ def add_objetivo(cliente_id):
             valor_inicial=float(request.form['valor_inicial']),
             data_inicial=data_inicial,
             data_final=data_final,
-            prioridade=None  # será definida logo abaixo via swap
+            prioridade=None
         )
 
-        msg_swap = _aplicar_prioridade(db, novo_objetivo, prioridade)
+        _aplicar_prioridade(db, novo_objetivo, prioridade)
         db.commit()
 
-        if msg_swap:
-            flash(msg_swap, 'warning')
         flash(f'Objetivo "{novo_objetivo.nome_objetivo}" criado com sucesso!', 'success')
         return redirect(url_for('objetivo.listar_objetivos', cliente_id=cliente_id))
         
@@ -123,7 +101,7 @@ def edit_objetivo(objetivo_id):
             # Atualizar objetivo
             print("Recebida solicitação POST para editar objetivo.")
             prioridade_raw = request.form.get('prioridade', '').strip()
-            prioridade = int(prioridade_raw) if prioridade_raw else None
+            prioridade = float(prioridade_raw) if prioridade_raw else None
 
             dados_atualizados = {
                 'nome_objetivo': request.form['nome_objetivo'],
@@ -135,10 +113,8 @@ def edit_objetivo(objetivo_id):
             objetivo_atualizado = global_service.editar_classe(Objetivo, objetivo_id, **dados_atualizados)
 
             if objetivo_atualizado:
-                msg_swap = _aplicar_prioridade(db, objetivo_atualizado, prioridade)
+                _aplicar_prioridade(db, objetivo_atualizado, prioridade)
                 db.commit()
-                if msg_swap:
-                    flash(msg_swap, 'warning')
                 flash('Objetivo atualizado com sucesso!', 'success')
                 return redirect(url_for('objetivo.listar_objetivos', cliente_id=objetivo_atualizado.cliente_id))
             else:

@@ -111,7 +111,7 @@ class Objetivo(Base):
     valor_inicial = Column(Numeric(15,2), nullable = False)
     data_inicial = Column(DateTime, nullable = False)
     data_final = Column(DateTime, nullable = False)
-    prioridade = Column(Integer, nullable=True)
+    prioridade = Column(Float, nullable=True)
 
 
     @property
