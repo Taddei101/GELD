@@ -4,11 +4,8 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for,
 
 auth_bp = Blueprint('auth', __name__)
 
-USERNAME = os.environ.get('GELD_USERNAME')
-PASSWORD = os.environ.get('GELD_PASSWORD')
-
-if not USERNAME or not PASSWORD:
-    raise RuntimeError("GELD_USERNAME e GELD_PASSWORD devem estar definidos nas variáveis de ambiente")
+USERNAME = os.environ.get('GELD_USERNAME', 'claudio')
+PASSWORD = os.environ.get('GELD_PASSWORD', '1234')
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():

@@ -201,44 +201,6 @@
         </tbody>
     </table>
 </div>
-
-{% if ultimo_balanceamento.get('sem_prev') %}
-<div class="client_area">
-    <h3>Último Balanceamento — Sem Previdência</h3>
-    <table class="table" style="max-width: 400px; font-size: 0.9em;">
-        <thead>
-            <tr>
-                <th>Classe de Risco</th>
-                <th class="text-center">Operação</th>
-                <th class="text-right">Valor</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% set todas_classes = ['baixo_di', 'baixo_rfx', 'moderado', 'alto', 'ouro', 'dolar', 'cripto', 'internacional', 'fii'] %}
-            {% set tem_operacao = namespace(value=false) %}
-            {% for classe in todas_classes %}
-                {% set op = ultimo_balanceamento['sem_prev'].get(classe) %}
-                {% if op %}
-                {% set tem_operacao.value = true %}
-                <tr>
-                    <td>{{ classe | replace('_', ' ') | title }}</td>
-                    <td class="text-center" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
-                        <strong>{{ op.tipo }}</strong>
-                    </td>
-                    <td class="text-right" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
-                        R$ {{ '{:,.0f}'.format(op.valor).replace(',', '.') }}
-                    </td>
-                </tr>
-                {% endif %}
-            {% endfor %}
-            {% if not tem_operacao.value %}
-            <tr><td colspan="3" class="text-center" style="color: #999;">Nenhuma operação</td></tr>
-            {% endif %}
-        </tbody>
-    </table>
-</div>
-{% endif %}
-
 <p></p>
 {% endif %}
 
