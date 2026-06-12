@@ -171,12 +171,13 @@
 
 <div class="client_area">
     <h3>Último Balanceamento</h3>
-    <table class="table" style="min-width: 320px; font-size: 0.9em;">
-        <thead>
+    <div style="min-width: 320px;">
+    <table class="table table-bordered" style="font-size: 0.7em; --bs-table-cell-padding-y: 0.3rem;">
+        <thead class="thead-dark">
             <tr>
-                <th>Classe de Risco</th>
+                <th style="width: 40%;">Classe de Risco</th>
                 <th class="text-center">Operação</th>
-                <th class="text-right">Valor</th>
+                <th class="text-right" style="width: 25%;">Valor</th>
             </tr>
         </thead>
         <tbody>
@@ -187,12 +188,12 @@
                 {% if op and op.tipo != 'NEUTRO' %}
                 {% set tem_operacao.value = true %}
                 <tr>
-                    <td>{{ classe | replace('_', ' ') | title }}</td>
+                    <td><strong>{{ classe | replace('_', ' ') | title }}</strong></td>
                     <td class="text-center" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
                         <strong>{{ op.tipo }}</strong>
                     </td>
-                    <td class="text-right" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
-                        R$ {{ '{:,.0f}'.format(op.valor).replace(',', '.') }}
+                    <td class="text-right" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %}; white-space: nowrap;">
+                        <strong>R$ {{ '{:,.0f}'.format(op.valor).replace(',', '.') }}</strong>
                     </td>
                 </tr>
                 {% endif %}
@@ -202,17 +203,19 @@
             {% endif %}
         </tbody>
     </table>
+    </div>
 </div>
 
 {% if ultimo_balanceamento.get('sem_prev') %}
 <div class="client_area">
     <h3>Sem Previdência</h3>
-    <table class="table" style="min-width: 320px; font-size: 0.9em;">
-        <thead>
+    <div style="min-width: 320px;">
+    <table class="table table-bordered" style="font-size: 0.7em; --bs-table-cell-padding-y: 0.3rem;">
+        <thead class="thead-dark">
             <tr>
-                <th>Classe de Risco</th>
+                <th style="width: 40%;">Classe de Risco</th>
                 <th class="text-center">Operação</th>
-                <th class="text-right">Valor</th>
+                <th class="text-right" style="width: 25%;">Valor</th>
             </tr>
         </thead>
         <tbody>
@@ -222,12 +225,12 @@
                 {% if op %}
                 {% set tem_operacao2.value = true %}
                 <tr>
-                    <td>{{ classe | replace('_', ' ') | title }}</td>
+                    <td><strong>{{ classe | replace('_', ' ') | title }}</strong></td>
                     <td class="text-center" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
                         <strong>{{ op.tipo }}</strong>
                     </td>
-                    <td class="text-right" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
-                        R$ {{ '{:,.0f}'.format(op.valor).replace(',', '.') }}
+                    <td class="text-right" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %}; white-space: nowrap;">
+                        <strong>R$ {{ '{:,.0f}'.format(op.valor).replace(',', '.') }}</strong>
                     </td>
                 </tr>
                 {% endif %}
@@ -237,6 +240,7 @@
             {% endif %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endif %}
 
