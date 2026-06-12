@@ -167,9 +167,11 @@
 <p></p>
 
 {% if ultimo_balanceamento %}
+<div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start;">
+
 <div class="client_area">
     <h3>Último Balanceamento</h3>
-    <table class="table" style="max-width: 400px; font-size: 0.9em;">
+    <table class="table" style="min-width: 320px; font-size: 0.9em;">
         <thead>
             <tr>
                 <th>Classe de Risco</th>
@@ -200,6 +202,44 @@
             {% endif %}
         </tbody>
     </table>
+</div>
+
+{% if ultimo_balanceamento.get('sem_prev') %}
+<div class="client_area">
+    <h3>Sem Previdência</h3>
+    <table class="table" style="min-width: 320px; font-size: 0.9em;">
+        <thead>
+            <tr>
+                <th>Classe de Risco</th>
+                <th class="text-center">Operação</th>
+                <th class="text-right">Valor</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set tem_operacao2 = namespace(value=false) %}
+            {% for classe in todas_classes %}
+                {% set op = ultimo_balanceamento['sem_prev'].get(classe) %}
+                {% if op %}
+                {% set tem_operacao2.value = true %}
+                <tr>
+                    <td>{{ classe | replace('_', ' ') | title }}</td>
+                    <td class="text-center" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        <strong>{{ op.tipo }}</strong>
+                    </td>
+                    <td class="text-right" style="background-color: {% if op.tipo == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+                        R$ {{ '{:,.0f}'.format(op.valor).replace(',', '.') }}
+                    </td>
+                </tr>
+                {% endif %}
+            {% endfor %}
+            {% if not tem_operacao2.value %}
+            <tr><td colspan="3" class="text-center" style="color: #999;">Nenhuma operação</td></tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 </div>
 <p></p>
 {% endif %}

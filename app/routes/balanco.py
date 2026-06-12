@@ -142,7 +142,30 @@ def calcular(cliente_id):
         resultado = BalanceamentoService.executar_cascata_e_rebalancear(
             cliente_id, aportes_por_objetivo, db
         )
-        
+
+        # Calcular operações sem previdência enquanto resultado está fresco em memória
+        todas_classes = ['baixo_di', 'baixo_rfx', 'moderado', 'alto', 'ouro', 'dolar', 'cripto', 'internacional', 'fii']
+        operacoes = resultado.get('operacoes_liquidas', {})
+        operacoes_sem_prev = {}
+        for classe in todas_classes:
+            op = operacoes.get(classe, {})
+            gap_prev = sum(
+                obj['gap_individual'].get(classe, 0.0)
+                for obj in resultado.get('resultados_por_objetivo', [])
+                if obj.get('tipo_objetivo') == 'previdencia'
+            )
+            if op.get('tipo') == 'COMPRAR':
+                valor = op['valor'] - gap_prev
+            elif op.get('tipo') == 'VENDER':
+                valor = op['valor'] * -1 - gap_prev
+            else:
+                valor = gap_prev * -1
+            if valor > 100:
+                operacoes_sem_prev[classe] = {'tipo': 'COMPRAR', 'valor': round(valor, 2)}
+            elif valor < -100:
+                operacoes_sem_prev[classe] = {'tipo': 'VENDER', 'valor': round(abs(valor), 2)}
+        resultado['operacoes_sem_prev'] = operacoes_sem_prev or None
+
         # Salvar na sessão Flask
         flask_session['balanceamento_resultado'] = resultado
 
@@ -177,7 +200,7 @@ def aplicar(cliente_id):
     try:
         # Recuperar resultado da sessão
         resultado = flask_session.get('balanceamento_resultado')
-        
+
         if not resultado or resultado.get('cliente_id') != cliente_id:
             flash('Resultado não encontrado. Calcule novamente.', 'error')
             return redirect(url_for('balanco.iniciar', cliente_id=cliente_id))
@@ -187,7 +210,11 @@ def aplicar(cliente_id):
 
         # Persistir operações no cliente
         cliente = db.query(Cliente).get(cliente_id)
-        cliente.ultimo_balanceamento_json = json.dumps(resultado.get('operacoes_liquidas', {}))
+        operacoes = resultado.get('operacoes_liquidas', {})
+        cliente.ultimo_balanceamento_json = json.dumps({
+            **operacoes,
+            'sem_prev': resultado.get('operacoes_sem_prev'),
+        })
         db.commit()
 
         # Limpar sessão
