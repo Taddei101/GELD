@@ -1,3 +1,4 @@
+import os
 from app.app_config import app
 from app.models.geld_models import init_db
 
@@ -5,4 +6,4 @@ from app.models.geld_models import init_db
 init_db()
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=os.environ.get('DEBUG', 'False').lower() == 'true')

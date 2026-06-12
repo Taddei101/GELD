@@ -1,4 +1,5 @@
 from flask import Flask, redirect, url_for, session
+from datetime import timedelta
 import os
 try:
     from dotenv import load_dotenv
@@ -10,6 +11,20 @@ app = Flask(__name__, template_folder='templates', static_folder='static')
 
 app.secret_key = os.environ.get('SECRET_KEY') or 'dev-local-secret-key'
 app.config['DEBUG'] = os.environ.get('DEBUG', 'False').lower() == 'true'
+
+app.config.update(
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=os.environ.get('HTTPS', 'False').lower() == 'true',
+)
+
+@app.after_request
+def set_security_headers(response):
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    return response
 
 # Imports dos blueprints
 from app.routes.auth import auth_bp
