@@ -16,7 +16,7 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
-    SESSION_COOKIE_SECURE=os.environ.get('HTTPS', 'False').lower() == 'true',
+    SESSION_COOKIE_SECURE=False,
 )
 
 @app.after_request
