@@ -187,7 +187,35 @@ def aplicar(cliente_id):
 
         # Persistir operações no cliente
         cliente = db.query(Cliente).get(cliente_id)
-        cliente.ultimo_balanceamento_json = json.dumps(resultado.get('operacoes_liquidas', {}))
+
+        operacoes = resultado.get('operacoes_liquidas', {})
+
+        # Calcular operações sem previdência (mesma lógica da tabela no resultado.html)
+        todas_classes = ['baixo_di', 'baixo_rfx', 'moderado', 'alto', 'ouro', 'dolar', 'cripto', 'internacional', 'fii']
+        operacoes_sem_prev = {}
+        for classe in todas_classes:
+            op = operacoes.get(classe, {})
+            gap_prev = sum(
+                obj.get('gap_individual', {}).get(classe, 0.0)
+                for obj in resultado.get('resultados_por_objetivo', [])
+                if obj.get('tipo_objetivo') == 'previdencia'
+            )
+            if op.get('tipo') == 'COMPRAR':
+                valor = op['valor'] - gap_prev
+            elif op.get('tipo') == 'VENDER':
+                valor = op['valor'] * -1 - gap_prev
+            else:
+                valor = gap_prev * -1
+
+            if valor > 100:
+                operacoes_sem_prev[classe] = {'tipo': 'COMPRAR', 'valor': round(valor, 2)}
+            elif valor < -100:
+                operacoes_sem_prev[classe] = {'tipo': 'VENDER', 'valor': round(abs(valor), 2)}
+
+        cliente.ultimo_balanceamento_json = json.dumps({
+            **operacoes,
+            'sem_prev': operacoes_sem_prev if operacoes_sem_prev else None,
+        })
         db.commit()
 
         # Limpar sessão
