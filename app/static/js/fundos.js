@@ -35,9 +35,10 @@ function aplicarFiltros() {
         const classe = row.getAttribute('data-classe').toLowerCase();
         const risco  = row.getAttribute('data-risco').toLowerCase();
         const status = row.getAttribute('data-status').toLowerCase();
-        const texto  = row.textContent.toLowerCase();
+        const nome   = (row.querySelector('td:nth-child(2)')?.textContent || '').toLowerCase();
+        const cnpj   = (row.querySelector('td:nth-child(4)')?.textContent || '').toLowerCase();
 
-        const buscaOk = !busca || texto.includes(busca) || risco.includes(busca) || classe.includes(busca) || status.includes(busca);
+        const buscaOk = !busca || nome.includes(busca) || cnpj.includes(busca) || risco.includes(busca) || classe.includes(busca);
 
         const ok = buscaOk
                 && (!filtroClasse || classe.includes(filtroClasse))
