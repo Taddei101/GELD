@@ -3,9 +3,10 @@ Rotas para balanceamento de carteiras
 """
 
 import json
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session as flask_session
+from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.models.geld_models import Cliente, Objetivo, create_session, TODAS_CLASSES
 from app.services.balance_service import BalanceamentoService
+from app.services.asset_distribution_service import distribuir_por_ativo
 from app.services.global_services import login_required
 
 balanco_bp = Blueprint('balanco', __name__, url_prefix='/balanco')
@@ -166,15 +167,18 @@ def calcular(cliente_id):
                 operacoes_sem_prev[classe] = {'tipo': 'VENDER', 'valor': round(abs(valor), 2)}
         resultado['operacoes_sem_prev'] = operacoes_sem_prev or None
 
-        # Salvar na sessão Flask
-        flask_session['balanceamento_resultado'] = resultado
+        # Distribuição por ativo (Geld 2.0)
+        distribuicao_ativos = distribuir_por_ativo(cliente_id, operacoes, db)
 
-        
-        
+        # Salvar no banco (evita limite de 4KB do cookie de sessão)
+        cliente.balanceamento_pendente_json = json.dumps(resultado)
+        db.commit()
+
         return render_template(
             'balanco/resultado.html',
             cliente=cliente,
-            resultado=resultado
+            resultado=resultado,
+            distribuicao_ativos=distribuicao_ativos
         )
     
     except ValueError as e:
@@ -198,8 +202,10 @@ def aplicar(cliente_id):
     db = create_session()
     
     try:
-        # Recuperar resultado da sessão
-        resultado = flask_session.get('balanceamento_resultado')
+        # Recuperar resultado do banco
+        cliente = db.query(Cliente).get(cliente_id)
+        raw = cliente.balanceamento_pendente_json if cliente else None
+        resultado = json.loads(raw) if raw else None
 
         if not resultado or resultado.get('cliente_id') != cliente_id:
             flash('Resultado não encontrado. Calcule novamente.', 'error')
@@ -208,17 +214,14 @@ def aplicar(cliente_id):
         # Aplicar
         BalanceamentoService.aplicar_balanceamento(resultado, db)
 
-        # Persistir operações no cliente
-        cliente = db.query(Cliente).get(cliente_id)
+        # Persistir operações e limpar pendente
         operacoes = resultado.get('operacoes_liquidas', {})
         cliente.ultimo_balanceamento_json = json.dumps({
             **operacoes,
             'sem_prev': resultado.get('operacoes_sem_prev'),
         })
+        cliente.balanceamento_pendente_json = None
         db.commit()
-
-        # Limpar sessão
-        flask_session.pop('balanceamento_resultado', None)
 
         flash('Balanceamento aplicado com sucesso!', 'success')
         return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
@@ -236,7 +239,14 @@ def aplicar(cliente_id):
 @login_required
 def descartar(cliente_id):
     """Descartar balanceamento"""
-    flask_session.pop('balanceamento_resultado', None)
+    db = create_session()
+    try:
+        cliente = db.query(Cliente).get(cliente_id)
+        if cliente:
+            cliente.balanceamento_pendente_json = None
+            db.commit()
+    finally:
+        db.close()
     flash('Balanceamento descartado', 'info')
     return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
 

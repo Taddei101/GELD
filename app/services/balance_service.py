@@ -123,9 +123,17 @@ class BalanceamentoService:
 
     @staticmethod
     def calcular_vp_ideal(objetivo: Objetivo, ipca_anual: float = None) -> float:
+        if ipca_anual is None:
+            ipca_anual = 4.5
+        ipca_mensal = (1 + ipca_anual / 100) ** (1/12) - 1
+
+        duracao_total = (objetivo.data_final.year - objetivo.data_inicial.year) * 12 \
+            + (objetivo.data_final.month - objetivo.data_inicial.month)
+        valor_futuro = float(objetivo.valor_final) * ((1 + ipca_mensal) ** duracao_total)
+
         taxa_real_mensal = (1 + BalanceamentoService.TAXA_REAL_ANUAL / 100) ** (1/12) - 1
-        duracao          = objetivo.duracao_meses
-        return float(objetivo.valor_final) / ((1 + taxa_real_mensal) ** duracao)
+        duracao_restante = objetivo.duracao_meses
+        return valor_futuro / ((1 + taxa_real_mensal) ** duracao_restante)
 
     @staticmethod
     def redistribuir_fatias_apos_delecao(objetivo_id: int, cliente_id: int, session: Session):
@@ -305,17 +313,19 @@ class BalanceamentoService:
                     restante -= aloco
 
         # Converter R$ alocado em % do pool total por classe
+        # Denominador sempre totais_todos para que as fatias somem 100% por classe
         for resultado in resultados_objetivos:
             obj_id = resultado['objetivo_id']
+            eh_prev = resultado['tipo_objetivo'] == 'previdencia'
             resultado['novos_percentuais'] = {}
             for classe in TODAS_CLASSES:
-                pool_total_classe = totais_regular.get(classe, 0.0)
-                if pool_total_classe > 0:
-                    resultado['novos_percentuais'][classe] = (
-                        alocado_por_obj[obj_id][classe] / pool_total_classe * 100
-                    )
-                else:
+                pool_total_classe = totais_todos.get(classe, 0.0)
+                if pool_total_classe == 0:
                     resultado['novos_percentuais'][classe] = 0.0
+                elif eh_prev:
+                    resultado['novos_percentuais'][classe] = prev_only.get(classe, 0.0) / pool_total_classe * 100
+                else:
+                    resultado['novos_percentuais'][classe] = alocado_por_obj[obj_id][classe] / pool_total_classe * 100
 
         
 

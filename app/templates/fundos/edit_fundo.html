@@ -59,6 +59,18 @@
                 <option value="rfx" {% if fundo.subtipo_risco and fundo.subtipo_risco.value == 'rfx' %}selected{% endif %}>RFx</option>
             </select>
         </div>
+
+        <div class="label" id="subtipo_ativo_container">
+            <label for="subtipo_ativo_id">Slot de Distribuição:</label>
+            <select id="subtipo_ativo_id" name="subtipo_ativo_id">
+                <option value="">— nenhum —</option>
+                {% for s in subtipos_por_classe.get(fundo.risco.value, []) %}
+                <option value="{{ s.id }}" {% if fundo.subtipo_ativo_id == s.id %}selected{% endif %}>
+                    {{ s.letra }} — {{ s.nome }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
         
         <div class="label">
             <label for="is_previdencia">Produto de Previdência (PGBL/VGBL):</label>
@@ -89,11 +101,18 @@
     </form>
     
     <script>
+    const subtiposPorClasse = {{ subtipos_por_classe | tojson }};
+    const subtipoAtivoAtual = {{ fundo.subtipo_ativo_id | tojson }};
+
+    const classesSemSlot = ['ouro', 'dolar', 'cripto', 'internacional', 'fii'];
+
     function toggleSubtipo() {
         const risco = document.getElementById('risco').value;
         const subtipoContainer = document.getElementById('subtipo_container');
         const subtipoSelect = document.getElementById('subtipo_risco');
-        
+        const subtipoAtivoContainer = document.getElementById('subtipo_ativo_container');
+        const subtipoAtivoSelect = document.getElementById('subtipo_ativo_id');
+
         if (risco === 'baixo') {
             subtipoContainer.style.display = 'block';
             subtipoSelect.required = true;
@@ -101,9 +120,24 @@
             subtipoContainer.style.display = 'none';
             subtipoSelect.required = false;
         }
+
+        if (classesSemSlot.includes(risco)) {
+            subtipoAtivoContainer.style.display = 'none';
+            subtipoAtivoSelect.value = '';
+        } else {
+            subtipoAtivoContainer.style.display = 'block';
+            const slots = subtiposPorClasse[risco] || [];
+            subtipoAtivoSelect.innerHTML = '<option value="">— nenhum —</option>';
+            slots.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = s.letra + ' — ' + s.nome;
+                if (s.id === subtipoAtivoAtual) opt.selected = true;
+                subtipoAtivoSelect.appendChild(opt);
+            });
+        }
     }
-    
-    // Executar ao carregar
+
     document.addEventListener('DOMContentLoaded', toggleSubtipo);
     </script>
 </div>

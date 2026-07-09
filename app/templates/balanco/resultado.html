@@ -231,6 +231,210 @@
 
     </div>{# fim flex #}
 
+{# DISTRIBUIÇÃO POR ATIVO (GELD 2.0) #}
+{% if distribuicao_ativos %}
+<hr style="margin: 30px 0;">
+<h3>Distribuição por Fundo</h3>
+
+{# Macro: renderiza cabeçalho + título de uma classe #}
+{% macro titulo_classe(classe, dados) %}
+<h5 style="margin-bottom: 8px;">
+    {{ classe | replace('_', ' ') | title }}
+    <span style="font-size: 0.8em; font-weight: normal; padding: 2px 8px; border-radius: 4px;
+        background-color: {% if dados.tipo_operacao == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+        {{ dados.tipo_operacao }}&nbsp;R$&nbsp;{{ '{:,.0f}'.format(dados.valor_total).replace(',', '.') }}
+    </span>
+</h5>
+{% endmacro %}
+
+{# Macro: tabela DI #}
+{% macro tabela_di(dados) %}
+<table class="table table-bordered" style="font-size: 0.7em; --bs-table-cell-padding-y: 0.3rem;">
+    <thead class="thead-dark">
+        <tr>
+            <th>Slot</th>
+            <th>Fundo</th>
+            <th class="text-right">Atual R$</th>
+            <th class="text-right">Alvo R$</th>
+            <th class="text-right">Delta R$</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for f in dados.fundos_di %}
+    <tr>
+        <td style="color: #aaa; text-align: center;">—</td>
+        <td style="white-space: nowrap;">{{ f.nome }}</td>
+        <td class="text-right" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(f.atual_R).replace(',', '.') }}</td>
+        <td class="text-right" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(f.alvo_R).replace(',', '.') }}</td>
+        <td class="text-right" style="font-weight: bold; white-space: nowrap; color: {% if f.delta_R > 0 %}green{% elif f.delta_R < 0 %}red{% else %}inherit{% endif %};">
+            {% if f.delta_R > 0 %}+R$&nbsp;{{ '{:,.0f}'.format(f.delta_R).replace(',', '.') }}
+            {% elif f.delta_R < 0 %}-R$&nbsp;{{ '{:,.0f}'.format(f.delta_R | abs).replace(',', '.') }}
+            {% else %}R$&nbsp;0{% endif %}
+        </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5" class="text-center" style="color: #666;">Nenhum fundo DI cadastrado</td></tr>
+    {% endfor %}
+    <tr style="font-weight: bold;">
+        <td></td>
+        <td>Total</td>
+        <td class="text-right" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(dados.total_atual).replace(',', '.') }}</td>
+        <td class="text-right" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(dados.total_alvo).replace(',', '.') }}</td>
+        <td class="text-right" style="white-space: nowrap; color: {% if dados.tipo_operacao == 'COMPRAR' %}green{% else %}red{% endif %};">
+            {% if dados.tipo_operacao == 'COMPRAR' %}+R$&nbsp;{{ '{:,.0f}'.format(dados.valor_total).replace(',', '.') }}
+            {% else %}-R$&nbsp;{{ '{:,.0f}'.format(dados.valor_total).replace(',', '.') }}{% endif %}
+        </td>
+    </tr>
+    </tbody>
+</table>
+{% endmacro %}
+
+{# Macro: tabela slots #}
+{% macro tabela_slots(dados) %}
+<table class="table table-bordered" style="font-size: 0.7em; --bs-table-cell-padding-y: 0.3rem;">
+    <thead class="thead-dark">
+        <tr>
+            <th>Slot</th>
+            <th class="text-right">Atual R$</th>
+            <th class="text-right">Alvo R$</th>
+            <th class="text-right">Delta R$</th>
+            <th>Fundos</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for slot in dados.slots %}
+    <tr {% if slot.sem_fundo %}style="background-color: #fff3cd;"{% endif %}>
+        <td><strong>{{ slot.letra }}</strong> — {{ slot.nome }}<br>
+            <span style="color: #888; font-size: 0.85em;">{{ slot.percentual_ideal }}%</span>
+        </td>
+        <td class="text-right" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(slot.atual_R).replace(',', '.') }}</td>
+        <td class="text-right" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(slot.alvo_R).replace(',', '.') }}</td>
+        <td class="text-right" style="font-weight: bold; white-space: nowrap; color: {% if slot.delta_R > 0 %}green{% elif slot.delta_R < 0 %}red{% else %}inherit{% endif %};">
+            {% if slot.delta_R > 0 %}+R$&nbsp;{{ '{:,.0f}'.format(slot.delta_R).replace(',', '.') }}
+            {% elif slot.delta_R < 0 %}-R$&nbsp;{{ '{:,.0f}'.format(slot.delta_R | abs).replace(',', '.') }}
+            {% else %}R$&nbsp;0{% endif %}
+        </td>
+        <td>
+            {% if slot.sem_fundo %}
+                <span style="color: #856404;">⚠ sem fundo</span>
+            {% elif slot.sem_posicao %}
+                <span style="color: #6c757d;">⚠ sem posição</span>
+            {% else %}
+                {% for f in slot.fundos %}
+                    <span style="font-size: 0.9em;">{{ f.nome }}</span>{% if not loop.last %}<br>{% endif %}
+                {% endfor %}
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endmacro %}
+
+{# LINHA 1: Baixo DI + Baixo RFX #}
+{% set classes_linha1 = ['baixo_di', 'baixo_rfx'] %}
+{% if distribuicao_ativos.keys() | select('in', classes_linha1) | list %}
+<div style="display: flex; gap: 20px; margin-bottom: 24px; padding-right: 4px;">
+    {% for classe in classes_linha1 %}
+    {% if classe in distribuicao_ativos %}
+    <div style="flex: 1; min-width: 0; overflow: hidden;">
+        {{ titulo_classe(classe, distribuicao_ativos[classe]) }}
+        {% if distribuicao_ativos[classe].modo == 'di' %}
+            {{ tabela_di(distribuicao_ativos[classe]) }}
+        {% else %}
+            {{ tabela_slots(distribuicao_ativos[classe]) }}
+        {% endif %}
+    </div>
+    {% else %}
+    <div style="flex: 1; min-width: 0; overflow: hidden;"></div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+{# LINHA 2: Moderado + Alto #}
+{% set classes_linha2 = ['moderado', 'alto'] %}
+{% if distribuicao_ativos.keys() | select('in', classes_linha2) | list %}
+<div style="display: flex; gap: 20px; margin-bottom: 24px; padding-right: 4px;">
+    {% for classe in classes_linha2 %}
+    {% if classe in distribuicao_ativos %}
+    <div style="flex: 1; min-width: 0; overflow: hidden;">
+        {{ titulo_classe(classe, distribuicao_ativos[classe]) }}
+        {{ tabela_slots(distribuicao_ativos[classe]) }}
+    </div>
+    {% else %}
+    <div style="flex: 1; min-width: 0; overflow: hidden;"></div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+{# Macro: tabela previdência/hedge #}
+{% macro tabela_prev(dados) %}
+<table class="table table-bordered" style="font-size: 0.7em; --bs-table-cell-padding-y: 0.3rem;">
+    <thead class="thead-dark">
+        <tr>
+            <th>Tipo</th>
+            <th class="text-right">Atual R$</th>
+            <th class="text-right">Alvo R$</th>
+            <th class="text-right">Delta R$</th>
+            <th>Fundos</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for linha in dados.linhas %}
+    <tr>
+        <td><strong>{{ linha.label }}</strong></td>
+        <td class="text-right" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(linha.atual_R).replace(',', '.') }}</td>
+        <td class="text-right" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(linha.alvo_R).replace(',', '.') }}</td>
+        <td class="text-right" style="font-weight: bold; white-space: nowrap; color: {% if linha.delta_R > 0 %}green{% elif linha.delta_R < 0 %}red{% else %}inherit{% endif %};">
+            {% if linha.delta_R > 0 %}+R$&nbsp;{{ '{:,.0f}'.format(linha.delta_R).replace(',', '.') }}
+            {% elif linha.delta_R < 0 %}-R$&nbsp;{{ '{:,.0f}'.format(linha.delta_R | abs).replace(',', '.') }}
+            {% else %}R$&nbsp;0{% endif %}
+        </td>
+        <td>
+            {% if linha.sem_posicao %}
+                <span style="color: #6c757d;">⚠ sem posição</span>
+            {% else %}
+                {% for f in linha.fundos %}
+                    <span style="font-size: 0.9em;">{{ f.nome }}</span>{% if not loop.last %}<br>{% endif %}
+                {% endfor %}
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+    <tr style="font-weight: bold;">
+        <td>Total</td>
+        <td class="text-right" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(dados.total_atual).replace(',', '.') }}</td>
+        <td class="text-right" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(dados.total_alvo).replace(',', '.') }}</td>
+        <td class="text-right" style="white-space: nowrap; color: {% if dados.tipo_operacao == 'COMPRAR' %}green{% else %}red{% endif %};">
+            {% if dados.tipo_operacao == 'COMPRAR' %}+R$&nbsp;{{ '{:,.0f}'.format(dados.valor_total).replace(',', '.') }}
+            {% else %}-R$&nbsp;{{ '{:,.0f}'.format(dados.valor_total).replace(',', '.') }}{% endif %}
+        </td>
+        <td></td>
+    </tr>
+    </tbody>
+</table>
+{% endmacro %}
+
+{# LINHA 3: Previdência/Hedge #}
+{% if 'previdencia' in distribuicao_ativos %}
+<div style="margin-bottom: 24px;">
+    <h5 style="margin-bottom: 8px;">
+        Previdência / Hedge
+        {% if distribuicao_ativos['previdencia'].tipo_operacao != 'NEUTRO' %}
+        <span style="font-size: 0.8em; font-weight: normal; padding: 2px 8px; border-radius: 4px;
+            background-color: {% if distribuicao_ativos['previdencia'].tipo_operacao == 'COMPRAR' %}#d4edda{% else %}#f8d7da{% endif %};">
+            {{ distribuicao_ativos['previdencia'].tipo_operacao }}&nbsp;R$&nbsp;{{ '{:,.0f}'.format(distribuicao_ativos['previdencia'].valor_total).replace(',', '.') }}
+        </span>
+        {% endif %}
+    </h5>
+    {{ tabela_prev(distribuicao_ativos['previdencia']) }}
+</div>
+{% endif %}
+
+{% endif %}
+
 {% if resultado.tem_cascata %}
 <hr style="margin: 30px 0;">
 <h3>Redistribuição de Excedentes</h3>

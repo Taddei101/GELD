@@ -1,0 +1,8 @@
+SELECT
+    info_fundos.nome_fundo AS Ativo,
+    COUNT(DISTINCT posicao_fundos.cliente_id) AS Qtd_Pessoas
+FROM posicao_fundos
+JOIN info_fundos ON posicao_fundos.fundo_id = info_fundos.id
+WHERE info_fundos.is_previdencia = 0
+GROUP BY info_fundos.nome_fundo
+ORDER BY Qtd_Pessoas DESC;
