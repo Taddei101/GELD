@@ -65,6 +65,13 @@
             </select>
         </div>
 
+        <div class="label" id="subtipo_ativo_container" style="display: none;">
+            <label for="subtipo_ativo_id">Slot de Distribuição:</label>
+            <select id="subtipo_ativo_id" name="subtipo_ativo_id">
+                <option value="">— nenhum —</option>
+            </select>
+        </div>
+
         <div class="label">
             <label for="is_previdencia">Produto de Previdência (PGBL/VGBL):</label>
             <input class="large_checkbox" type="checkbox" id="is_previdencia" name="is_previdencia" value="1">
@@ -77,11 +84,15 @@
     </form>
 
     <script>
+    const subtiposPorClasse = {{ subtipos_por_classe | tojson }};
+
     function toggleSubtipo() {
         const risco = document.getElementById('risco').value;
         const subtipoContainer = document.getElementById('subtipo_container');
         const subtipoSelect = document.getElementById('subtipo_risco');
-        
+        const subtipoAtivoContainer = document.getElementById('subtipo_ativo_container');
+        const subtipoAtivoSelect = document.getElementById('subtipo_ativo_id');
+
         if (risco === 'baixo') {
             subtipoContainer.style.display = 'block';
             subtipoSelect.required = true;
@@ -90,6 +101,16 @@
             subtipoSelect.required = false;
             subtipoSelect.value = '';
         }
+
+        const slots = subtiposPorClasse[risco] || [];
+        subtipoAtivoSelect.innerHTML = '<option value="">— nenhum —</option>';
+        slots.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.textContent = s.letra + ' — ' + s.nome;
+            subtipoAtivoSelect.appendChild(opt);
+        });
+        subtipoAtivoContainer.style.display = slots.length > 0 ? 'block' : 'none';
     }
     </script>
 

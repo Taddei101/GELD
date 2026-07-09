@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from functools import wraps
-from app.models.geld_models import create_session, InfoFundo, RiscoEnum, StatusFundoEnum, SubtipoRiscoEnum, PosicaoFundo
+from app.models.geld_models import create_session, InfoFundo, RiscoEnum, StatusFundoEnum, SubtipoRiscoEnum, PosicaoFundo, SubtipoAtivo
 from app.services.global_services import GlobalServices, login_required
 from datetime import datetime
 from app.services.extract_services import ExtractServices
@@ -35,7 +35,16 @@ def listar_fundos():
 @login_required
 def add_fundo():
     if request.method == 'GET':
-        return render_template('fundos/add_fundo.html')
+        db = create_session()
+        try:
+            subtipos = db.query(SubtipoAtivo).order_by(SubtipoAtivo.classe_risco, SubtipoAtivo.letra).all()
+            subtipos_por_classe = {}
+            for s in subtipos:
+                key = s.classe_risco.value
+                subtipos_por_classe.setdefault(key, []).append({'id': s.id, 'letra': s.letra, 'nome': s.nome})
+        finally:
+            db.close()
+        return render_template('fundos/add_fundo.html', subtipos_por_classe=subtipos_por_classe)
     try:
         db = create_session()
         global_service = GlobalServices(db)
@@ -52,6 +61,8 @@ def add_fundo():
             subtipo_risco =  None
 
         is_previdencia = 'is_previdencia' in request.form
+        subtipo_id = request.form.get('subtipo_ativo_id', '')
+        subtipo_ativo_id = int(subtipo_id) if subtipo_id else None
 
         #cadastrar novo fundo
         novo_fundo = global_service.create_classe(
@@ -66,7 +77,8 @@ def add_fundo():
             is_previdencia=is_previdencia,
             status_fundo=status_fundo,
             valor_cota = 1,
-            data_atualizacao = data_atualizacao
+            data_atualizacao = data_atualizacao,
+            subtipo_ativo_id=subtipo_ativo_id
         )
         flash(f'Fundo {novo_fundo.nome_fundo} cadastrado com sucesso!')
         return redirect(url_for('fundos.listar_fundos'))
@@ -203,7 +215,12 @@ def edit_fundo(fundo_id):
             if not fundo:
                 flash('Fundo não encontrado')
                 return redirect(url_for('fundos.listar_fundos'))
-            return render_template('fundos/edit_fundo.html', fundo=fundo)
+            subtipos = db.query(SubtipoAtivo).order_by(SubtipoAtivo.classe_risco, SubtipoAtivo.letra).all()
+            subtipos_por_classe = {}
+            for s in subtipos:
+                key = s.classe_risco.value
+                subtipos_por_classe.setdefault(key, []).append({'id': s.id, 'letra': s.letra, 'nome': s.nome})
+            return render_template('fundos/edit_fundo.html', fundo=fundo, subtipos_por_classe=subtipos_por_classe)
 
         elif request.method =='POST':
 
@@ -239,6 +256,9 @@ def edit_fundo(fundo_id):
 
             if 'status_fundo' in request.form and request.form['status_fundo']:
                 dados_atualizados['status_fundo'] = StatusFundoEnum[request.form['status_fundo']]
+
+            subtipo_id = request.form.get('subtipo_ativo_id', '')
+            dados_atualizados['subtipo_ativo_id'] = int(subtipo_id) if subtipo_id else None
 
             fundo_atualizado = global_service.editar_classe(InfoFundo, fundo_id, **dados_atualizados)
 

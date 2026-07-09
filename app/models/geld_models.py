@@ -157,6 +157,18 @@ class DistribuicaoObjetivo(Base):
 
 
 
+class SubtipoAtivo(Base):
+    __tablename__ = 'subtipos_ativo'
+
+    id = Column(Integer, primary_key=True)
+    letra = Column(String(1), nullable=False)
+    nome = Column(String, nullable=False)
+    percentual_ideal = Column(Float, nullable=False, default=25.0)
+    classe_risco = Column(Enum(RiscoEnum), nullable=False)
+
+    fundos = relationship("InfoFundo", back_populates="subtipo_ativo")
+
+
 class InfoFundo(Base):
     """nome_fundo, cnpj, classe_anbima, mov_min, permanencia_min, risco,status_fundo"""
 
@@ -174,8 +186,10 @@ class InfoFundo(Base):
     status_fundo = Column(Enum(StatusFundoEnum), nullable = False)
     valor_cota = Column(Numeric(15,6), nullable=False)
     data_atualizacao = Column(DateTime, nullable=True)
+    subtipo_ativo_id = Column(Integer, ForeignKey('subtipos_ativo.id'), nullable=True)
 
     posicoes_fundo = relationship("PosicaoFundo", back_populates="info_fundo")
+    subtipo_ativo = relationship("SubtipoAtivo", back_populates="fundos")
 
 
 class PosicaoFundo(Base):
@@ -303,11 +317,32 @@ def _popular_matriz_inicial():
     finally:
         session.close()
 
+def _popular_subtipos_iniciais():
+    session = create_session()
+    try:
+        if session.query(SubtipoAtivo).first():
+            print("✓ Subtipos já populados")
+            return
+        print("→ Populando subtipos de ativo iniciais...")
+        for classe in RiscoEnum:
+            for letra, nome in [('A', 'Slot A'), ('B', 'Slot B'), ('C', 'Slot C'), ('D', 'Slot D')]:
+                session.add(SubtipoAtivo(letra=letra, nome=nome, percentual_ideal=25.0, classe_risco=classe))
+        session.commit()
+        print("✅ Subtipos populados!")
+    except Exception as e:
+        session.rollback()
+        print(f"❌ Erro ao popular subtipos: {e}")
+        raise e
+    finally:
+        session.close()
+
+
 def init_db():
     engine = create_engine(DATABASE_URL)
     Base.metadata.create_all(engine)
-        
+
     _popular_matriz_inicial()
+    _popular_subtipos_iniciais()
     
     return engine
   
