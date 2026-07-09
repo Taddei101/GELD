@@ -25,6 +25,7 @@ function aplicarFiltros() {
     const filtroClasse = document.getElementById('filtro-classe').value.toLowerCase();
     const filtroRisco  = document.getElementById('filtro-risco').value.toLowerCase();
     const filtroStatus = document.getElementById('filtro-status').value.toLowerCase();
+    const busca        = document.getElementById('busca-fundos').value.toLowerCase().trim();
 
     sessionStorage.setItem('geld_filtro_classe', filtroClasse);
     sessionStorage.setItem('geld_filtro_risco',  filtroRisco);
@@ -34,8 +35,13 @@ function aplicarFiltros() {
         const classe = row.getAttribute('data-classe').toLowerCase();
         const risco  = row.getAttribute('data-risco').toLowerCase();
         const status = row.getAttribute('data-status').toLowerCase();
+        const nome   = (row.querySelector('td:nth-child(2)')?.textContent || '').toLowerCase();
+        const cnpj   = (row.querySelector('td:nth-child(4)')?.textContent || '').toLowerCase();
 
-        const ok = (!filtroClasse || classe.includes(filtroClasse))
+        const buscaOk = !busca || nome.includes(busca) || cnpj.includes(busca) || risco.includes(busca) || classe.includes(busca);
+
+        const ok = buscaOk
+                && (!filtroClasse || classe.includes(filtroClasse))
                 && (!filtroRisco  || risco === filtroRisco)
                 && (!filtroStatus || status === filtroStatus);
 
@@ -111,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     popularFiltroClasse();
-    initBusca('tabela-fundos', 'busca-fundos');
+    document.getElementById('busca-fundos').addEventListener('input', aplicarFiltros);
 
     // Restaurar filtros da sessão
     const classe = sessionStorage.getItem('geld_filtro_classe') || '';

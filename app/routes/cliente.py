@@ -115,8 +115,9 @@ def edit_client(cliente_id):
         
         elif request.method =='POST':
             dados_atualizados = {
-                
+
                 'nome': request.form['nome'],
+                'cpf': request.form['cpf'],
                 'email': request.form['email'],
                 'telefone': request.form['telefone'],
                 'cep': int(request.form['cep']),
