@@ -123,9 +123,13 @@ class BalanceamentoService:
 
     @staticmethod
     def calcular_vp_ideal(objetivo: Objetivo, ipca_anual: float = None) -> float:
-        taxa_real_mensal = (1 + BalanceamentoService.TAXA_REAL_ANUAL / 100) ** (1/12) - 1
-        duracao          = objetivo.duracao_meses
-        return float(objetivo.valor_final) / ((1 + taxa_real_mensal) ** duracao)
+        ipca_anual        = ipca_anual if ipca_anual is not None else 0
+        ipca_mensal       = (1 + ipca_anual / 100) ** (1/12) - 1
+        taxa_real_mensal  = (1 + BalanceamentoService.TAXA_REAL_ANUAL / 100) ** (1/12) - 1
+        duracao           = objetivo.duracao_meses
+
+        valor_futuro = float(objetivo.valor_final) * ((1 + ipca_mensal) ** duracao)
+        return valor_futuro / ((1 + taxa_real_mensal) ** duracao)
 
     @staticmethod
     def redistribuir_fatias_apos_delecao(objetivo_id: int, cliente_id: int, session: Session):

@@ -193,10 +193,15 @@ def listar_objetivos(cliente_id):
         )
         
         # ✅ CALCULAR VP IDEAL POR OBJETIVO (mesma lógica de area_cliente)
+        ipca_indicador = db.query(IndicadoresEconomicos).order_by(
+            IndicadoresEconomicos.data_atualizacao.desc()
+        ).first()
+        ipca_anual = ipca_indicador.ipca if ipca_indicador else 4.5
+
         vp_ideal_por_objetivo = {}
         for objetivo in objetivos:
-            vp_ideal_por_objetivo[objetivo.id] = BalanceamentoService.calcular_vp_ideal(objetivo)
-        
+            vp_ideal_por_objetivo[objetivo.id] = BalanceamentoService.calcular_vp_ideal(objetivo, ipca_anual)
+
         ipca_mes = db.query(IndicadoresEconomicos.ipca_mes).order_by(
             IndicadoresEconomicos.data_atualizacao.desc()
         ).scalar() or 0
