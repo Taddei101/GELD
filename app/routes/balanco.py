@@ -6,7 +6,6 @@ import json
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.models.geld_models import Cliente, Objetivo, create_session, TODAS_CLASSES
 from app.services.balance_service import BalanceamentoService
-from app.services.asset_distribution_service import distribuir_por_ativo
 from app.services.global_services import login_required
 
 balanco_bp = Blueprint('balanco', __name__, url_prefix='/balanco')
@@ -167,9 +166,6 @@ def calcular(cliente_id):
                 operacoes_sem_prev[classe] = {'tipo': 'VENDER', 'valor': round(abs(valor), 2)}
         resultado['operacoes_sem_prev'] = operacoes_sem_prev or None
 
-        # Distribuição por ativo (Geld 2.0)
-        distribuicao_ativos = distribuir_por_ativo(cliente_id, operacoes, db)
-
         # Salvar no banco (evita limite de 4KB do cookie de sessão)
         cliente.balanceamento_pendente_json = json.dumps(resultado)
         db.commit()
@@ -177,8 +173,7 @@ def calcular(cliente_id):
         return render_template(
             'balanco/resultado.html',
             cliente=cliente,
-            resultado=resultado,
-            distribuicao_ativos=distribuicao_ativos
+            resultado=resultado
         )
     
     except ValueError as e:
