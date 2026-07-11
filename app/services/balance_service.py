@@ -123,13 +123,24 @@ class BalanceamentoService:
 
     @staticmethod
     def calcular_vp_ideal(objetivo: Objetivo, ipca_anual: float = None) -> float:
-        ipca_anual        = ipca_anual if ipca_anual is not None else 0
-        ipca_mensal       = (1 + ipca_anual / 100) ** (1/12) - 1
-        taxa_real_mensal  = (1 + BalanceamentoService.TAXA_REAL_ANUAL / 100) ** (1/12) - 1
-        duracao           = objetivo.duracao_meses
+        ipca_anual = ipca_anual if ipca_anual is not None else 0
 
-        valor_futuro = float(objetivo.valor_final) * ((1 + ipca_mensal) ** duracao)
-        return valor_futuro / ((1 + taxa_real_mensal) ** duracao)
+        ipca_mensal = (1 + ipca_anual / 100) ** (1/12) - 1
+
+        # Fisher: taxa nominal (IPCA + 3,5% real) usada só no desconto do Valor Presente.
+        taxa_nominal_anual  = (1 + ipca_anual / 100) * (1 + BalanceamentoService.TAXA_REAL_ANUAL / 100) - 1
+        taxa_nominal_mensal = (1 + taxa_nominal_anual) ** (1/12) - 1
+
+        # Valor futuro corrige o valor desejado só pelo IPCA, desde a CRIAÇÃO do objetivo até a data final.
+        duracao_criacao_ate_final = (
+            (objetivo.data_final.year - objetivo.data_inicial.year) * 12
+            + (objetivo.data_final.month - objetivo.data_inicial.month)
+        )
+        # Valor presente desconta o Valor Futuro pela taxa nominal, de HOJE até a data final.
+        duracao_hoje_ate_final = objetivo.duracao_meses
+
+        valor_futuro = float(objetivo.valor_final) * ((1 + ipca_mensal) ** duracao_criacao_ate_final)
+        return valor_futuro / ((1 + taxa_nominal_mensal) ** duracao_hoje_ate_final)
 
     @staticmethod
     def redistribuir_fatias_apos_delecao(objetivo_id: int, cliente_id: int, session: Session):
