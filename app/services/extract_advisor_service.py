@@ -35,24 +35,28 @@ class AdvisorExtractService:
             
             # Extrair posições da aba
             posicoes = self._extrair_aba_posicao(file_path)
-            
+
             # Estatísticas
             log['total'] = len(posicoes)
-            
+
             for pos in posicoes:
                 classe = pos.get('classe_anbima', 'outros')
                 log['por_classe'][classe] = log['por_classe'].get(classe, 0) + 1
-            
+
             print(f"[INFO] Total de posições extraídas: {len(posicoes)}")
             for classe, count in log['por_classe'].items():
                 print(f"[INFO]   - {classe}: {count}")
-            
-            return posicoes, log
-            
+
+            # Extrair lançamentos futuros (meramente informativo, não persiste em DB)
+            lancamentos_futuros = self._extrair_aba_lancamentos_futuros(file_path)
+            print(f"[INFO] Total de lançamentos futuros extraídos: {len(lancamentos_futuros)}")
+
+            return posicoes, log, lancamentos_futuros
+
         except Exception as e:
             log['erros'].append(str(e))
             print(f"[ERRO] Erro ao processar arquivo Advisor: {str(e)}")
-            return posicoes, log
+            return posicoes, log, []
     
     def _extrair_aba_posicao(self, file_path):
         """
@@ -187,6 +191,89 @@ class AdvisorExtractService:
             print(f"[ERRO] Erro ao ler aba Posição: {str(e)}")
             raise e
     
+    def _extrair_aba_lancamentos_futuros(self, file_path):
+        """
+        Extrai dados da aba 'Lançamentos Futuros' (informativo, não persiste em DB)
+
+        Estrutura das colunas:
+        0: Tipo (classe anbima)
+        1: Ativo (nome do fundo)
+        2: Operacao (Aplicação, Resgate Total, Resgate Parcial, etc.)
+        3: Descricao
+        4: Valor
+        5: DataSolicitacao
+        6: DataCotizacao
+        7: DataLiquidacao
+
+        Returns:
+            list: Lista de dicionários com os lançamentos futuros
+        """
+        lancamentos = []
+
+        try:
+            excel_file = pd.ExcelFile(file_path)
+            available_sheets = excel_file.sheet_names
+
+            possible_names = ['Lançamentos Futuros', 'Lancamentos Futuros', 'LANÇAMENTOS FUTUROS', 'LANCAMENTOS FUTUROS']
+
+            sheet_name = None
+            for name in possible_names:
+                if name in available_sheets:
+                    sheet_name = name
+                    break
+
+            if not sheet_name:
+                for available in available_sheets:
+                    if 'lançamentos futuros' in available.lower().strip() or 'lancamentos futuros' in available.lower().strip():
+                        sheet_name = available
+                        break
+
+            if not sheet_name:
+                print("[INFO] Aba 'Lançamentos Futuros' não encontrada neste arquivo")
+                return lancamentos
+
+            df = pd.read_excel(file_path, sheet_name=sheet_name, header=0)
+            print(f"[INFO] Aba '{sheet_name}' - {len(df)} linhas x {len(df.columns)} colunas")
+
+            for idx, row in df.iterrows():
+                try:
+                    if pd.isna(row.iloc[1]) or pd.isna(row.iloc[2]):
+                        continue
+
+                    lancamento = {
+                        "tipo": str(row.iloc[0]).strip() if pd.notna(row.iloc[0]) else "",
+                        "ativo": str(row.iloc[1]).strip(),
+                        "operacao": str(row.iloc[2]).strip(),
+                        "valor": self._parse_numero_br(row.iloc[4]) if pd.notna(row.iloc[4]) else 0.0,
+                        "data_solicitacao": self._formatar_data(row.iloc[5]),
+                        "data_cotizacao": self._formatar_data(row.iloc[6]),
+                        "data_liquidacao": self._formatar_data(row.iloc[7]),
+                    }
+
+                    lancamentos.append(lancamento)
+
+                except Exception as e:
+                    print(f"[AVISO] Erro ao processar linha {idx} de Lançamentos Futuros: {str(e)}")
+                    continue
+
+            return lancamentos
+
+        except Exception as e:
+            print(f"[ERRO] Erro ao ler aba Lançamentos Futuros: {str(e)}")
+            return lancamentos
+
+    def _formatar_data(self, valor):
+        """
+        Formata data (datetime ou string) para string dd/mm/yyyy, ou retorna vazio
+        """
+        if pd.isna(valor):
+            return ""
+
+        if isinstance(valor, datetime):
+            return valor.strftime("%d/%m/%Y")
+
+        return str(valor).strip()
+
     def _parse_numero_br(self, valor):
         """
         Converte número para float

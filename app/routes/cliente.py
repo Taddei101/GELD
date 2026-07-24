@@ -1,13 +1,15 @@
 import json
+import os
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from app.services.global_services import GlobalServices,login_required
 from app.services.balance_service import BalanceamentoService
 from app.services.posicao_service import PosicaoService
 from app.models.geld_models import (
-    create_session, RiscoEnum, SubtipoRiscoEnum, BancoEnum, Cliente, StatusEnum, 
+    create_session, RiscoEnum, SubtipoRiscoEnum, BancoEnum, Cliente, StatusEnum,
     PosicaoFundo, InfoFundo, Objetivo, DistribuicaoObjetivo, IndicadoresEconomicos,
     TODAS_CLASSES
 )
+from app.config import BASE_DIR
 from datetime import datetime
 from functools import wraps
 from sqlalchemy import func
@@ -255,10 +257,18 @@ def area_cliente(cliente_id):
 
         ultimo_balanceamento = json.loads(cliente.ultimo_balanceamento_json) if cliente.ultimo_balanceamento_json else None
 
+        # Lançamentos futuros (meramente informativo, vive fora da DB)
+        lancamentos_futuros = []
+        lancamentos_path = os.path.join(BASE_DIR, 'lancamentos_futuros', f'{cliente_id}.json')
+        if os.path.exists(lancamentos_path):
+            with open(lancamentos_path, 'r', encoding='utf-8') as f:
+                lancamentos_futuros = json.load(f)
+
         return render_template('cliente/area_cliente.html',
                               cliente=cliente,
                               montante_cliente=montante_cliente,
                               ultimo_balanceamento=ultimo_balanceamento,
+                              lancamentos_futuros=lancamentos_futuros,
                               has_positions=has_positions,
                               n_objetivos=n_objetivos, 
                               n_fundos=n_fundos,

@@ -6,7 +6,10 @@ from flask import Blueprint, render_template, request, flash, redirect, url_for
 from app.services.global_services import login_required, GlobalServices
 from app.models.geld_models import create_session, Cliente, InfoFundo, PosicaoFundo, RiscoEnum, StatusFundoEnum
 from app.services.extract_advisor_service import AdvisorExtractService
+from app.config import BASE_DIR
 from datetime import datetime
+import json
+import os
 
 
 posicao_advisor_bp = Blueprint('posicao_advisor', __name__)
@@ -58,8 +61,18 @@ def upload_advisor(cliente_id):
                 print("[INFO] Iniciando processamento de arquivo Advisor...")
                 
                 advisor_service = AdvisorExtractService(db)
-                posicoes, log = advisor_service.processar_arquivo_advisor(file_path, cliente_id)
-                
+                posicoes, log, lancamentos_futuros = advisor_service.processar_arquivo_advisor(file_path, cliente_id)
+
+                # Salvar lançamentos futuros (meramente informativo, fora da DB)
+                lancamentos_dir = os.path.join(BASE_DIR, 'lancamentos_futuros')
+                os.makedirs(lancamentos_dir, exist_ok=True)
+                lancamentos_path = os.path.join(lancamentos_dir, f'{cliente_id}.json')
+
+                with open(lancamentos_path, 'w', encoding='utf-8') as f:
+                    json.dump(lancamentos_futuros, f, ensure_ascii=False, indent=2)
+
+                print(f"[INFO] {len(lancamentos_futuros)} lançamentos futuros salvos em {lancamentos_path}")
+
                 # Mensagem informativa
                 total = log['total']
                 flash(f"Processadas {total} posições do Advisor", "info")
@@ -174,7 +187,6 @@ def upload_advisor(cliente_id):
 
             # Limpar arquivo temporário
             try:
-                import os
                 os.remove(file_path)
             except:
                 pass
