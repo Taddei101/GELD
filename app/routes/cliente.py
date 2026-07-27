@@ -7,7 +7,7 @@ from app.services.posicao_service import PosicaoService
 from app.models.geld_models import (
     create_session, RiscoEnum, SubtipoRiscoEnum, BancoEnum, Cliente, StatusEnum,
     PosicaoFundo, InfoFundo, Objetivo, DistribuicaoObjetivo, IndicadoresEconomicos,
-    TODAS_CLASSES
+    TODAS_CLASSES, TipoObjetivoEnum
 )
 from app.config import BASE_DIR
 from datetime import datetime
@@ -219,12 +219,25 @@ def area_cliente(cliente_id):
                 cliente_id, totais_regular, db, totais_todos
             )
             
-            # Buscar percentuais salvos
+            # Buscar percentuais salvos (% de cada objetivo sobre o total
+            # da classe, somando regular + previdência — mesmo denominador
+            # para todos os objetivos, para a linha somar 100% de fato)
+            prev_only = {c: totais_todos.get(c, 0.0) - totais_regular.get(c, 0.0) for c in TODAS_CLASSES}
+
             for objetivo in objetivos:
+                if objetivo.tipo_objetivo == TipoObjetivoEnum.previdencia:
+                    percentuais_salvos[objetivo.id] = {
+                        c: (prev_only[c] / totais_todos[c] * 100) if totais_todos.get(c) else 0.0
+                        for c in TODAS_CLASSES
+                    }
+                    continue
+
                 dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo.id).first()
                 if dist:
                     percentuais_salvos[objetivo.id] = {
-                        c: getattr(dist, f'perc_{c}') for c in TODAS_CLASSES
+                        c: (getattr(dist, f'perc_{c}') * totais_regular.get(c, 0.0) / totais_todos[c])
+                           if totais_todos.get(c) else 0.0
+                        for c in TODAS_CLASSES
                     }
                 else:
                     percentuais_salvos[objetivo.id] = {c: 0.0 for c in TODAS_CLASSES}

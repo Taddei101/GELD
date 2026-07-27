@@ -105,7 +105,7 @@
                 <tr>
                     <td><strong>{{ classe | replace('_', ' ') | title }}</strong></td>
                     {% for obj in resultado.resultados_por_objetivo %}
-                        {% set perc = obj.novos_percentuais[classe] %}
+                        {% set perc = obj.percentuais_exibicao[classe] %}
                         <td class="text-center">
                             {% if perc > 0 %}{{ '{:.1f}'.format(perc) }}%
                             {% else %}<span style="color: #999;">-</span>{% endif %}
@@ -182,22 +182,14 @@
             <tbody>
                 {% set tem_op_sem_prev = [false] %}
                 {% for classe in todas_classes %}
-                    {% set op = resultado.operacoes_liquidas[classe] %}
-                    {# Somar gap_individual da previdência para esta classe #}
-                    {% set gap_prev = namespace(total=0.0) %}
+                    {# Soma o gap_individual só dos objetivos não-previdência #}
+                    {% set gap_sem_prev = namespace(total=0.0) %}
                     {% for obj in resultado.resultados_por_objetivo %}
-                        {% if obj.tipo_objetivo == 'previdencia' %}
-                            {% set gap_prev.total = gap_prev.total + obj.gap_individual[classe] %}
+                        {% if obj.tipo_objetivo != 'previdencia' %}
+                            {% set gap_sem_prev.total = gap_sem_prev.total + obj.gap_individual[classe] %}
                         {% endif %}
                     {% endfor %}
-                    {# Valor líquido sem previdência: operação original menos o gap da prev #}
-                    {% if op.tipo == 'COMPRAR' %}
-                        {% set valor_sem_prev = op.valor - gap_prev.total %}
-                    {% elif op.tipo == 'VENDER' %}
-                        {% set valor_sem_prev = op.valor * -1 - gap_prev.total %}
-                    {% else %}
-                        {% set valor_sem_prev = gap_prev.total * -1 %}
-                    {% endif %}
+                    {% set valor_sem_prev = gap_sem_prev.total %}
                     {% if valor_sem_prev > 100 %}
                         {% set _ = tem_op_sem_prev.append(true) %}
                         <tr>

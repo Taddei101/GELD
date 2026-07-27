@@ -401,7 +401,7 @@ class BalanceamentoService:
 
         historico_cascata = []
 
-        
+
 
         for i in range(max_iter):
             aportes_lista = [{'objetivo_id': oid, 'valor_aporte': v} for oid, v in aportes_dict.items()]
@@ -411,7 +411,7 @@ class BalanceamentoService:
                 r for r in resultado['resultados_por_objetivo']
                 if r['novos_valores']['total'] > r['vp_ideal'] + TOLERANCIA_VP
             ]
-            
+
 
             receptores = sorted(
                 [r for r in resultado['resultados_por_objetivo']

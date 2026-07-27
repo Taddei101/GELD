@@ -38,14 +38,26 @@ def iniciar(cliente_id):
             cliente_id, totais_regular, db, totais_atuais
         )
         
-        # Buscar percentuais salvos (fatias)
-        from app.models.geld_models import DistribuicaoObjetivo
+        # Buscar percentuais salvos (% de cada objetivo sobre o total da
+        # classe, somando regular + previdência — mesmo denominador para
+        # todos os objetivos, para a linha somar 100% de fato)
+        from app.models.geld_models import DistribuicaoObjetivo, TipoObjetivoEnum
         percentuais_salvos = {}
         for objetivo in objetivos:
+            if objetivo.tipo_objetivo == TipoObjetivoEnum.previdencia:
+                percentuais_salvos[objetivo.id] = {
+                    c: ((totais_atuais.get(c, 0.0) - totais_regular.get(c, 0.0)) / totais_atuais[c] * 100)
+                       if totais_atuais.get(c) else 0.0
+                    for c in TODAS_CLASSES
+                }
+                continue
+
             dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo.id).first()
             if dist:
                 percentuais_salvos[objetivo.id] = {
-                    c: getattr(dist, f'perc_{c}') for c in TODAS_CLASSES
+                    c: (getattr(dist, f'perc_{c}') * totais_regular.get(c, 0.0) / totais_atuais[c])
+                       if totais_atuais.get(c) else 0.0
+                    for c in TODAS_CLASSES
                 }
             else:
                 percentuais_salvos[objetivo.id] = {c: 0.0 for c in TODAS_CLASSES}
@@ -143,28 +155,43 @@ def calcular(cliente_id):
             cliente_id, aportes_por_objetivo, db
         )
 
-        # Calcular operações sem previdência enquanto resultado está fresco em memória
+        # Operações sem previdência: soma o gap_individual só dos objetivos
+        # não-previdência por classe — ignora inteiramente o que a previdência
+        # precisa organicamente e o que ela recebe de excedente via cascata.
         todas_classes = ['baixo_di', 'baixo_rfx', 'moderado', 'alto', 'ouro', 'dolar', 'cripto', 'internacional', 'fii']
-        operacoes = resultado.get('operacoes_liquidas', {})
         operacoes_sem_prev = {}
         for classe in todas_classes:
-            op = operacoes.get(classe, {})
-            gap_prev = sum(
+            valor = sum(
                 obj['gap_individual'].get(classe, 0.0)
                 for obj in resultado.get('resultados_por_objetivo', [])
-                if obj.get('tipo_objetivo') == 'previdencia'
+                if obj.get('tipo_objetivo') != 'previdencia'
             )
-            if op.get('tipo') == 'COMPRAR':
-                valor = op['valor'] - gap_prev
-            elif op.get('tipo') == 'VENDER':
-                valor = op['valor'] * -1 - gap_prev
-            else:
-                valor = gap_prev * -1
             if valor > 100:
                 operacoes_sem_prev[classe] = {'tipo': 'COMPRAR', 'valor': round(valor, 2)}
             elif valor < -100:
                 operacoes_sem_prev[classe] = {'tipo': 'VENDER', 'valor': round(abs(valor), 2)}
         resultado['operacoes_sem_prev'] = operacoes_sem_prev or None
+
+        # novos_percentuais (usado para persistir DistribuicaoObjetivo.perc_*)
+        # tem como denominador só o pool regular — nas classes onde só a
+        # previdência tem saldo (ex: ouro, cripto), isso fica sempre 0% pra
+        # todo mundo. percentuais_exibicao é só para a tabela da tela,
+        # normalizando pelo total real (regular + previdência) por classe.
+        totais_atuais_dict = resultado.get('totais_atuais', {})
+        totais_regular_dict = resultado.get('totais_regular', {})
+        for obj_resultado in resultado.get('resultados_por_objetivo', []):
+            if obj_resultado.get('tipo_objetivo') == 'previdencia':
+                obj_resultado['percentuais_exibicao'] = {
+                    c: ((totais_atuais_dict.get(c, 0.0) - totais_regular_dict.get(c, 0.0)) / totais_atuais_dict[c] * 100)
+                       if totais_atuais_dict.get(c) else 0.0
+                    for c in todas_classes
+                }
+            else:
+                obj_resultado['percentuais_exibicao'] = {
+                    c: (obj_resultado['novos_percentuais'][c] * totais_regular_dict.get(c, 0.0) / totais_atuais_dict[c])
+                       if totais_atuais_dict.get(c) else 0.0
+                    for c in todas_classes
+                }
 
         # Salvar no banco (evita limite de 4KB do cookie de sessão)
         cliente.balanceamento_pendente_json = json.dumps(resultado)
@@ -275,117 +302,3 @@ def resetar_distribuicao(cliente_id):
     return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
 
 
-
-
-
-@balanco_bp.route('/editar_fatias/<int:cliente_id>', methods=['GET'])
-@login_required
-def editar_fatias(cliente_id):
-    """Formulário para editar percentuais (fatias) dos objetivos manualmente"""
-    from app.models.geld_models import DistribuicaoObjetivo
-    
-    db = create_session()
-    
-    try:
-        cliente = db.query(Cliente).get(cliente_id)
-        if not cliente:
-            flash('Cliente não encontrado', 'error')
-            return redirect(url_for('dashboard.index'))
-        
-        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final).all()
-        
-        if not objetivos:
-            flash('Cliente não possui objetivos cadastrados.', 'warning')
-            return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
-        
-        # Buscar percentuais salvos para cada objetivo
-        percentuais_salvos = {}
-        for objetivo in objetivos:
-            dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo.id).first()
-            if dist:
-                percentuais_salvos[objetivo.id] = {
-                    c: getattr(dist, f'perc_{c}') for c in TODAS_CLASSES
-                }
-            else:
-                percentuais_salvos[objetivo.id] = {c: 0.0 for c in TODAS_CLASSES}
-        
-        return render_template(
-            'balanco/editar_fatias.html',
-            cliente=cliente,
-            objetivos=objetivos,
-            percentuais_salvos=percentuais_salvos
-        )
-    
-    except Exception as e:
-        flash(f'Erro ao carregar edição: {str(e)}', 'error')
-        return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
-    
-    finally:
-        db.close()
-
-
-@balanco_bp.route('/salvar_fatias/<int:cliente_id>', methods=['POST'])
-@login_required
-def salvar_fatias(cliente_id):
-    """Salvar percentuais editados manualmente"""
-    from app.models.geld_models import DistribuicaoObjetivo
-    
-    db = create_session()
-    
-    try:
-        cliente = db.query(Cliente).get(cliente_id)
-        if not cliente:
-            flash('Cliente não encontrado', 'error')
-            return redirect(url_for('dashboard.index'))
-        
-        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final).all()
-        
-        # Coletar dados do formulário
-        dados_objetivos = {}
-        for objetivo in objetivos:
-            dados_objetivos[objetivo.id] = {
-                c: float(request.form.get(f'{c}_{objetivo.id}', 0))
-                for c in TODAS_CLASSES
-            }
-        
-        # Validação: soma por classe deve ser 100%
-        totais_por_classe = {c: 0.0 for c in TODAS_CLASSES}
-        for percentuais in dados_objetivos.values():
-            for c in TODAS_CLASSES:
-                totais_por_classe[c] += percentuais[c]
-        
-        erros = []
-        for c, total in totais_por_classe.items():
-            if abs(total - 100.0) > 0.01:
-                erros.append(f'{c.replace("_", " ").title()}: {total:.2f}%')
-        
-        if erros:
-            flash(f'Erro: As fatias devem somar 100% por classe. Totais incorretos: {", ".join(erros)}', 'error')
-            return redirect(url_for('balanco.editar_fatias', cliente_id=cliente_id))
-        
-        # Salvar no banco
-        for objetivo_id, percentuais in dados_objetivos.items():
-            dist = db.query(DistribuicaoObjetivo).filter_by(objetivo_id=objetivo_id).first()
-            
-            if not dist:
-                dist = DistribuicaoObjetivo(objetivo_id=objetivo_id)
-                db.add(dist)
-            
-            for c in TODAS_CLASSES:
-                setattr(dist, f'perc_{c}', percentuais[c])
-        
-        db.commit()
-        flash('Fatias atualizadas com sucesso!', 'success')
-        return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
-    
-    except ValueError as e:
-        flash(f'Erro nos valores informados: {str(e)}', 'error')
-        return redirect(url_for('balanco.editar_fatias', cliente_id=cliente_id))
-    
-    except Exception as e:
-        db.rollback()
-        flash(f'Erro ao salvar: {str(e)}', 'error')
-        return redirect(url_for('balanco.editar_fatias', cliente_id=cliente_id))
-    
-    finally:
-        db.close()
