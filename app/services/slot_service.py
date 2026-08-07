@@ -35,7 +35,7 @@ RISCO_E_SUBTIPO = {
 }
 
 
-def calcular_compra_venda_por_slot(cliente, db):
+def calcular_compra_venda_por_slot(cliente, db, operacoes=None):
     """
     Retorna, por classe de risco com operação pendente:
       [{fundo_nomes: [...], atual, alvo, delta}, ...]
@@ -43,12 +43,16 @@ def calcular_compra_venda_por_slot(cliente, db):
     Para classes com slot, cada linha é um slot (fundos do cliente ali,
     valores somados). Para classes sem slot, é uma linha só para a classe
     inteira.
-    """
-    resultado_bruto = cliente.balanceamento_pendente_json
-    if not resultado_bruto:
-        return {}
 
-    operacoes = json.loads(resultado_bruto).get('operacoes_liquidas', {})
+    Por padrão lê cliente.balanceamento_pendente_json['operacoes_liquidas'].
+    Passe `operacoes` (mesmo formato: {classe: {tipo, valor}}) para ratear
+    outro conjunto de operações pelos mesmos slots — ex: operacoes_sem_prev.
+    """
+    if operacoes is None:
+        resultado_bruto = cliente.balanceamento_pendente_json
+        if not resultado_bruto:
+            return {}
+        operacoes = json.loads(resultado_bruto).get('operacoes_liquidas', {})
 
     distribuicao = {}
     for classe, operacao in operacoes.items():

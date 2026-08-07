@@ -276,6 +276,82 @@
 </div>
 {% endif %}
 
+{% macro tabela_slots(distribuicao) %}
+    {% for classe, linhas in distribuicao.items() %}
+    <h5 style="margin-bottom: 8px;">{{ classe | replace('_', ' ') | title }}</h5>
+    <div style="overflow-x: auto; min-width: 320px; margin-bottom: 16px;">
+    <table class="table table-bordered" style="font-size: 0.7em; --bs-table-cell-padding-y: 0.3rem;">
+        <thead class="thead-dark">
+            <tr>
+                <th>Fundo(s)</th>
+                <th class="text-center">Atual</th>
+                <th class="text-center">Alvo</th>
+                <th class="text-center">Comprar/Vender</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for linha in linhas %}
+            <tr>
+                <td>
+                    {% for nome in linha.fundo_nomes %}
+                        {{ nome }}<br>
+                    {% else %}
+                        <em>sem fundo cadastrado</em>
+                    {% endfor %}
+                </td>
+                <td class="text-center" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(linha.atual).replace(',', '.') }}</td>
+                <td class="text-center" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(linha.alvo).replace(',', '.') }}</td>
+                <td class="text-center" style="white-space: nowrap; color: {% if linha.delta > 0 %}green{% elif linha.delta < 0 %}red{% endif %};">
+                    {% if linha.delta > 0 %}+R$&nbsp;{{ '{:,.0f}'.format(linha.delta).replace(',', '.') }}
+                    {% elif linha.delta < 0 %}-R$&nbsp;{{ '{:,.0f}'.format(linha.delta | abs).replace(',', '.') }}
+                    {% else %}R$&nbsp;0{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% endfor %}
+{% endmacro %}
+
+{% if ultimo_balanceamento.get('slots') %}
+<div class="client_area">
+    <h3>Slots</h3>
+
+    {% if ultimo_balanceamento.get('slots_sem_prev') %}
+    <style>
+        #ac-slot-com-prev, #ac-slot-sem-prev { display: none; }
+        #ac-slot-com-prev:checked ~ .slot-toggle-panels .slot-com-prev-panel { display: block; }
+        #ac-slot-sem-prev:checked ~ .slot-toggle-panels .slot-sem-prev-panel { display: block; }
+        .slot-toggle-panels .slot-com-prev-panel,
+        .slot-toggle-panels .slot-sem-prev-panel { display: none; }
+        .slot-toggle-label {
+            display: inline-block; padding: 6px 14px; margin-right: 6px;
+            border: 1px solid #ccc; border-radius: 4px; cursor: pointer;
+            font-size: 0.85em; background-color: #f1f1f1;
+        }
+        #ac-slot-com-prev:checked ~ .slot-toggle-labels label[for="ac-slot-com-prev"],
+        #ac-slot-sem-prev:checked ~ .slot-toggle-labels label[for="ac-slot-sem-prev"] {
+            background-color: #17a2b8; color: white; border-color: #17a2b8;
+        }
+    </style>
+    <input type="radio" name="slot_toggle_area_cliente" id="ac-slot-com-prev" checked>
+    <input type="radio" name="slot_toggle_area_cliente" id="ac-slot-sem-prev">
+    <div class="slot-toggle-labels" style="margin-bottom: 12px;">
+        <label class="slot-toggle-label" for="ac-slot-com-prev">Com Previdência</label>
+        <label class="slot-toggle-label" for="ac-slot-sem-prev">Sem Previdência</label>
+    </div>
+    <div class="slot-toggle-panels">
+        <div class="slot-com-prev-panel">{{ tabela_slots(ultimo_balanceamento['slots']) }}</div>
+        <div class="slot-sem-prev-panel">{{ tabela_slots(ultimo_balanceamento['slots_sem_prev']) }}</div>
+    </div>
+    {% else %}
+    {{ tabela_slots(ultimo_balanceamento['slots']) }}
+    {% endif %}
+
+</div>
+{% endif %}
+
 </div>
 <p></p>
 {% endif %}
@@ -300,13 +376,6 @@
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('balanco.iniciar', cliente_id=cliente.id) }}`">
         <img src="{{ url_for('static', filename='icons/balance.png') }}" class="btn-icon">Balancear Aporte
     </button>
-
-    <form method="POST" action="{{ url_for('balanco.resetar_distribuicao', cliente_id=cliente.id) }}" style="display: inline;">
-        <button type="submit" class="bigBtn" style="background-color: #6c757d;"
-            onclick="return confirm('Resetar TODOS os percentuais de distribuição?')">
-            <img src="{{ url_for('static', filename='icons/trash.png') }}" class="btn-icon" style="filter: brightness(0) invert(1);">Resetar Distribuição
-        </button>
-    </form>
 
     <form method="POST" action="{{ url_for('pipelines.rapida', cliente_id=cliente.id) }}" style="display: inline;">
         <button type="submit" class="bigBtn {% if tem_capital_orfao %}btn-orfao{% endif %}"

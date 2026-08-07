@@ -80,4 +80,29 @@ Duas matrizes hardcoded: `MATRIZ_GERAL` (apenas classes tradicionais) e `MATRIZ_
 ## Pendências conhecidas
 - URL hardcoded `http://127.0.0.1:5000/upload` em `import_fundos.html` — quebrado em produção
 - `print()` usado para logging — migrar para módulo `logging` futuramente
-- Sem testes automatizados
+
+## Geld 2.0 — mescla V1+slots (07/08/2026)
+
+Branch local `geld-2.0-slots-merged`, commit `37d4efc5` "Mescla V1 (main) com módulo de distribuição por slot da V2" — mescla a `main` (produção, estável) com a feature de slots que estava isolada na branch `feature/geld-2.0-slots`. Não publicada em `origin` ainda.
+
+**ATENÇÃO — critério de isolamento original violado nesta mescla.** A regra combinada em 23/07 (ver histórico de projeto) era: código de slots pode *ler* do banco/fluxo existente, mas o fluxo existente (`balance_service.py`, `balanco.py`) nunca pode *importar* ou depender do código de slots — "se apagarmos os arquivos que criarmos, o sistema não trava". Nesta mescla `app/routes/balanco.py` passou a importar `app.services.slot_service` diretamente, e os templates originais (`resultado.html`, `area_cliente.html`) passaram a depender de variáveis vindas do slot_service. Se `slot_service.py` for apagado hoje, `balanco.py` quebra no import. Ulisses foi avisado e decidiu seguir mesmo assim ("agora deixa... vamos seguir") — não desfazer a integração sem alinhar de novo, mas não tratar isso como o padrão a repetir em features futuras.
+
+### O que mudou nesta sessão
+
+1. **Removido botão/rota "Resetar Distribuição"** (`area_cliente.html` + `balanco.py::resetar_distribuicao`) — redundante com "Pipeline Rápida", que já reseta fatias e aloca 100% no objetivo prioritário.
+2. **Página `/slots/<cliente_id>` isolada removida** — era uma armadilha lógica (sem botão de voltar/salvar). `app/routes/slots.py`, `app/templates/slots/visualizar.html` e o registro do blueprint em `app_config.py` foram deletados.
+3. **Distribuição por slot embutida no fluxo existente**, sem persistência nova de schema:
+   - `balanco.py::calcular` (POST) — calcula `calcular_compra_venda_por_slot` logo após salvar `balanceamento_pendente_json`, passa como `distribuicao_slots` pro template. Aparece como seção `<details>/<summary>` expansível "Ver por Slot (fundos)" em `resultado.html`, antes dos botões Aplicar/Descartar.
+   - `balanco.py::aplicar` (POST) — calcula a distribuição de slot **antes** de zerar `balanceamento_pendente_json` (o cálculo lê esse campo), e persiste como chave nova `'slots'` dentro do mesmo `cliente.ultimo_balanceamento_json` que já guarda `operacoes_liquidas` e `sem_prev`. Decisão: reaproveitar o JSON existente em vez de criar coluna nova — evita migração de schema (projeto não usa Alembic aqui, banco é recriado manualmente), mas o campo já mistura três formatos diferentes e tende a virar um blob genérico se crescer mais.
+   - `area_cliente.html` — terceiro bloco `client_area` "Slots" ao lado de "Último Balanceamento" e "Sem Previdência", só aparece se `ultimo_balanceamento.get('slots')` existir (ou seja, só depois de um "Aplicar e Salvar" feito após esta mudança).
+4. **Formatação numérica corrigida** nas tabelas de slot (`resultado.html` e `area_cliente.html`): estavam em `"%.2f"` cru (ex: `12122.50`), padronizado para `'{:,.0f}'.format(x).replace(',', '.')` com prefixo `R$` e sinal/cor verde-vermelho, igual ao resto das tabelas do sistema (ex: `R$ 12.122`).
+
+### Testado
+
+App importa e registra 37 rotas sem erro; 13 testes da suíte `tests/` passam (nenhum cobre slots especificamente — só `balance_service`, `pipeline_rapida`, `percentuais_previdencia`, `extract_advisor`). Fluxo `calcular → aplicar` simulado manualmente com cliente real (id 5, Claudio Loiola) sem persistir (rollback) — JSON de slots sai correto e serializável.
+
+**Achado durante o teste, não corrigido:** esse cliente tem `moderado`, `alto` e `baixo_rfx` sem nenhum fundo linkado a slot (`fundo_nomes: []` mesmo com delta≠0) — dado de cadastro, não bug do código novo. E a classe `fii` mistura FIIs de verdade (KNRI11, HGBS11...) com ações (PETR4, LREN3...) no mesmo cliente — pode ser cadastro intencional ou erro, não investigado.
+
+### Pendente
+- Push do commit `37d4efc5` para `origin` (Ulisses ainda testando via SCP no Varuna).
+- Sem testes automatizados cobrindo `slot_service.py` ou o fluxo de slots ponta a ponta.

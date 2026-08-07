@@ -7,6 +7,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from app.models.geld_models import Cliente, Objetivo, create_session, TODAS_CLASSES
 from app.services.balance_service import BalanceamentoService
 from app.services.global_services import login_required
+from app.services.slot_service import calcular_compra_venda_por_slot
 
 balanco_bp = Blueprint('balanco', __name__, url_prefix='/balanco')
 
@@ -197,10 +198,15 @@ def calcular(cliente_id):
         cliente.balanceamento_pendente_json = json.dumps(resultado)
         db.commit()
 
+        distribuicao_slots = calcular_compra_venda_por_slot(cliente, db)
+        distribuicao_slots_sem_prev = calcular_compra_venda_por_slot(cliente, db, operacoes=operacoes_sem_prev)
+
         return render_template(
             'balanco/resultado.html',
             cliente=cliente,
-            resultado=resultado
+            resultado=resultado,
+            distribuicao_slots=distribuicao_slots,
+            distribuicao_slots_sem_prev=distribuicao_slots_sem_prev
         )
     
     except ValueError as e:
@@ -233,6 +239,13 @@ def aplicar(cliente_id):
             flash('Resultado não encontrado. Calcule novamente.', 'error')
             return redirect(url_for('balanco.iniciar', cliente_id=cliente_id))
         
+        # Calcular distribuição por slot antes de limpar o pendente (o
+        # cálculo lê cliente.balanceamento_pendente_json)
+        distribuicao_slots = calcular_compra_venda_por_slot(cliente, db)
+        distribuicao_slots_sem_prev = calcular_compra_venda_por_slot(
+            cliente, db, operacoes=resultado.get('operacoes_sem_prev') or {}
+        )
+
         # Aplicar
         BalanceamentoService.aplicar_balanceamento(resultado, db)
 
@@ -241,6 +254,8 @@ def aplicar(cliente_id):
         cliente.ultimo_balanceamento_json = json.dumps({
             **operacoes,
             'sem_prev': resultado.get('operacoes_sem_prev'),
+            'slots': distribuicao_slots or None,
+            'slots_sem_prev': distribuicao_slots_sem_prev or None,
         })
         cliente.balanceamento_pendente_json = None
         db.commit()
@@ -270,35 +285,6 @@ def descartar(cliente_id):
     finally:
         db.close()
     flash('Balanceamento descartado', 'info')
-    return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
-
-
-@balanco_bp.route('/resetar/<int:cliente_id>', methods=['POST'])
-@login_required
-def resetar_distribuicao(cliente_id):
-    """Resetar/deletar todas as distribuições do cliente"""
-    from app.models.geld_models import DistribuicaoObjetivo, Objetivo
-    
-    db = create_session()
-    try:
-        # Buscar objetivos do cliente
-        objetivos = db.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final).all()
-        objetivo_ids = [obj.id for obj in objetivos]
-        
-        # Deletar distribuições
-        deletados = db.query(DistribuicaoObjetivo).filter(
-            DistribuicaoObjetivo.objetivo_id.in_(objetivo_ids)
-        ).delete(synchronize_session=False)
-        
-        db.commit()
-        flash(f'{deletados} distribuições resetadas com sucesso!', 'success')
-        
-    except Exception as e:
-        db.rollback()
-        flash(f'Erro ao resetar: {str(e)}', 'error')
-    finally:
-        db.close()
-    
     return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
 
 

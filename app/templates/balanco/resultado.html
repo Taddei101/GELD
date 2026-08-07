@@ -463,6 +463,85 @@
 </div>
 {% endif %}
 
+{% macro tabela_slots(distribuicao) %}
+    {% for classe, linhas in distribuicao.items() %}
+    <h5 style="margin-bottom: 8px;">{{ classe | replace('_', ' ') | title }}</h5>
+    <div style="overflow-x: auto; margin-bottom: 24px;">
+    <table class="table table-bordered" style="font-size: 0.7em; --bs-table-cell-padding-y: 0.3rem;">
+        <thead class="thead-dark">
+            <tr>
+                <th>Fundo(s)</th>
+                <th class="text-center">Atual</th>
+                <th class="text-center">Alvo</th>
+                <th class="text-center">Comprar/Vender</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for linha in linhas %}
+            <tr>
+                <td>
+                    {% for nome in linha.fundo_nomes %}
+                        {{ nome }}<br>
+                    {% else %}
+                        <em>sem fundo cadastrado</em>
+                    {% endfor %}
+                </td>
+                <td class="text-center" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(linha.atual).replace(',', '.') }}</td>
+                <td class="text-center" style="white-space: nowrap;">R$&nbsp;{{ '{:,.0f}'.format(linha.alvo).replace(',', '.') }}</td>
+                <td class="text-center" style="white-space: nowrap; color: {% if linha.delta > 0 %}green{% elif linha.delta < 0 %}red{% endif %};">
+                    {% if linha.delta > 0 %}+R$&nbsp;{{ '{:,.0f}'.format(linha.delta).replace(',', '.') }}
+                    {% elif linha.delta < 0 %}-R$&nbsp;{{ '{:,.0f}'.format(linha.delta | abs).replace(',', '.') }}
+                    {% else %}R$&nbsp;0{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% endfor %}
+{% endmacro %}
+
+{% if distribuicao_slots %}
+<hr style="margin: 30px 0;">
+<details>
+    <summary style="cursor: pointer; font-size: 1.17em; font-weight: bold;">Ver por Slot (fundos)</summary>
+    <div style="margin-top: 12px;">
+
+    {% if distribuicao_slots_sem_prev %}
+    <style>
+        #slot-com-prev, #slot-sem-prev { display: none; }
+        #slot-com-prev:checked ~ .slot-toggle-panels .slot-com-prev-panel { display: block; }
+        #slot-sem-prev:checked ~ .slot-toggle-panels .slot-sem-prev-panel { display: block; }
+        .slot-toggle-panels .slot-com-prev-panel,
+        .slot-toggle-panels .slot-sem-prev-panel { display: none; }
+        .slot-toggle-label {
+            display: inline-block; padding: 6px 14px; margin-right: 6px;
+            border: 1px solid #ccc; border-radius: 4px; cursor: pointer;
+            font-size: 0.85em; background-color: #f1f1f1;
+        }
+        #slot-com-prev:checked ~ .slot-toggle-labels label[for="slot-com-prev"],
+        #slot-sem-prev:checked ~ .slot-toggle-labels label[for="slot-sem-prev"] {
+            background-color: #17a2b8; color: white; border-color: #17a2b8;
+        }
+    </style>
+    <input type="radio" name="slot_toggle_resultado" id="slot-com-prev" checked>
+    <input type="radio" name="slot_toggle_resultado" id="slot-sem-prev">
+    <div class="slot-toggle-labels" style="margin-bottom: 12px;">
+        <label class="slot-toggle-label" for="slot-com-prev">Com Previdência</label>
+        <label class="slot-toggle-label" for="slot-sem-prev">Sem Previdência</label>
+    </div>
+    <div class="slot-toggle-panels">
+        <div class="slot-com-prev-panel">{{ tabela_slots(distribuicao_slots) }}</div>
+        <div class="slot-sem-prev-panel">{{ tabela_slots(distribuicao_slots_sem_prev) }}</div>
+    </div>
+    {% else %}
+    {{ tabela_slots(distribuicao_slots) }}
+    {% endif %}
+
+    </div>
+</details>
+{% endif %}
+
 <p></p>
 
 <div class="inline-btn">
@@ -478,9 +557,6 @@
             Descartar
         </button>
     </form>
-    <a href="{{ url_for('slots.visualizar', cliente_id=cliente.id) }}" class="bigBtn" style="display: inline-block; text-decoration: none;">
-        Ver por Slot
-    </a>
 </div>
 
 </div>
