@@ -37,6 +37,7 @@ from app.routes.balanco import balanco_bp
 
 from app.routes.posicao_advisor import posicao_advisor_bp
 from app.routes.pipelines import pipelines_bp
+from app.routes.slots import slots_bp
 
 # Registrar blueprints
 app.register_blueprint(auth_bp)
@@ -49,6 +50,7 @@ app.register_blueprint(balanco_bp)
 
 app.register_blueprint(posicao_advisor_bp)
 app.register_blueprint(pipelines_bp)
+app.register_blueprint(slots_bp)
 
 @app.route('/')
 def index():
