@@ -156,14 +156,15 @@ def calcular(cliente_id):
             cliente_id, aportes_por_objetivo, db
         )
 
-        # Operações sem previdência: soma o gap_individual só dos objetivos
-        # não-previdência por classe — ignora inteiramente o que a previdência
-        # precisa organicamente e o que ela recebe de excedente via cascata.
+        # Operações sem previdência: mesma fórmula de operacoes_liquidas
+        # (aportes_agregados + acoes_necessarias), só que somando apenas os
+        # objetivos não-previdência em cada termo — inclui o que a cascata
+        # já moveu entre objetivos (distribuicao_aporte), não só o gap bruto.
         todas_classes = ['baixo_di', 'baixo_rfx', 'moderado', 'alto', 'ouro', 'dolar', 'cripto', 'internacional', 'fii']
         operacoes_sem_prev = {}
         for classe in todas_classes:
             valor = sum(
-                obj['gap_individual'].get(classe, 0.0)
+                obj['distribuicao_aporte'].get(classe, 0.0) + obj['gap_individual'].get(classe, 0.0)
                 for obj in resultado.get('resultados_por_objetivo', [])
                 if obj.get('tipo_objetivo') != 'previdencia'
             )

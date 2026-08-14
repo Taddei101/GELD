@@ -182,11 +182,13 @@
             <tbody>
                 {% set tem_op_sem_prev = [false] %}
                 {% for classe in todas_classes %}
-                    {# Soma o gap_individual só dos objetivos não-previdência #}
+                    {# Mesma fórmula de operacoes_liquidas (distribuicao_aporte + gap_individual),
+                       somando só os objetivos não-previdência — inclui o que a cascata já moveu
+                       entre objetivos, não só o gap bruto de cada um. #}
                     {% set gap_sem_prev = namespace(total=0.0) %}
                     {% for obj in resultado.resultados_por_objetivo %}
                         {% if obj.tipo_objetivo != 'previdencia' %}
-                            {% set gap_sem_prev.total = gap_sem_prev.total + obj.gap_individual[classe] %}
+                            {% set gap_sem_prev.total = gap_sem_prev.total + obj.distribuicao_aporte[classe] + obj.gap_individual[classe] %}
                         {% endif %}
                     {% endfor %}
                     {% set valor_sem_prev = gap_sem_prev.total %}
