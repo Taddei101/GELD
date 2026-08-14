@@ -166,10 +166,16 @@ def _distribuir_por_slots(
         2
     )
 
+    # Alvo dividido igualmente entre os slots com fundo disponível — iguala
+    # o saldo final de cada slot em vez de manter a proporção percentual_ideal,
+    # priorizando comprar nos slots zerados/defasados até nivelar todos.
+    n_slots_com_fundo = sum(1 for s in slots_raw if not s['sem_fundo'])
+    alvo_por_slot = round(total_alvo_classe / n_slots_com_fundo, 2) if n_slots_com_fundo else 0.0
+
     slots = []
     for s in slots_raw:
         subtipo = s['subtipo']
-        alvo_R = round(total_alvo_classe * subtipo.percentual_ideal / 100, 2)
+        alvo_R = 0.0 if s['sem_fundo'] else alvo_por_slot
         slots.append({
             'subtipo_id': subtipo.id,
             'letra': subtipo.letra,

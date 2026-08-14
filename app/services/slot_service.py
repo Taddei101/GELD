@@ -6,11 +6,14 @@ cliente.balanceamento_pendente_json) e diz, por classe de risco, quanto
 comprar ou vender em cada slot — com os fundos que o cliente já tem ali.
 
 Só 3 classes usam slot (A/B/C/D): baixo_rfx, moderado, alto — dentro delas
-os fundos têm perfis diferentes (volatilidade, liquidez, indexador) e o
-valor da classe é dividido entre os slots pelo percentual_ideal de cada um.
-As outras 6 classes (baixo_di, ouro, dolar, cripto, internacional, fii) não
-têm slot: qualquer fundo da classe serve, então a classe inteira é um grupo
-só.
+os fundos têm perfis diferentes (volatilidade, liquidez, indexador). O alvo
+da classe (atual + delta do balanceamento) é dividido em partes iguais entre
+os slots que têm algum fundo cadastrado — isso prioriza comprar nos slots
+zerados/defasados até nivelar todos, em vez de manter a proporção antiga de
+percentual_ideal. Slots sem nenhum fundo cadastrado ficam fora da divisão
+(não dá pra comprar ali). As outras 6 classes (baixo_di, ouro, dolar,
+cripto, internacional, fii) não têm slot: qualquer fundo da classe serve,
+então a classe inteira é um grupo só.
 
 Não recalcula nada do balanceamento e não escreve no banco — só leitura.
 """
@@ -74,11 +77,24 @@ def calcular_compra_venda_por_slot(cliente, db, operacoes=None):
 def _linhas_com_slot(cliente_id, classe, delta_classe, db):
     slots = db.query(SubtipoAtivo).filter_by(classe_risco=RISCO_E_SUBTIPO[classe][0]).all()
 
+    fundos_por_slot = {slot.id: _fundos_do_cliente_no_slot(cliente_id, slot.id, db) for slot in slots}
+    tem_fundo_por_slot = {
+        slot.id: db.query(InfoFundo.id).filter_by(subtipo_ativo_id=slot.id).first() is not None
+        for slot in slots
+    }
+
+    atual_por_slot = {slot.id: sum(atual for _, atual in fundos_por_slot[slot.id]) for slot in slots}
+    total_atual_classe = sum(atual_por_slot.values())
+    total_alvo_classe = total_atual_classe + delta_classe
+
+    n_slots_com_fundo = sum(1 for slot in slots if tem_fundo_por_slot[slot.id])
+    alvo_por_slot = (total_alvo_classe / n_slots_com_fundo) if n_slots_com_fundo else 0.0
+
     linhas = []
     for slot in slots:
-        fundos = _fundos_do_cliente_no_slot(cliente_id, slot.id, db)
-        fatia_slot = delta_classe * (slot.percentual_ideal / 100.0)
-        linhas.append(_linha_do_grupo(fundos, fatia_slot))
+        alvo_slot = alvo_por_slot if tem_fundo_por_slot[slot.id] else 0.0
+        fatia_slot = alvo_slot - atual_por_slot[slot.id]
+        linhas.append(_linha_do_grupo(fundos_por_slot[slot.id], fatia_slot))
 
     return linhas
 
