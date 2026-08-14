@@ -1,7 +1,10 @@
+import json
+import os
 from flask import Blueprint, render_template, request, flash, redirect, url_for
 from app.services.global_services import login_required
 from app.services.extract_services import ExtractServices
 from app.models.geld_models import create_session, Cliente, StatusEnum, IndicadoresEconomicos, Objetivo, PosicaoFundo, InfoFundo
+from app.config import BASE_DIR
 from sqlalchemy import func, extract
 from datetime import datetime, timedelta
 
@@ -24,6 +27,7 @@ def cliente_dashboard():
     num_fundos = 0
     capital_administrado = 0
     clientes_inativos = 0
+    lancamentos_por_cliente = []
 
     try:
         num_clientes = db.query(func.count(Cliente.id)).filter(Cliente.status == StatusEnum.ativo).scalar() or 0
@@ -68,6 +72,38 @@ def cliente_dashboard():
                 mes_referencia = df_ipca_mensal.iloc[-1]['data'].strftime('%m/%Y')
                 mes_anterior = mes_referencia
         
+        # Lançamentos futuros de todos os clientes que possuem (meramente
+        # informativo, vive fora da DB, um arquivo por cliente)
+        lancamentos_por_cliente = []
+        lancamentos_dir = os.path.join(BASE_DIR, 'lancamentos_futuros')
+        if os.path.isdir(lancamentos_dir):
+            for nome_arquivo in os.listdir(lancamentos_dir):
+                if not nome_arquivo.endswith('.json'):
+                    continue
+                try:
+                    cliente_id = int(nome_arquivo[:-5])
+                except ValueError:
+                    continue
+
+                caminho = os.path.join(lancamentos_dir, nome_arquivo)
+                with open(caminho, 'r', encoding='utf-8') as f:
+                    lancamentos = json.load(f)
+
+                if not lancamentos:
+                    continue
+
+                cliente = db.query(Cliente).get(cliente_id)
+                if not cliente:
+                    continue
+
+                lancamentos_por_cliente.append({
+                    'cliente_id': cliente_id,
+                    'cliente_nome': cliente.nome,
+                    'lancamentos': lancamentos,
+                })
+
+        lancamentos_por_cliente.sort(key=lambda x: x['cliente_nome'])
+
     except Exception as e:
         flash(f'Erro ao carregar dashboard: {str(e)}', "error")
 
@@ -84,6 +120,7 @@ def cliente_dashboard():
                           clientes_inativos=clientes_inativos,
                           mes_anterior=mes_anterior,
                           num_fundos=num_fundos,
+                          lancamentos_por_cliente=lancamentos_por_cliente,
                           now=datetime.now().strftime('%Y-%m-%d'))
     
 

@@ -86,39 +86,6 @@
 
     <p></p>
 
-    {# TABELA DE FATIAS ALOCADAS PÓS-BALANCEAMENTO #}
-    <div>
-    <h3>Fatias Alocadas por Objetivo</h3>
-    <div style="overflow-x: auto; margin-bottom: 30px;">
-        <table class="table table-bordered table-sm" style="font-size: 0.85em; max-width: 800px;">
-            <thead style="background-color: #f8f9fa;">
-                <tr>
-                    <th style="min-width: 120px;">Classe de Risco</th>
-                    {% for obj in resultado.resultados_por_objetivo %}
-                    <th class="text-center">{{ obj.objetivo_nome }}</th>
-                    {% endfor %}
-                    <th class="text-center" style="background-color: #e9ecef;"><strong>Total</strong></th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for classe in todas_classes %}
-                <tr>
-                    <td><strong>{{ classe | replace('_', ' ') | title }}</strong></td>
-                    {% for obj in resultado.resultados_por_objetivo %}
-                        {% set perc = obj.percentuais_exibicao[classe] %}
-                        <td class="text-center">
-                            {% if perc > 0 %}{{ '{:.1f}'.format(perc) }}%
-                            {% else %}<span style="color: #999;">-</span>{% endif %}
-                        </td>
-                    {% endfor %}
-                    <td class="text-center"><strong>100%</strong></td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    </div>
-
     <hr style="margin: 30px 0;">
 
     {# OPERAÇÕES SEM PREVIDÊNCIA — só exibe se houver objetivo de previdência #}

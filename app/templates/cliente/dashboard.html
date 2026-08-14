@@ -52,6 +52,39 @@
     </table>
 
 
-    
+    {% if lancamentos_por_cliente %}
+    <p></p>
+    <h3>Lançamentos Futuros</h3>
+    {% for item in lancamentos_por_cliente %}
+    <div class="client_area">
+        <h4><a href="{{ url_for('cliente.area_cliente', cliente_id=item.cliente_id) }}">{{ item.cliente_nome }}</a></h4>
+        <div style="min-width: 320px; overflow-x: auto;">
+        <table class="table table-bordered" style="font-size: 0.7em; --bs-table-cell-padding-y: 0.3rem;">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Ativo</th>
+                    <th>Operação</th>
+                    <th class="text-right">Valor</th>
+                    <th class="text-center">Data Cotização</th>
+                    <th class="text-center">Data Liquidação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lanc in item.lancamentos %}
+                <tr>
+                    <td>{{ lanc.ativo }}</td>
+                    <td class="text-center">{{ lanc.operacao }}</td>
+                    <td class="text-right" style="white-space: nowrap;">R$ {{ '{:,.2f}'.format(lanc.valor).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td class="text-center">{{ lanc.data_cotizacao }}</td>
+                    <td class="text-center">{{ lanc.data_liquidacao }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        </div>
+    </div>
+    <p></p>
+    {% endfor %}
+    {% endif %}
 
 {% endblock %}
