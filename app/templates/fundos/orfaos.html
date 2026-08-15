@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Fundos Sem Subscrição - Geld's Finance{% endblock %}
+
+{% block header %}Fundos Sem Subscrição{% endblock %}
+
+{% block content %}
+
+<p>Fundos abaixo não possuem nenhum cliente com cotas. Selecione os que deseja apagar e confirme.</p>
+
+{% if fundos %}
+<div class="inline-btn" style="margin-bottom: 10px;">
+    <button onclick="deletarOrfaosSelecionados()" class="bigBtn" style="background-color: #d9534f;" title="Deletar fundos selecionados">
+        <img src="{{ url_for('static', filename='icons/trash.png') }}" class="btn-icon" style="filter: brightness(0) invert(1);"> Deletar Selecionados
+    </button>
+    <button class="smlBtn" onclick="window.location.href=`{{ url_for('fundos.listar_fundos') }}`">
+        <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
+    </button>
+</div>
+
+<div><span id="contador-selecionados" style="margin-left: 10px; font-weight: bold;">0 selecionados</span>
+</div>
+
+<table class="table" id="tabela-fundos-orfaos">
+    <thead>
+        <tr>
+            <th>
+                <input class="large_checkbox" type="checkbox" id="select-all" onchange="toggleSelectAllOrfaos(this)" title="Selecionar todos">
+            </th>
+            <th>Nome do Fundo</th>
+            <th>Classe Anbima</th>
+            <th>CNPJ</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for fundo in fundos %}
+        <tr>
+            <td>
+                <input type="checkbox" class="fundo-orfao-checkbox" value="{{ fundo.id }}" onchange="updateCounterOrfaos()">
+            </td>
+            <td style="font-size: 13px;">{{ fundo.nome_fundo }}</td>
+            <td>{{ " ".join(fundo.classe_anbima.split()[:3]) }}</td>
+            <td>{{ fundo.cnpj if fundo.cnpj else 'N/A' }}</td>
+            <td>{{ fundo.status_fundo.value if fundo.status_fundo else 'N/A' }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Nenhum fundo sem subscrição encontrado — todos os fundos cadastrados têm ao menos um cliente com cotas.</p>
+{% endif %}
+
+<div class="inline-btn" style="margin-top: 10px;">
+    <button class="smlBtn" onclick="window.location.href=`{{ url_for('fundos.listar_fundos') }}`">
+        <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon"></button>
+</div>
+
+<input type="hidden" id="url-delete-orfaos" value="{{ url_for('fundos.deletar_fundos_orfaos') }}">
+<script>
+function toggleSelectAllOrfaos(checkbox) {
+    document.querySelectorAll('.fundo-orfao-checkbox').forEach(function(cb) {
+        cb.checked = checkbox.checked;
+    });
+    updateCounterOrfaos();
+}
+
+function updateCounterOrfaos() {
+    const checked = document.querySelectorAll('.fundo-orfao-checkbox:checked');
+    const counter = document.getElementById('contador-selecionados');
+    const count = checked.length;
+    counter.textContent = count + ' selecionado' + (count !== 1 ? 's' : '');
+
+    const selectAll = document.getElementById('select-all');
+    const all = document.querySelectorAll('.fundo-orfao-checkbox');
+    if (selectAll && all.length > 0) {
+        selectAll.checked = count === all.length;
+    }
+}
+
+function deletarOrfaosSelecionados() {
+    const checkboxes = document.querySelectorAll('.fundo-orfao-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('Selecione pelo menos um fundo para deletar.');
+        return;
+    }
+    const nomes = Array.from(checkboxes).map(function(cb) {
+        return cb.closest('tr').querySelector('td:nth-child(2)').textContent.trim();
+    });
+    const count = checkboxes.length;
+    const confirmMsg = 'Tem certeza que deseja deletar ' + count + ' fundo' + (count !== 1 ? 's' : '') +
+        ' sem subscrição?\n\n' + nomes.join('\n');
+    if (!confirm(confirmMsg)) return;
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = document.getElementById('url-delete-orfaos').value;
+    checkboxes.forEach(function(cb) {
+        const input = document.createElement('input');
+        input.type  = 'hidden';
+        input.name  = 'fundo_ids';
+        input.value = cb.value;
+        form.appendChild(input);
+    });
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
+
+{% endblock %}

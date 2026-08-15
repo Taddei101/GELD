@@ -12,6 +12,10 @@
     <button onclick="deletarSelecionados()" class="bigBtn" style="background-color: #d9534f;" title="Deletar fundos selecionados">
         <img src="{{ url_for('static', filename='icons/trash.png') }}" class="btn-icon" style="filter: brightness(0) invert(1);"> Deletar Selecionados
     </button>
+
+    <button class="bigBtn" style="background-color: #d9534f;" title="Buscar fundos sem nenhum cliente com cotas" onclick="window.location.href=`{{ url_for('fundos.listar_fundos_orfaos') }}`">
+        <img src="{{ url_for('static', filename='icons/trash.png') }}" class="btn-icon" style="filter: brightness(0) invert(1);"> Fundos Sem Subscrição
+    </button>
     <button class="smlBtn" onclick="window.location.href=`{{ url_for('dashboard.cliente_dashboard') }}`">
             <img src="{{ url_for('static', filename='icons/back.png') }}" class="sml-btn-icon">
     </button>

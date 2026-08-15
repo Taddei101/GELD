@@ -202,6 +202,65 @@ def delete_multiple_fundos():
     finally:
         db.close()
 
+#LISTAR FUNDOS SEM POSIÇÕES (ÓRFÃOS)
+@fundos_bp.route('/fundos/orfaos')
+@login_required
+def listar_fundos_orfaos():
+    try:
+        db = create_session()
+        fundos_com_posicao = db.query(PosicaoFundo.fundo_id).distinct()
+        fundos = db.query(InfoFundo).filter(~InfoFundo.id.in_(fundos_com_posicao)).all()
+
+        return render_template('fundos/orfaos.html', fundos=fundos)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        flash(f'Erro ao buscar fundos sem posições: {str(e)}')
+        return redirect(url_for('fundos.listar_fundos'))
+    finally:
+        if 'db' in locals() and db:
+            db.close()
+
+#DELETAR FUNDOS ÓRFÃOS CONFIRMADOS
+@fundos_bp.route('/fundos/orfaos/deletar', methods=['POST'])
+@login_required
+def deletar_fundos_orfaos():
+    db = create_session()
+    try:
+        fundo_ids = [int(fid) for fid in request.form.getlist('fundo_ids')]
+
+        if not fundo_ids:
+            flash('Nenhum fundo selecionado para deletar.', 'warning')
+            return redirect(url_for('fundos.listar_fundos_orfaos'))
+
+        deleted_count = 0
+        for fundo_id in fundo_ids:
+            fundo = db.query(InfoFundo).filter_by(id=fundo_id).first()
+            if not fundo:
+                continue
+            # Reconfere no momento da exclusão: só apaga se seguir sem nenhuma posição
+            if db.query(PosicaoFundo).filter_by(fundo_id=fundo_id).count() > 0:
+                flash(f'Fundo "{fundo.nome_fundo}" passou a ter posições e não foi deletado.', 'error')
+                continue
+            db.delete(fundo)
+            deleted_count += 1
+
+        db.commit()
+
+        if deleted_count > 0:
+            flash(f'{deleted_count} fundo(s) sem posições deletado(s) com sucesso!', 'success')
+        else:
+            flash('Nenhum fundo pôde ser deletado.', 'warning')
+
+        return redirect(url_for('fundos.listar_fundos'))
+
+    except Exception as e:
+        db.rollback()
+        flash(f'Erro ao deletar fundos órfãos: {str(e)}', 'error')
+        return redirect(url_for('fundos.listar_fundos_orfaos'))
+    finally:
+        db.close()
+
 #EDITAR
 @fundos_bp.route('/fundos/edit/<int:fundo_id>', methods=['GET','POST'])
 @login_required
