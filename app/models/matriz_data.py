@@ -153,14 +153,14 @@ MATRIZ_GERAL = [
     },
 ]
 
-# PREVIDÊNCIA: classes tradicionais ×0.64 + hedge fixo (36%)
+# PREVIDÊNCIA: classes tradicionais × 0.64 + hedge fixo (36%)
 # Hedge: ouro 4.5%, dólar 4.5%, cripto 2%, internacional 10%, FII 15%
 # Split di/rfx dentro de baixo permanece inalterado (é relativo)
 MATRIZ_PREVIDENCIA = [
     {
         'duracao_meses': 12,
-        'perc_baixo': 57.60,       # 90.0 × 0.64
-        'perc_moderado': 5.44,     # 8.5 × 0.64
+        'perc_baixo': 54.4,       # 85.0 × 0.64
+        'perc_moderado': 8.64,    # 13.5 × 0.64
         'perc_alto': 0.96,         # 1.5 × 0.64
         'perc_di_dentro_baixo': 100.0,
         'perc_rfx_dentro_baixo': 0.0,
@@ -172,11 +172,11 @@ MATRIZ_PREVIDENCIA = [
     },
     {
         'duracao_meses': 24,
-        'perc_baixo': 54.40,       # 85.0 × 0.64
-        'perc_moderado': 8.32,     # 13.0 × 0.64
-        'perc_alto': 1.28,         # 2.0 × 0.64
-        'perc_di_dentro_baixo': 20.0,
-        'perc_rfx_dentro_baixo': 80.0,
+        'perc_baixo': 50.24,       # 78.5 × 0.64
+        'perc_moderado': 11.42,    # 17.85 × 0.64
+        'perc_alto': 2.34,         # 3.66 × 0.64
+        'perc_di_dentro_baixo': 15.0,
+        'perc_rfx_dentro_baixo': 85.0,
         'perc_ouro': 4.5,
         'perc_dolar': 4.5,
         'perc_cripto': 2.0,
@@ -185,11 +185,11 @@ MATRIZ_PREVIDENCIA = [
     },
     {
         'duracao_meses': 36,
-        'perc_baixo': 51.20,       # 80.0 × 0.64
-        'perc_moderado': 10.24,    # 16.0 × 0.64
-        'perc_alto': 2.56,         # 4.0 × 0.64
-        'perc_di_dentro_baixo': 10.0,
-        'perc_rfx_dentro_baixo': 90.0,
+        'perc_baixo': 46.08,       # 72.0 × 0.64
+        'perc_moderado': 13.62,    # 21.28 × 0.64
+        'perc_alto': 4.3,         # 6.72 × 0.64
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0,
         'perc_ouro': 4.5,
         'perc_dolar': 4.5,
         'perc_cripto': 2.0,
@@ -198,11 +198,11 @@ MATRIZ_PREVIDENCIA = [
     },
     {
         'duracao_meses': 48,
-        'perc_baixo': 48.00,       # 75.0 × 0.64
-        'perc_moderado': 12.16,    # 19.0 × 0.64
-        'perc_alto': 3.84,         # 6.0 × 0.64
-        'perc_di_dentro_baixo': 10.0,
-        'perc_rfx_dentro_baixo': 90.0,
+        'perc_baixo': 41.92,       # 65.5 × 0.64
+        'perc_moderado': 15.24,    # 23.81 × 0.64
+        'perc_alto': 6.85,         # 10.7 × 0.64
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0,
         'perc_ouro': 4.5,
         'perc_dolar': 4.5,
         'perc_cripto': 2.0,
@@ -211,11 +211,11 @@ MATRIZ_PREVIDENCIA = [
     },
     {
         'duracao_meses': 60,
-        'perc_baixo': 44.80,       # 70.0 × 0.64
-        'perc_moderado': 14.08,    # 22.0 × 0.64
-        'perc_alto': 5.12,         # 8.0 × 0.64
-        'perc_di_dentro_baixo': 10.0,
-        'perc_rfx_dentro_baixo': 90.0,
+        'perc_baixo': 37.76,       # 59.0 × 0.64
+        'perc_moderado': 16.27,    # 25.42 × 0.64
+        'perc_alto': 9.97,         # 15.58 × 0.64
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0,
         'perc_ouro': 4.5,
         'perc_dolar': 4.5,
         'perc_cripto': 2.0,
@@ -224,11 +224,11 @@ MATRIZ_PREVIDENCIA = [
     },
     {
         'duracao_meses': 72,
-        'perc_baixo': 41.60,       # 65.0 × 0.64
-        'perc_moderado': 15.36,    # 24.0 × 0.64
-        'perc_alto': 7.04,         # 11.0 × 0.64
-        'perc_di_dentro_baixo': 10.0,
-        'perc_rfx_dentro_baixo': 90.0,
+        'perc_baixo': 33.6,       # 52.5 × 0.64
+        'perc_moderado': 16.72,    # 26.13 × 0.64
+        'perc_alto': 13.68,         # 21.38 × 0.64
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0,
         'perc_ouro': 4.5,
         'perc_dolar': 4.5,
         'perc_cripto': 2.0,
@@ -237,11 +237,11 @@ MATRIZ_PREVIDENCIA = [
     },
     {
         'duracao_meses': 84,
-        'perc_baixo': 38.40,       # 60.0 × 0.64
-        'perc_moderado': 16.00,    # 25.0 × 0.64
-        'perc_alto': 9.60,         # 15.0 × 0.64
-        'perc_di_dentro_baixo': 10.0,
-        'perc_rfx_dentro_baixo': 90.0,
+        'perc_baixo': 29.44,       # 46.0 × 0.64
+        'perc_moderado': 16.59,    # 25.92 × 0.64
+        'perc_alto': 17.97,         # 28.08 × 0.64
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0,
         'perc_ouro': 4.5,
         'perc_dolar': 4.5,
         'perc_cripto': 2.0,
@@ -250,11 +250,11 @@ MATRIZ_PREVIDENCIA = [
     },
     {
         'duracao_meses': 96,
-        'perc_baixo': 35.20,       # 55.0 × 0.64
-        'perc_moderado': 16.64,    # 26.0 × 0.64
-        'perc_alto': 12.16,        # 19.0 × 0.64
-        'perc_di_dentro_baixo': 10.0,
-        'perc_rfx_dentro_baixo': 90.0,
+        'perc_baixo': 25.28,       # 39.5 × 0.64
+        'perc_moderado': 15.88,    # 24.81 × 0.64
+        'perc_alto': 22.85,         # 35.7 × 0.64
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0,
         'perc_ouro': 4.5,
         'perc_dolar': 4.5,
         'perc_cripto': 2.0,
@@ -263,11 +263,11 @@ MATRIZ_PREVIDENCIA = [
     },
     {
         'duracao_meses': 108,
-        'perc_baixo': 32.00,       # 50.0 × 0.64
-        'perc_moderado': 16.64,    # 26.0 × 0.64
-        'perc_alto': 15.36,        # 24.0 × 0.64
-        'perc_di_dentro_baixo': 10.0,
-        'perc_rfx_dentro_baixo': 90.0,
+        'perc_baixo': 21.12,       # 33.0 × 0.64
+        'perc_moderado': 14.58,    # 22.78 × 0.64
+        'perc_alto': 28.3,         # 44.22 × 0.64
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0,
         'perc_ouro': 4.5,
         'perc_dolar': 4.5,
         'perc_cripto': 2.0,
@@ -276,11 +276,11 @@ MATRIZ_PREVIDENCIA = [
     },
     {
         'duracao_meses': 120,
-        'perc_baixo': 28.80,       # 45.0 × 0.64
-        'perc_moderado': 16.00,    # 25.0 × 0.64
-        'perc_alto': 19.20,        # 30.0 × 0.64
-        'perc_di_dentro_baixo': 10.0,
-        'perc_rfx_dentro_baixo': 90.0,
+        'perc_baixo': 16.96,       # 26.5 × 0.64
+        'perc_moderado': 12.7,    # 19.85 × 0.64
+        'perc_alto': 34.34,         # 53.66 × 0.64
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0,
         'perc_ouro': 4.5,
         'perc_dolar': 4.5,
         'perc_cripto': 2.0,
@@ -289,11 +289,11 @@ MATRIZ_PREVIDENCIA = [
     },
     {
         'duracao_meses': 132,
-        'perc_baixo': 25.60,       # 40.0 × 0.64
-        'perc_moderado': 15.36,    # 24.0 × 0.64
-        'perc_alto': 23.04,        # 36.0 × 0.64
-        'perc_di_dentro_baixo': 10.0,
-        'perc_rfx_dentro_baixo': 90.0,
+        'perc_baixo': 12.8,       # 20.0 × 0.64
+        'perc_moderado': 10.24,    # 16.0 × 0.64
+        'perc_alto': 40.96,         # 64.0 × 0.64
+        'perc_di_dentro_baixo': 5.0,
+        'perc_rfx_dentro_baixo': 95.0,
         'perc_ouro': 4.5,
         'perc_dolar': 4.5,
         'perc_cripto': 2.0,
