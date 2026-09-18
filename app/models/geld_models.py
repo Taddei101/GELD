@@ -317,6 +317,71 @@ def _popular_matriz_inicial():
     finally:
         session.close()
 
+def sincronizar_matriz():
+    """
+    Sincroniza a tabela matriz_risco com os dados atuais de matriz_data.py.
+    Faz UPDATE em todas as linhas existentes — ao contrário de _popular_matriz_inicial(),
+    esta função sempre roda e sempre atualiza, mesmo que os dados já existam.
+    Chame-a sempre que alterar matriz_data.py para refletir as mudanças no banco.
+    """
+    from app.models.matriz_data import MATRIZ_GERAL, MATRIZ_PREVIDENCIA, validar_todas_matrizes
+
+    session = create_session()
+    try:
+        if not validar_todas_matrizes():
+            raise Exception("Dados da matriz inválidos — verifique app/models/matriz_data.py")
+
+        mapa = {
+            TipoObjetivoEnum.geral:        MATRIZ_GERAL,
+            TipoObjetivoEnum.previdencia:  MATRIZ_PREVIDENCIA,
+        }
+
+        atualizados = 0
+        inseridos   = 0
+
+        for tipo_enum, linhas in mapa.items():
+            for linha in linhas:
+                registro = session.query(MatrizRisco).filter_by(
+                    tipo_objetivo=tipo_enum,
+                    duracao_meses=linha['duracao_meses']
+                ).first()
+
+                campos = dict(
+                    perc_baixo            = linha['perc_baixo'],
+                    perc_moderado         = linha['perc_moderado'],
+                    perc_alto             = linha['perc_alto'],
+                    perc_di_dentro_baixo  = linha['perc_di_dentro_baixo'],
+                    perc_rfx_dentro_baixo = linha['perc_rfx_dentro_baixo'],
+                    perc_ouro             = linha['perc_ouro'],
+                    perc_dolar            = linha['perc_dolar'],
+                    perc_cripto           = linha['perc_cripto'],
+                    perc_internacional    = linha['perc_internacional'],
+                    perc_fii              = linha['perc_fii'],
+                )
+
+                if registro:
+                    for campo, valor in campos.items():
+                        setattr(registro, campo, valor)
+                    atualizados += 1
+                else:
+                    session.add(MatrizRisco(
+                        tipo_objetivo=tipo_enum,
+                        duracao_meses=linha['duracao_meses'],
+                        **campos
+                    ))
+                    inseridos += 1
+
+        session.commit()
+        print(f"✅ Matriz sincronizada! Atualizados: {atualizados}, Inseridos: {inseridos}")
+
+    except Exception as e:
+        session.rollback()
+        print(f"❌ Erro ao sincronizar matriz: {e}")
+        raise e
+    finally:
+        session.close()
+
+
 def _popular_subtipos_iniciais():
     session = create_session()
     try:
@@ -341,7 +406,7 @@ def init_db():
     engine = create_engine(DATABASE_URL)
     Base.metadata.create_all(engine)
 
-    _popular_matriz_inicial()
+    sincronizar_matriz()       # sempre atualiza a partir de matriz_data.py
     _popular_subtipos_iniciais()
     
     return engine
