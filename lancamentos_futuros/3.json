@@ -1,1 +1,83 @@
-[]
+[
+  {
+    "tipo": "Fundos de Ações",
+    "ativo": "ALASKA BLACK INSTITUCIONAL FI ACOES",
+    "operacao": "Resgate Total",
+    "valor": 2604.31,
+    "data_solicitacao": "11/08/2026",
+    "data_cotizacao": "10/09/2026",
+    "data_liquidacao": "14/09/2026"
+  },
+  {
+    "tipo": "Fundos de Renda Fixa",
+    "ativo": "AUGME 45 II FC FI RF CRED PRIV LP",
+    "operacao": "Resgate Total",
+    "valor": 9355.0,
+    "data_solicitacao": "11/08/2026",
+    "data_cotizacao": "10/09/2026",
+    "data_liquidacao": "11/09/2026"
+  },
+  {
+    "tipo": "Fundos de Multimercado",
+    "ativo": "DAHLIA TOTAL RETURN FC FI MULTIMERCADO",
+    "operacao": "Resgate Total",
+    "valor": 2369.63,
+    "data_solicitacao": "11/08/2026",
+    "data_cotizacao": "10/09/2026",
+    "data_liquidacao": "14/09/2026"
+  },
+  {
+    "tipo": "Fundos de Multimercado",
+    "ativo": "IBIUNA LONG SHORT STLS FC DE FI MULT",
+    "operacao": "Resgate Total",
+    "valor": 3687.54,
+    "data_solicitacao": "11/08/2026",
+    "data_cotizacao": "10/09/2026",
+    "data_liquidacao": "11/09/2026"
+  },
+  {
+    "tipo": "Fundos de Multimercado",
+    "ativo": "ACCESS KAPITALO K10 FC FI MULT",
+    "operacao": "Resgate Total",
+    "valor": 3412.24,
+    "data_solicitacao": "11/08/2026",
+    "data_cotizacao": "10/09/2026",
+    "data_liquidacao": "11/09/2026"
+  },
+  {
+    "tipo": "Fundos de Multimercado",
+    "ativo": "LEGACY CAPITAL FIC FI MULT ACCESS",
+    "operacao": "Resgate Total",
+    "valor": 3278.66,
+    "data_solicitacao": "11/08/2026",
+    "data_cotizacao": "10/09/2026",
+    "data_liquidacao": "11/09/2026"
+  },
+  {
+    "tipo": "Fundos de Renda Fixa",
+    "ativo": "SPARTA TOP INFL FC FI RF CRED PRIV LP",
+    "operacao": "Resgate Total",
+    "valor": 5731.42,
+    "data_solicitacao": "11/08/2026",
+    "data_cotizacao": "10/09/2026",
+    "data_liquidacao": "11/09/2026"
+  },
+  {
+    "tipo": "Fundos de Renda Fixa",
+    "ativo": "SPX SEAHAWK FIC FI RF CRED PRIV LP ACCES",
+    "operacao": "Resgate Total",
+    "valor": 9797.88,
+    "data_solicitacao": "11/08/2026",
+    "data_cotizacao": "10/09/2026",
+    "data_liquidacao": "11/09/2026"
+  },
+  {
+    "tipo": "Fundos de Ações",
+    "ativo": "TRIGONO FLAGSHIP 60 FIC FI ACOES",
+    "operacao": "Resgate Total",
+    "valor": 1706.62,
+    "data_solicitacao": "11/08/2026",
+    "data_cotizacao": "13/10/2026",
+    "data_liquidacao": "13/10/2026"
+  }
+]

@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "tipo": "Fundos de Renda Fixa",
+    "ativo": "SPARTA TOP INFL FC FI RF CRED PRIV LP",
+    "operacao": "Resgate Parcial",
+    "valor": 2500.0,
+    "data_solicitacao": "27/08/2026",
+    "data_cotizacao": "28/09/2026",
+    "data_liquidacao": "29/09/2026"
+  },
+  {
+    "tipo": "Fundos de Renda Fixa",
+    "ativo": "SPX SEAHAWK ADVISORY FC RF CRED PRIV LP",
+    "operacao": "Resgate Parcial",
+    "valor": 2500.0,
+    "data_solicitacao": "27/08/2026",
+    "data_cotizacao": "28/09/2026",
+    "data_liquidacao": "29/09/2026"
+  }
+]

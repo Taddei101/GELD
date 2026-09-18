@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "tipo": "Fundos de Multimercado",
+    "ativo": "LEGACY CAPITAL ADVISORY FC FI MULT",
+    "operacao": "Resgate Parcial",
+    "valor": 900.0,
+    "data_solicitacao": "27/08/2026",
+    "data_cotizacao": "28/09/2026",
+    "data_liquidacao": "29/09/2026"
+  }
+]
