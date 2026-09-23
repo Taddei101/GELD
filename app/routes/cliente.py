@@ -122,7 +122,7 @@ def edit_client(cliente_id):
                 'cpf': request.form['cpf'],
                 'email': request.form['email'],
                 'telefone': request.form['telefone'],
-                'cep': int(request.form['cep']),
+                'cep': ''.join(filter(str.isdigit, request.form['cep'])) or None,
                 'endereco': request.form.get('endereco'),
                 'escolaridade': request.form.get('escolaridade')
                 

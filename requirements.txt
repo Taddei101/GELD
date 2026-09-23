@@ -13,3 +13,5 @@ pandas
 requests
 openpyxl
 python-dotenv==1.2.2
+PyJWT==2.14.0
+flask-cors==6.0.5

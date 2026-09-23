@@ -10,6 +10,10 @@ else:
     BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'geld_database.db')}"
 
+#database do cliente para o website
+CLIENTE_DATABASE_URL = f"sqlite:///{os.path.join(BASE_DIR, 'cliente_area.db')}"
+
+
 # Configurações adicionais para produção
 SECRET_KEY = os.environ.get('SECRET_KEY')
 DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
