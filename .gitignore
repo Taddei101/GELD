@@ -211,13 +211,14 @@ __marimo__/
 geld_database.db
 
 
-# GELD - Uploads temporários
+# GELD - Uploads temporï¿½rios
 uploads/*.xlsx
 uploads/*.xls
 uploads/*.csv
 
 
-# GELD - Arquivos temporários
+# GELD - Arquivos temporï¿½rios
 documentation.txt
 balancear_objetivo.py
 
+testar_area_cliente.py

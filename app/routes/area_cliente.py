@@ -55,3 +55,31 @@ def me():
         return jsonify({'nome': cliente.nome})
     finally:
         db_geld.close()
+
+@area_cliente_bp.route('/trocar-senha', methods=['POST'])
+def trocar_senha():
+    cliente_id = cliente_id_do_token()
+    if not cliente_id:
+        return jsonify({'erro': 'Não autenticado'}), 401
+
+    dados = request.get_json(silent=True) or {}
+    senha_atual = dados.get('senha_atual') or ''
+    nova_senha = dados.get('nova_senha') or ''
+
+    if len(nova_senha) < 8:
+        return jsonify({'erro': 'A nova senha precisa ter pelo menos 8 caracteres'}), 400
+
+    db = create_cliente_session()
+    try:
+        conta = db.query(ClienteAuth).filter_by(cliente_geld_id=cliente_id).first()
+        if not conta or not conta.conferir_senha(senha_atual):
+            return jsonify({'erro': 'Senha atual incorreta'}), 401
+        if conta.conferir_senha(nova_senha):
+            return jsonify({'erro': 'A nova senha precisa ser diferente da atual'}), 400
+
+        conta.definir_senha(nova_senha)
+        conta.precisa_trocar_senha = False
+        db.commit()
+        return jsonify({'ok': True})
+    finally:
+        db.close()
