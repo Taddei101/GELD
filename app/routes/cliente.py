@@ -13,6 +13,7 @@ from app.config import BASE_DIR
 from datetime import datetime
 from functools import wraps
 from sqlalchemy import func
+from app.services.acesso_cliente_service import sincronizar_acessos
 
 cliente_bp = Blueprint('cliente', __name__)
 
@@ -99,6 +100,20 @@ def delete_client(cliente_id):
         return redirect(url_for('cliente.listar_clientes'))
     finally:
         db.close()
+
+#SINCRONIZAR ACESSOS DA ÁREA DO CLIENTE
+@cliente_bp.route('/clientes/sincronizar-acessos', methods=['POST'])
+@login_required
+def sincronizar_acessos_clientes():
+    try:
+        r = sincronizar_acessos()
+        flash(f"Acessos sincronizados: {r['criadas']} criados, {r['emails_atualizados']} e-mails atualizados, "
+              f"{r['removidas']} removidos.", "success")
+        if r['pulados']:
+            flash(f"Sem e-mail ou CPF, não receberam acesso: {', '.join(r['pulados'])}", "error")
+    except Exception as e:
+        flash(f'Erro ao sincronizar acessos: {str(e)}', "error")
+    return redirect(url_for('cliente.listar_clientes'))
 
 #EDITAR 
 @cliente_bp.route('/edit/<int:cliente_id>', methods=['GET','POST'])

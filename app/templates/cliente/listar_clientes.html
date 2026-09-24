@@ -59,6 +59,12 @@
 
 <button class="smlBtn" onclick="window.location.href=`{{ url_for('cliente.register_client') }}`">
         <img src="{{ url_for('static', filename='icons/add.png') }}" class="sml-btn-icon"></button>
+
+<form action="{{ url_for('cliente.sincronizar_acessos_clientes') }}" method="POST" class="inline">
+    <button type="submit" class="smlBtn" title="Sincronizar acessos da área do cliente">
+        <img src="{{ url_for('static', filename='icons/Access-Token-Authentication-Circle--Streamline-Ultimate.png') }}" class="sml-btn-icon">
+    </button>
+</form>
 </div>
 
 <script>
