@@ -10,6 +10,7 @@ from app.config import BASE_DIR
 from datetime import datetime
 import json
 import os
+from app.services.snapshot_service import registrar_snapshot
 
 
 posicao_advisor_bp = Blueprint('posicao_advisor', __name__)
@@ -191,6 +192,14 @@ def upload_advisor(cliente_id):
             except:
                 pass
 
+             # ===== SNAPSHOT ÁREA DO CLIENTE =====
+            if registros_salvos > 0:
+                try:
+                    registrar_snapshot(cliente_id, datetime.now(), db)
+                except Exception as e:
+                    print(f"[ERRO] Snapshot área do cliente: {e}")
+                    flash("Posições salvas, mas o histórico da área do cliente não foi atualizado.", "warning")
+                        
             # ===== MENSAGEM FINAL =====
             if registros_salvos > 0:
                 msg = f"{registros_salvos} posições do Advisor registradas com sucesso!"
