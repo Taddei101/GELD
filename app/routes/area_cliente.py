@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from flask import Blueprint, request, jsonify, current_app
 from app.models.cliente_auth_models import create_cliente_session, ClienteAuth, SnapshotObjetivo
-from app.models.geld_models import create_session, Cliente
+from app.models.geld_models import create_session, Cliente, Objetivo
 
 area_cliente_bp = Blueprint('area_cliente', __name__, url_prefix='/api/cliente')
 
@@ -90,18 +90,31 @@ def snapshots():
     if not cliente_id:
         return jsonify({'erro': 'Não autenticado'}), 401
 
+    db_geld = create_session()
     db = create_cliente_session()
     try:
+        objetivos = db_geld.query(Objetivo).filter_by(cliente_id=cliente_id).order_by(
+            Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final
+        ).all()
         linhas = db.query(SnapshotObjetivo).filter_by(cliente_geld_id=cliente_id).order_by(SnapshotObjetivo.data).all()
 
-        objetivos = {}
+        pontos = {}
         for s in linhas:
-            obj = objetivos.setdefault(s.objetivo_id, {'pontos': []})
-            obj['nome'] = s.nome_objetivo.strip()
-            obj['valor_alvo'] = float(s.valor_alvo) if s.valor_alvo is not None else None
-            obj['data_alvo'] = s.data_alvo.date().isoformat() if s.data_alvo else None
-            obj['pontos'].append({'data': s.data.date().isoformat(), 'valor': float(s.valor)})
+            pontos.setdefault(s.objetivo_id, []).append({'data': s.data.date().isoformat(), 'valor': float(s.valor)})
 
-        return jsonify({'objetivos': list(objetivos.values())})
+        resultado = []
+        for o in objetivos:
+            if o.id not in pontos:
+                continue
+            resultado.append({
+                'nome': o.nome_objetivo.strip(),
+                'valor_alvo': float(o.valor_final) if o.valor_final is not None else None,
+                'data_alvo': o.data_final.date().isoformat() if o.data_final else None,
+                'prioridade': o.prioridade,
+                'pontos': pontos[o.id],
+            })
+
+        return jsonify({'objetivos': resultado})
     finally:
         db.close()
+        db_geld.close()
