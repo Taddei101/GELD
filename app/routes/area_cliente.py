@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from flask import Blueprint, request, jsonify, current_app
 from app.models.cliente_auth_models import create_cliente_session, ClienteAuth, SnapshotObjetivo
-from app.models.geld_models import create_session, Cliente, Objetivo
+from app.models.geld_models import create_session, Cliente, Objetivo, IndicadoresEconomicos
 
 area_cliente_bp = Blueprint('area_cliente', __name__, url_prefix='/api/cliente')
 
@@ -39,7 +39,14 @@ def cliente_id_do_token():
         return int(dados['sub'])
     except jwt.InvalidTokenError:
         return None
-
+    
+def valor_futuro(objetivo, ipca_anual):
+    if objetivo.valor_final is None or not objetivo.data_inicial or not objetivo.data_final:
+        return None
+    ipca_mensal = (1 + ipca_anual / 100) ** (1/12) - 1
+    meses = ((objetivo.data_final.year - objetivo.data_inicial.year) * 12
+             + (objetivo.data_final.month - objetivo.data_inicial.month))
+    return round(float(objetivo.valor_final) * (1 + ipca_mensal) ** meses)
 
 @area_cliente_bp.route('/me', methods=['GET'])
 def me():
@@ -97,6 +104,10 @@ def snapshots():
             Objetivo.prioridade.is_(None), Objetivo.prioridade, Objetivo.data_final
         ).all()
         linhas = db.query(SnapshotObjetivo).filter_by(cliente_geld_id=cliente_id).order_by(SnapshotObjetivo.data).all()
+        ipca = db_geld.query(IndicadoresEconomicos).order_by(
+            IndicadoresEconomicos.data_atualizacao.desc()
+        ).first()
+        ipca_anual = ipca.ipca if ipca else 4.5
 
         pontos = {}
         for s in linhas:
@@ -108,7 +119,7 @@ def snapshots():
                 continue
             resultado.append({
                 'nome': o.nome_objetivo.strip(),
-                'valor_alvo': float(o.valor_final) if o.valor_final is not None else None,
+                'valor_alvo': valor_futuro(o, ipca_anual),
                 'data_alvo': o.data_final.date().isoformat() if o.data_final else None,
                 'prioridade': o.prioridade,
                 'pontos': pontos[o.id],
