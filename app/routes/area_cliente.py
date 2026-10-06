@@ -3,7 +3,7 @@ import jwt
 from flask import Blueprint, request, jsonify, current_app
 from app.models.cliente_auth_models import create_cliente_session, ClienteAuth, SnapshotObjetivo, Movimentacao
 from app.models.geld_models import create_session, Cliente, Objetivo, IndicadoresEconomicos
-from app.services.rentabilidade_service import retorno_acumulado, cdi_acumulado
+from app.services.rentabilidade_service import retorno_acumulado, cdi_acumulado, valores_em_reais
 
 MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 def mes_fechado(d):
@@ -154,15 +154,21 @@ def patrimonio():
         mensal = {}
         for dia, valor in totais.items():
             mensal[datetime(dia.year, dia.month, 1)] = valor
+
         pontos = [(d, round(v, 2)) for d, v in mensal.items()]
         fluxos = [(m.data, float(m.valor)) for m in movs]
+        cdi = cdi_acumulado([d for d, _ in pontos]) if pontos else []
+        investido, cdi_reais = valores_em_reais(pontos, fluxos, cdi) if pontos else ([], [])
+
 
         return jsonify({
             'pontos': [{'data': d.date().isoformat(), 'valor': v} for d, v in pontos],
             'meses': [mes_fechado(d) for d, _ in pontos],
             'movimentacoes': [{'data': d.date().isoformat(), 'valor': v} for d, v in fluxos],
             'retorno_carteira': retorno_acumulado(pontos, fluxos) if pontos else [],
-            'retorno_cdi': cdi_acumulado([d for d, _ in pontos]) if pontos else [],
+            'retorno_cdi': cdi,
+            'investido': investido,
+            'cdi_reais': cdi_reais,
         })
         
     finally:

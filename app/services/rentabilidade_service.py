@@ -19,3 +19,15 @@ def retorno_acumulado(pontos, movimentacoes):
         fator *= (v1 - fluxo) / v0
         acumulado.append(round((fator - 1) * 100, 4))
     return acumulado
+
+def valores_em_reais(pontos, movimentacoes, cdi):
+    investido = [pontos[0][1]]
+    cdi_reais = [pontos[0][1]]
+    for i in range(1, len(pontos)):
+        d0, d1 = pontos[i - 1][0], pontos[i][0]
+        fluxo = sum(v for d, v in movimentacoes if d0 < d <= d1)
+        investido.append(round(investido[-1] + fluxo, 2))
+        if cdi:
+            fator = (1 + cdi[i] / 100) / (1 + cdi[i - 1] / 100)
+            cdi_reais.append(round(cdi_reais[-1] * fator + fluxo, 2))
+    return investido, (cdi_reais if cdi else None)
