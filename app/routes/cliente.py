@@ -14,6 +14,7 @@ from datetime import datetime
 from functools import wraps
 from sqlalchemy import func
 from app.services.acesso_cliente_service import sincronizar_acessos
+from app.services.movimentacao_service import registrar_movimentacao
 
 cliente_bp = Blueprint('cliente', __name__)
 
@@ -114,6 +115,22 @@ def sincronizar_acessos_clientes():
     except Exception as e:
         flash(f'Erro ao sincronizar acessos: {str(e)}', "error")
     return redirect(url_for('cliente.listar_clientes'))
+
+
+#REGISTRAR APORTE/SAQUE (ÁREA DO CLIENTE)
+@cliente_bp.route('/cliente/<int:cliente_id>/movimentacao', methods=['POST'])
+@login_required
+def registrar_movimentacao_cliente(cliente_id):
+    try:
+        data = datetime.strptime(request.form['data'], '%Y-%m-%d')
+        valor = abs(float(request.form['valor']))
+        if request.form['tipo'] == 'saque':
+            valor = -valor
+        registrar_movimentacao(cliente_id, data, valor)
+        flash('Movimentação registrada.', "success")
+    except Exception as e:
+        flash(f'Erro ao registrar movimentação: {str(e)}', "error")
+    return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
 
 #EDITAR 
 @cliente_bp.route('/edit/<int:cliente_id>', methods=['GET','POST'])

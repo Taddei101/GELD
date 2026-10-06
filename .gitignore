@@ -220,5 +220,6 @@ uploads/*.csv
 # GELD - Arquivos tempor�rios
 documentation.txt
 balancear_objetivo.py
-
+testar_rota_snapshots.py
+testar_snapshot.py
 testar_area_cliente.py

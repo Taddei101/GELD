@@ -355,7 +355,20 @@
 </div>
 <p></p>
 {% endif %}
+<div class="client_area">
+    <h3>Aporte / Saque</h3>
+    <form method="POST" action="{{ url_for('cliente.registrar_movimentacao_cliente', cliente_id=cliente.id) }}">
+        <select name="tipo" required>
+            <option value="aporte">Aporte</option>
+            <option value="saque">Saque</option>
+        </select>
+        <input type="date" name="data" required>
+        <input type="number" step="0.01" min="0.01" name="valor" placeholder="Valor (R$)" required>
+        <button type="submit" class="bigBtn">Registrar</button>
+    </form>
+</div>
 
+<p></p>
 <div class="client_area">
     <button class="bigBtn" onclick="window.location.href=`{{ url_for('cliente.info_cliente', cliente_id=cliente.id) }}`">
         <img src="{{ url_for('static', filename='icons/profile.png') }}" class="btn-icon">Informações Pessoais

@@ -1,8 +1,9 @@
 from datetime import datetime, timedelta, timezone
 import jwt
 from flask import Blueprint, request, jsonify, current_app
-from app.models.cliente_auth_models import create_cliente_session, ClienteAuth, SnapshotObjetivo
+from app.models.cliente_auth_models import create_cliente_session, ClienteAuth, SnapshotObjetivo, Movimentacao
 from app.models.geld_models import create_session, Cliente, Objetivo, IndicadoresEconomicos
+from app.services.rentabilidade_service import retorno_acumulado, cdi_acumulado
 
 area_cliente_bp = Blueprint('area_cliente', __name__, url_prefix='/api/cliente')
 
@@ -129,3 +130,31 @@ def snapshots():
     finally:
         db.close()
         db_geld.close()
+
+@area_cliente_bp.route('/patrimonio', methods=['GET'])
+def patrimonio():
+    cliente_id = cliente_id_do_token()
+    if not cliente_id:
+        return jsonify({'erro': 'Não autenticado'}), 401
+
+    db = create_cliente_session()
+    try:
+        linhas = db.query(SnapshotObjetivo).filter_by(cliente_geld_id=cliente_id).order_by(SnapshotObjetivo.data).all()
+        movs = db.query(Movimentacao).filter_by(cliente_geld_id=cliente_id).order_by(Movimentacao.data).all()
+
+        totais = {}
+        for s in linhas:
+            dia = datetime(s.data.year, s.data.month, s.data.day)
+            totais[dia] = totais.get(dia, 0.0) + float(s.valor)
+        pontos = [(d, round(v, 2)) for d, v in totais.items()]
+        fluxos = [(m.data, float(m.valor)) for m in movs]
+
+        return jsonify({
+            'pontos': [{'data': d.date().isoformat(), 'valor': v} for d, v in pontos],
+            'movimentacoes': [{'data': d.date().isoformat(), 'valor': v} for d, v in fluxos],
+            'retorno_carteira': retorno_acumulado(pontos, fluxos) if pontos else [],
+            'retorno_cdi': cdi_acumulado([d for d, _ in pontos]) if pontos else [],
+        })
+        
+    finally:
+        db.close()

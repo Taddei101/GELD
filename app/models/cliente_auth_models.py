@@ -40,6 +40,15 @@ class SnapshotObjetivo(ClienteBase):
 
     __table_args__ = (UniqueConstraint('cliente_geld_id', 'objetivo_id', 'data', name='uq_snapshot_cliente_objetivo_data'),)
 
+class Movimentacao(ClienteBase):
+    __tablename__ = 'movimentacao'
+
+    id = Column(Integer, primary_key=True)
+    cliente_geld_id = Column(Integer, nullable=False, index=True)
+    objetivo_id = Column(Integer)
+    data = Column(DateTime, nullable=False)
+    valor = Column(Numeric(15, 2), nullable=False)
+
 def init_cliente_db():
     ClienteBase.metadata.create_all(engine_cliente)
 
