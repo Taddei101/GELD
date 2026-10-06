@@ -5,6 +5,11 @@ from app.models.cliente_auth_models import create_cliente_session, ClienteAuth, 
 from app.models.geld_models import create_session, Cliente, Objetivo, IndicadoresEconomicos
 from app.services.rentabilidade_service import retorno_acumulado, cdi_acumulado
 
+MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
+def mes_fechado(d):
+    anterior = d - timedelta(days=1)
+    return MESES[anterior.month - 1] + '/' + anterior.strftime('%y')
+
 area_cliente_bp = Blueprint('area_cliente', __name__, url_prefix='/api/cliente')
 
 @area_cliente_bp.route('/login', methods=['POST'])
@@ -146,11 +151,15 @@ def patrimonio():
         for s in linhas:
             dia = datetime(s.data.year, s.data.month, s.data.day)
             totais[dia] = totais.get(dia, 0.0) + float(s.valor)
-        pontos = [(d, round(v, 2)) for d, v in totais.items()]
+        mensal = {}
+        for dia, valor in totais.items():
+            mensal[datetime(dia.year, dia.month, 1)] = valor
+        pontos = [(d, round(v, 2)) for d, v in mensal.items()]
         fluxos = [(m.data, float(m.valor)) for m in movs]
 
         return jsonify({
             'pontos': [{'data': d.date().isoformat(), 'valor': v} for d, v in pontos],
+            'meses': [mes_fechado(d) for d, _ in pontos],
             'movimentacoes': [{'data': d.date().isoformat(), 'valor': v} for d, v in fluxos],
             'retorno_carteira': retorno_acumulado(pontos, fluxos) if pontos else [],
             'retorno_cdi': cdi_acumulado([d for d, _ in pontos]) if pontos else [],
