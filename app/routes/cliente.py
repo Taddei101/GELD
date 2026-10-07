@@ -320,6 +320,11 @@ def area_cliente(cliente_id):
         if os.path.exists(lancamentos_path):
             with open(lancamentos_path, 'r', encoding='utf-8') as f:
                 lancamentos_futuros = json.load(f)
+        try:
+            movimentacoes = listar_movimentacoes(cliente_id)
+        except Exception as e:
+            print(f'Erro ao listar movimentações: {str(e)}', "error")
+            movimentacoes = []
 
         return render_template('cliente/area_cliente.html',
                               cliente=cliente,
@@ -341,7 +346,7 @@ def area_cliente(cliente_id):
                               vp_ideal_por_objetivo=vp_ideal_por_objetivo,
                               percentuais_alvo_por_objetivo=percentuais_alvo_por_objetivo,
                               tem_capital_orfao=tem_capital_orfao,
-                              movimentacoes=listar_movimentacoes(cliente_id))
+                              movimentacoes=movimentacoes)
     except Exception as e:
         print(f'Erro ao acessar área do cliente: {str(e)}', "error")
         return redirect(url_for('cliente.listar_clientes'))
