@@ -8,7 +8,8 @@
 {% set todas_classes = ['baixo_di', 'baixo_rfx', 'moderado', 'alto', 'ouro', 'dolar', 'cripto', 'internacional', 'fii'] %}
 
 <!-- CONTAINER: Resumo por Classe de Risco + Fatias lado a lado -->
-{% if has_positions or objetivos %}
+ 
+{% if false and (has_positions or objetivos) %}
 <div style="display: flex; flex-wrap: nowrap; gap: 20px; align-items: stretch; overflow-x: auto;">
 
     <!-- SEÇÃO: Resumo por Classe de Risco -->
@@ -316,7 +317,8 @@
 
 {% if ultimo_balanceamento.get('slots') %}
 <div class="client_area">
-    <h3>Slots</h3>
+    <details>
+    <summary style="cursor: pointer;"><h3 style="display: inline;">Slots</h3></summary>
 
     {% if ultimo_balanceamento.get('slots_sem_prev') %}
     <style>
@@ -349,14 +351,14 @@
     {{ tabela_slots(ultimo_balanceamento['slots']) }}
     {% endif %}
 
+    </details>
 </div>
 {% endif %}
 
 </div>
 <p></p>
 {% endif %}
-<div class="client_area">
-    <h3>Aporte / Saque</h3>
+<div class="tarja-site">
     <form method="POST" action="{{ url_for('cliente.registrar_movimentacao_cliente', cliente_id=cliente.id) }}">
         <select name="tipo" required>
             <option value="aporte">Aporte</option>
@@ -364,8 +366,36 @@
         </select>
         <input type="date" name="data" required>
         <input type="number" step="0.01" min="0.01" name="valor" placeholder="Valor (R$)" required>
-        <button type="submit" class="bigBtn">Registrar</button>
+        <button type="submit">Registrar</button>
     </form>
+    <details>
+        <summary>Lançamentos ({{ movimentacoes|length }})</summary>
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in movimentacoes %}
+                <tr>
+                    <td>{{ m.data.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ 'Aporte' if m.valor > 0 else 'Saque' }}</td>
+                    <td>R$&nbsp;{{ '{:,.2f}'.format(m.valor|abs).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>
+                        <form method="POST" action="{{ url_for('cliente.excluir_movimentacao_cliente', cliente_id=cliente.id, movimentacao_id=m.id) }}"
+                              onsubmit="return confirm('Excluir este lançamento?')">
+                            <button type="submit">Excluir</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </details>
 </div>
 
 <p></p>

@@ -14,7 +14,7 @@ from datetime import datetime
 from functools import wraps
 from sqlalchemy import func
 from app.services.acesso_cliente_service import sincronizar_acessos
-from app.services.movimentacao_service import registrar_movimentacao
+from app.services.movimentacao_service import registrar_movimentacao, listar_movimentacoes, excluir_movimentacao
 
 cliente_bp = Blueprint('cliente', __name__)
 
@@ -130,6 +130,18 @@ def registrar_movimentacao_cliente(cliente_id):
         flash('Movimentação registrada.', "success")
     except Exception as e:
         flash(f'Erro ao registrar movimentação: {str(e)}', "error")
+    return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
+
+@cliente_bp.route('/cliente/<int:cliente_id>/movimentacao/<int:movimentacao_id>/excluir', methods=['POST'])
+@login_required
+def excluir_movimentacao_cliente(cliente_id, movimentacao_id):
+    try:
+        if excluir_movimentacao(cliente_id, movimentacao_id):
+            flash('Movimentação excluída.', "success")
+        else:
+            flash('Movimentação não encontrada.', "error")
+    except Exception as e:
+        flash(f'Erro ao excluir movimentação: {str(e)}', "error")
     return redirect(url_for('cliente.area_cliente', cliente_id=cliente_id))
 
 #EDITAR 
@@ -328,8 +340,8 @@ def area_cliente(cliente_id):
                               matrizes_risco=matrizes_risco,
                               vp_ideal_por_objetivo=vp_ideal_por_objetivo,
                               percentuais_alvo_por_objetivo=percentuais_alvo_por_objetivo,
-                              tem_capital_orfao=tem_capital_orfao)
-
+                              tem_capital_orfao=tem_capital_orfao,
+                              movimentacoes=listar_movimentacoes(cliente_id))
     except Exception as e:
         print(f'Erro ao acessar área do cliente: {str(e)}', "error")
         return redirect(url_for('cliente.listar_clientes'))

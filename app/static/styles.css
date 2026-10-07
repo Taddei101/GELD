@@ -669,3 +669,64 @@ img {
     border-color: #4a90e2;
     box-shadow: 0 0 5px rgba(74, 144, 226, 0.3);
 }
+
+.tarja-site {
+    background-color: cornflowerblue;
+    border-radius: 8px;
+    padding: 12px 20px;
+}
+
+.tarja-site form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.tarja-site select,
+.tarja-site input {
+    padding: 8px 10px;
+    border: 1px solid #ffffff;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.tarja-site button {
+    background-color: #ffffff;
+    color: #333;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.tarja-site button:hover {
+    background-color: #333;
+    color: #ffffff;
+}
+
+.tarja-site details {
+    margin-top: 10px;
+    color: #ffffff;
+}
+
+.tarja-site summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.tarja-site .table {
+    margin-top: 10px;
+    color: #333;
+}
+
+.tarja-site .table form {
+    justify-content: center;
+}
+
+.tarja-site .table button {
+    background-color: cornflowerblue;
+    color: #ffffff;
+    padding: 4px 12px;
+}
