@@ -173,3 +173,27 @@ def patrimonio():
         
     finally:
         db.close()
+
+@area_cliente_bp.route('/resumo', methods=['GET'])
+def resumo():
+    cliente_id = cliente_id_do_token()
+    if not cliente_id:
+        return jsonify({'erro': 'Não autenticado'}), 401
+
+    db = create_cliente_session()
+    try:
+        linhas = db.query(SnapshotObjetivo).filter_by(cliente_geld_id=cliente_id).all()
+        movs = db.query(Movimentacao).filter_by(cliente_geld_id=cliente_id).all()
+
+        total = None
+        atualizado_em = None
+        if linhas:
+            ultimo_dia = max(s.data.date() for s in linhas)
+            total = round(sum(float(s.valor) for s in linhas if s.data.date() == ultimo_dia), 2)
+            atualizado_em = mes_fechado(datetime(ultimo_dia.year, ultimo_dia.month, 1))
+
+        investido = round(sum(float(m.valor) for m in movs), 2) if movs else None
+
+        return jsonify({'total': total, 'investido': investido, 'atualizado_em': atualizado_em})
+    finally:
+        db.close()
