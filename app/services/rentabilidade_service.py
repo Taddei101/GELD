@@ -21,7 +21,7 @@ def retorno_acumulado(pontos, movimentacoes):
     return acumulado
 
 def valores_em_reais(pontos, movimentacoes, cdi):
-    investido = [pontos[0][1]]
+    investido = [round(sum(v for d, v in movimentacoes if d <= pontos[0][0]), 2)]
     cdi_reais = [pontos[0][1]]
     for i in range(1, len(pontos)):
         d0, d1 = pontos[i - 1][0], pontos[i][0]
