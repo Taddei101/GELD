@@ -126,6 +126,8 @@ def snapshots():
             resultado.append({
                 'nome': o.nome_objetivo.strip(),
                 'valor_alvo': valor_futuro(o, ipca_anual),
+                'valor_desejado': float(o.valor_final) if o.valor_final is not None else None,
+                'data_inicial': o.data_inicial.date().isoformat() if o.data_inicial else None,
                 'data_alvo': o.data_final.date().isoformat() if o.data_final else None,
                 'prioridade': o.prioridade,
                 'pontos': pontos[o.id],
