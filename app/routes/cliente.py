@@ -15,6 +15,7 @@ from functools import wraps
 from sqlalchemy import func
 from app.services.acesso_cliente_service import sincronizar_acessos
 from app.services.movimentacao_service import registrar_movimentacao, listar_movimentacoes, excluir_movimentacao
+from app.services.rentabilidade_service import serie_mensal, fluxos_xirr, xirr, retorno_acumulado
 
 cliente_bp = Blueprint('cliente', __name__)
 
@@ -326,6 +327,42 @@ def area_cliente(cliente_id):
             print(f'Erro ao listar movimentações: {str(e)}', "error")
             movimentacoes = []
 
+        xirr_carteira = xirr_desde = grafico = None
+        try:
+            pontos, fluxos = serie_mensal(cliente_id)
+            if len(pontos) >= 2:
+                xirr_desde = pontos[0][0].strftime('%d/%m/%Y')
+                xirr_carteira = xirr(fluxos_xirr(pontos, fluxos))
+                grafico = {
+                    'datas': [d.strftime('%Y-%m-%d') for d, _ in pontos],
+                    'carteira': retorno_acumulado(pontos, fluxos),
+                }
+
+                serie_xirr = [(pontos[0][0].strftime('%Y-%m-%d'), 0.0)]
+                for i in range(1, len(pontos)):
+                    taxa = xirr(fluxos_xirr(pontos[:i + 1], fluxos))
+                    if taxa is not None:
+                        dias = (pontos[i][0] - pontos[0][0]).days
+                        no_periodo = (1 + taxa) ** (dias / 365) - 1
+                        serie_xirr.append((pontos[i][0].strftime('%Y-%m-%d'), round(no_periodo * 100, 2)))
+                grafico['xirr_datas'] = [d for d, _ in serie_xirr]
+                grafico['xirr'] = [v for _, v in serie_xirr]
+                dias = (pontos[-1][0] - pontos[0][0]).days
+                anual = dias >= 365
+                twr = grafico['carteira'][-1] / 100
+                mwr = xirr_carteira
+                if anual:
+                    twr = (1 + twr) ** (365 / dias) - 1
+                elif mwr is not None:
+                    mwr = (1 + mwr) ** (dias / 365) - 1
+                grafico['anual'] = anual
+                grafico['twr_numero'] = round(twr * 100, 2)
+                grafico['mwr_numero'] = round(mwr * 100, 2) if mwr is not None else None
+                print('NUMEROS', anual, grafico['mwr_numero'], grafico['twr_numero'])
+                
+        except Exception as e:
+            print(f'Erro ao calcular rentabilidade: {str(e)}')
+
         return render_template('cliente/area_cliente.html',
                               cliente=cliente,
                               montante_cliente=montante_cliente,
@@ -346,7 +383,10 @@ def area_cliente(cliente_id):
                               vp_ideal_por_objetivo=vp_ideal_por_objetivo,
                               percentuais_alvo_por_objetivo=percentuais_alvo_por_objetivo,
                               tem_capital_orfao=tem_capital_orfao,
-                              movimentacoes=movimentacoes)
+                              movimentacoes=movimentacoes,
+                              xirr_carteira=xirr_carteira,
+                              xirr_desde=xirr_desde,
+                              grafico=grafico)
     except Exception as e:
         print(f'Erro ao acessar área do cliente: {str(e)}', "error")
         return redirect(url_for('cliente.listar_clientes'))

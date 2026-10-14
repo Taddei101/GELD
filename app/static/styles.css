@@ -730,3 +730,25 @@ img {
     color: #ffffff;
     padding: 4px 12px;
 }
+
+.tarja-grafico {
+    margin-bottom: 16px;
+}
+
+.graficos-lado {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.grafico-painel {
+    background-color: #ffffff;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.grafico-titulo {
+    margin: 0 0 4px;
+    color: #333;
+    font-weight: 600;
+}

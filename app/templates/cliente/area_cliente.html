@@ -358,6 +358,41 @@
 </div>
 <p></p>
 {% endif %}
+
+{% if grafico %}
+<div class="tarja-site tarja-grafico">
+    {% set sufixo = 'a.a.' if grafico.anual else 'no período' %}
+    <div class="graficos-lado">
+        <div class="grafico-painel">
+            <p class="grafico-titulo">MWR (XIRR) desde {{ xirr_desde }}:
+                {% if grafico.mwr_numero is not none %}{{ '%.2f'|format(grafico.mwr_numero) }}% {{ sufixo }}{% else %}—{% endif %}
+            </p>
+            <div id="grafico-xirr" style="height: 260px;"></div>
+        </div>
+        <div class="grafico-painel">
+            <p class="grafico-titulo">TWR desde {{ xirr_desde }}: {{ '%.2f'|format(grafico.twr_numero) }}% {{ sufixo }}</p>
+            <div id="grafico-twr" style="height: 260px;"></div>
+        </div>
+    </div>
+        
+</div>
+<script src="https://cdn.plot.ly/plotly-basic-2.35.2.min.js"></script>
+<script>
+    const graficoRendimento = {{ grafico|tojson }};
+    function linhaRendimento(id, x, y) {
+        Plotly.newPlot(id, [{x: x, y: y, mode: 'lines', line: {color: '#146c43'}}], {
+            yaxis: {ticksuffix: '%'},
+            margin: {t: 10, r: 10, l: 50, b: 30},
+            showlegend: false
+        }, {displayModeBar: false, responsive: true});
+    }
+    linhaRendimento('grafico-twr', graficoRendimento.datas, graficoRendimento.carteira);
+    if (graficoRendimento.xirr.length) {
+        linhaRendimento('grafico-xirr', graficoRendimento.xirr_datas, graficoRendimento.xirr);
+    }
+</script>
+{% endif %}
+
 <div class="tarja-site">
     <form method="POST" action="{{ url_for('cliente.registrar_movimentacao_cliente', cliente_id=cliente.id) }}">
         <select name="tipo" required>
