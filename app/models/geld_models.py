@@ -2,6 +2,7 @@ from app.config import DATABASE_URL
 from sqlalchemy import Enum, Column, Integer, Numeric, String, ForeignKey, DateTime, Float, Boolean, create_engine, Index
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
 import enum
 
 
@@ -245,6 +246,18 @@ class IndicadoresEconomicos(Base):
     ipca_mes = Column(Float, default=0)
     data_atualizacao = Column(DateTime, default=datetime.now)
 
+class Usuario(Base):
+    __tablename__ = 'usuario'
+
+    id = Column(Integer, primary_key=True)
+    username = Column(String(50), nullable=False, unique=True)
+    senha_hash = Column(String(256), nullable=False)
+
+    def definir_senha(self, senha):
+        self.senha_hash = generate_password_hash(senha)
+
+    def conferir_senha(self, senha):
+        return check_password_hash(self.senha_hash, senha)
 
 def _popular_matriz_inicial():
     """
