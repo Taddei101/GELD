@@ -4,6 +4,8 @@ from flask import Blueprint, request, jsonify, current_app
 from app.models.cliente_auth_models import create_cliente_session, ClienteAuth, SnapshotObjetivo, Movimentacao
 from app.models.geld_models import create_session, Cliente, Objetivo, IndicadoresEconomicos
 from app.services.rentabilidade_service import retorno_acumulado, cdi_acumulado, valores_em_reais, serie_mensal
+from app.services.balance_service import BalanceamentoService
+from app.services.projecao_objetivo_service import valor_estimado, aporte_mensal
 
 MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 def mes_fechado(d):
@@ -123,9 +125,21 @@ def snapshots():
         for o in objetivos:
             if o.id not in pontos:
                 continue
+            
+            atual = pontos[o.id][-1]['valor']
+            estimado = aporte = None
+            if o.valor_final is not None and o.data_inicial and o.data_final:
+                meses = o.duracao_meses
+                estimado = round(valor_estimado(atual, ipca_anual, meses))
+                aporte = aporte_mensal(BalanceamentoService.calcular_vp_ideal(o, ipca_anual), atual, ipca_anual, meses)
+                if aporte is not None:
+                    aporte = round(aporte)
+                
             resultado.append({
                 'nome': o.nome_objetivo.strip(),
                 'valor_alvo': valor_futuro(o, ipca_anual),
+                'valor_estimado': estimado,
+                'aporte_mensal': aporte,
                 'valor_desejado': float(o.valor_final) if o.valor_final is not None else None,
                 'data_inicial': o.data_inicial.date().isoformat() if o.data_inicial else None,
                 'data_alvo': o.data_final.date().isoformat() if o.data_final else None,
